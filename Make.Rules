@@ -2,7 +2,7 @@
 ## Optional prefixes:
 #
 
-# common 'packaging' directoty
+# common 'packaging' directory
 
 FAKEROOT=$(DESTDIR)
 
