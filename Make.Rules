@@ -49,13 +49,13 @@ MINOR=33
 KERNEL_HEADERS := $(topdir)/libcap/include/uapi
 IPATH += -fPIC -I$(KERNEL_HEADERS) -I$(topdir)/libcap/include
 
-CC := gcc # -std=c99
+CC := $(CROSS_COMPILE)gcc
 DEFINES := -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 CFLAGS := -O2 $(DEFINES)
 BUILD_CC := $(CC)
 BUILD_CFLAGS := -O2 $(DEFINES) $(IPATH)
-AR := ar
-RANLIB := ranlib
+AR := $(CROSS_COMPILE)ar
+RANLIB := $(CROSS_COMPILE)ranlib
 DEBUG = -g #-DDEBUG
 WARNINGS=-Wall -Wwrite-strings \
         -Wpointer-arith -Wcast-qual -Wcast-align \
