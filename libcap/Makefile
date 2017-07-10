@@ -28,7 +28,7 @@ endif
 libcap.pc: libcap.pc.in
 	sed -e 's,@prefix@,$(prefix),' \
 		-e 's,@exec_prefix@,$(exec_prefix),' \
-		-e 's,@libdir@,$(lib_prefix)/$(lib),' \
+		-e 's,@libdir@,$(LIBDIR),' \
 		-e 's,@includedir@,$(inc_prefix)/include,' \
 		-e 's,@VERSION@,$(VERSION).$(MINOR),' \
 		-e 's,@deps@,$(DEPS),' \
