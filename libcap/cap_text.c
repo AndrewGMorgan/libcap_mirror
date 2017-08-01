@@ -15,6 +15,11 @@
 #include <ctype.h>
 #include <limits.h>
 
+#ifdef INCLUDE_GPERF_OUTPUT
+/* we need to include it after #define _GNU_SOURCE is set */
+#include INCLUDE_GPERF_OUTPUT
+#endif
+
 /* Maximum output text length (16 per cap) */
 #define CAP_TEXT_SIZE    (16*__CAP_MAXBITS)
 
