@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 
 	cap_d = cap_get_pid(pid);
 	if (cap_d == NULL) {
-		fprintf(stderr, "Failed to get cap's for proccess %d:"
+		fprintf(stderr, "Failed to get cap's for process %d:"
 			" (%s)\n", pid, strerror(errno));
 		retval = 1;
 		continue;
