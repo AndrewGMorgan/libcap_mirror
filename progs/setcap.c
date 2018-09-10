@@ -14,7 +14,7 @@
 static void usage(void)
 {
     fprintf(stderr,
-	    "usage: setcap [-q] [-v] (-r|-|<caps>) <filename> "
+	    "usage: setcap [-q] [-v] [-n <rootid>] (-r|-|<caps>) <filename> "
 	    "[ ... (-r|-|<capsN>) <filenameN> ]\n"
 	    "\n"
 	    " Note <filename> must be a regular (non-symlink) file.\n"
@@ -60,9 +60,10 @@ int main(int argc, char **argv)
 {
     int tried_to_cap_setfcap = 0;
     char buffer[MAXCAP+1];
-    int retval, quiet=0, verify=0;
+    int retval, quiet = 0, verify = 0;
     cap_t mycaps;
     cap_value_t capflag;
+    uid_t rootid = 0, f_rootid;
 
     if (argc < 3) {
 	usage();
@@ -86,6 +87,19 @@ int main(int argc, char **argv)
 	    verify = 1;
 	    continue;
 	}
+	if (!strcmp(*argv, "-n")) {
+	    if (argc < 2) {
+		fprintf(stderr, "usage: .. -n <rootid> .. - rootid!=0 file caps");
+		exit(1);
+	    }
+	    --argc;
+	    rootid = (uid_t) atoi(*++argv);
+	    if (rootid+1 < 2) {
+		fprintf(stderr, "invalid rootid!=0 of '%s'", *argv);
+		exit(1);
+	    }
+	    continue;
+	}
 
 	if (!strcmp(*argv, "-r")) {
 	    cap_d = NULL;
@@ -103,6 +117,10 @@ int main(int argc, char **argv)
 	    if (cap_d == NULL) {
 		perror("fatal error");
 		usage();
+	    }
+	    if (cap_set_nsowner(cap_d, rootid)) {
+		perror("unable to set nsowner");
+		exit(1);
 	    }
 #ifdef DEBUG
 	    {
@@ -135,10 +153,14 @@ int main(int argc, char **argv)
 	    }
 
 	    cmp = cap_compare(cap_on_file, cap_d);
+	    f_rootid = cap_get_nsowner(cap_on_file);
 	    cap_free(cap_on_file);
 
-	    if (cmp != 0) {
+	    if (cmp != 0 || rootid != f_rootid) {
 		if (!quiet) {
+		    if (rootid != f_rootid) {
+			printf("nsowner[got=%d, want=%d],", f_rootid, rootid);
+		    }
 		    printf("%s differs in [%s%s%s]\n", *argv,
 			   CAP_DIFFERS(cmp, CAP_PERMITTED) ? "p" : "",
 			   CAP_DIFFERS(cmp, CAP_INHERITABLE) ? "i" : "",

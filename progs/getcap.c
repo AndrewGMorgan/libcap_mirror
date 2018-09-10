@@ -20,11 +20,12 @@
 
 static int verbose = 0;
 static int recursive = 0;
+static int namespace = 0;
 
 static void usage(void)
 {
     fprintf(stderr,
-	    "usage: getcap [-v] [-r] [-h] <filename> [<filename> ...]\n"
+	    "usage: getcap [-v] [-r] [-h] [-n] <filename> [<filename> ...]\n"
 	    "\n"
 	    "\tdisplays the capabilities on the queried file(s).\n"
 	);
@@ -36,6 +37,7 @@ static int do_getcap(const char *fname, const struct stat *stbuf,
 {
     cap_t cap_d;
     char *result;
+    uid_t rootid;
 
     if (tflag != FTW_F) {
 	if (verbose) {
@@ -63,7 +65,12 @@ static int do_getcap(const char *fname, const struct stat *stbuf,
 	cap_free(cap_d);
 	return 0;
     }
-    printf("%s %s\n", fname, result);
+    rootid = cap_get_nsowner(cap_d);
+    if (namespace && (rootid+1 > 1)) {
+	printf("%s %s [rootid=%d]\n", fname, result, rootid);
+    } else {
+	printf("%s %s\n", fname, result);
+    }
     cap_free(cap_d);
     cap_free(result);
 
@@ -74,13 +81,16 @@ int main(int argc, char **argv)
 {
     int i, c;
 
-    while ((c = getopt(argc, argv, "rvh")) > 0) {
+    while ((c = getopt(argc, argv, "rvhn")) > 0) {
 	switch(c) {
 	case 'r':
 	    recursive = 1;
 	    break;
 	case 'v':
 	    verbose = 1;
+	    break;
+	case 'n':
+	    namespace = 1;
 	    break;
 	default:
 	    usage();

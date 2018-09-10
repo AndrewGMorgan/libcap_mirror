@@ -161,13 +161,15 @@ exit_early () {
     exit 0
 }
 
-./capsh --has-ambient || exit_early "skipping ambient tests"
+./capsh --has-ambient
+if [ $? -eq 0 ]; then
+    echo "test ambient capabilities"
 
-# Ambient capabilities (any file can inherit capabilities)
-pass_capsh --noamb
+    # Ambient capabilities (any file can inherit capabilities)
+    pass_capsh --noamb
 
-# test that shell scripts can inherit through ambient capabilities
-/bin/cat > hack.sh <<EOF
+    # test that shell scripts can inherit through ambient capabilities
+    /bin/cat > hack.sh <<EOF
 #!/bin/bash
 /usr/bin/id
 mypid=\$\$
@@ -180,7 +182,31 @@ ls -l \$0
 echo "no capabilities [\$caps] for this shell script"
 exit 1
 EOF
-/bin/chmod +x hack.sh
-pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- ./hack.sh
+    /bin/chmod +x hack.sh
+    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- ./hack.sh
 
-/bin/rm -f hack.sh
+    /bin/rm -f hack.sh
+fi
+
+echo "testing namespaced file caps"
+
+# nsprivileged capsh will have an ns rootid value (this is
+# the same setup as an earlier test but with a ns file cap).
+rm -f nsprivileged
+cp ./capsh ./nsprivileged && /bin/chmod -s ./nsprivileged
+./setcap -n 500 all=ep ./nsprivileged
+if [ $? -eq 0 ]; then
+    ./getcap -n ./nsprivileged | /usr/bin/fgrep "[rootid=500]"
+    if [ $? -ne 0 ]; then
+	echo "FAILED setting ns rootid on file"
+	exit 1
+    fi
+    # since this is a ns file cap and not a regular one, it should not
+    # lead to a privilege escalation outside of the namespace it
+    # refers to. We suppress uid=0 privilege and confirm this
+    # nsprivileged binary does not have the power to change uid.
+    fail_capsh --secbits=0x2f --print -- -c "./nsprivileged --uid=$nouid"
+else
+    echo "ns file caps not supported - skipping test"
+fi
+rm -f nsprivileged
