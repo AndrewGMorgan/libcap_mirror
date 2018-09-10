@@ -37,7 +37,7 @@ extern int fremovexattr(int, const char *);
 #define FIXUP_32BITS(x) (x)
 #endif
 
-static cap_t _fcaps_load(struct vfs_cap_data *rawvfscap, cap_t result,
+static cap_t _fcaps_load(struct vfs_ns_cap_data *rawvfscap, cap_t result,
 			 int bytes)
 {
     __u32 magic_etc;
@@ -45,19 +45,21 @@ static cap_t _fcaps_load(struct vfs_cap_data *rawvfscap, cap_t result,
 
     magic_etc = FIXUP_32BITS(rawvfscap->magic_etc);
     switch (magic_etc & VFS_CAP_REVISION_MASK) {
-#ifdef VFS_CAP_REVISION_1
     case VFS_CAP_REVISION_1:
 	tocopy = VFS_CAP_U32_1;
 	bytes -= XATTR_CAPS_SZ_1;
 	break;
-#endif
 
-#ifdef VFS_CAP_REVISION_2
     case VFS_CAP_REVISION_2:
 	tocopy = VFS_CAP_U32_2;
 	bytes -= XATTR_CAPS_SZ_2;
 	break;
-#endif
+
+    case VFS_CAP_REVISION_3:
+	tocopy = VFS_CAP_U32_3;
+	bytes -= XATTR_CAPS_SZ_3;
+	result->rootid = FIXUP_32BITS(rawvfscap->rootid);
+	break;
 
     default:
 	cap_free(result);
@@ -95,7 +97,7 @@ static cap_t _fcaps_load(struct vfs_cap_data *rawvfscap, cap_t result,
     return result;
 }
 
-static int _fcaps_save(struct vfs_cap_data *rawvfscap, cap_t cap_d,
+static int _fcaps_save(struct vfs_ns_cap_data *rawvfscap, cap_t cap_d,
 		       int *bytes_p)
 {
     __u32 eff_not_zero, magic;
@@ -107,33 +109,34 @@ static int _fcaps_save(struct vfs_cap_data *rawvfscap, cap_t cap_d,
     }
 
     switch (cap_d->head.version) {
-#ifdef _LINUX_CAPABILITY_VERSION_1
     case _LINUX_CAPABILITY_VERSION_1:
 	magic = VFS_CAP_REVISION_1;
 	tocopy = VFS_CAP_U32_1;
 	*bytes_p = XATTR_CAPS_SZ_1;
 	break;
-#endif
 
-#ifdef _LINUX_CAPABILITY_VERSION_2
     case _LINUX_CAPABILITY_VERSION_2:
-	magic = VFS_CAP_REVISION_2;
-	tocopy = VFS_CAP_U32_2;
-	*bytes_p = XATTR_CAPS_SZ_2;
-	break;
-#endif
-
-#ifdef _LINUX_CAPABILITY_VERSION_3
     case _LINUX_CAPABILITY_VERSION_3:
 	magic = VFS_CAP_REVISION_2;
 	tocopy = VFS_CAP_U32_2;
 	*bytes_p = XATTR_CAPS_SZ_2;
 	break;
-#endif
 
     default:
 	errno = EINVAL;
 	return -1;
+    }
+
+    if (cap_d->rootid != 0) {
+	if (cap_d->head.version < _LINUX_CAPABILITY_VERSION_3) {
+	    _cap_debug("namespaces with non-0 rootid unsupported by kernel");
+	    errno = EINVAL;
+	    return -1;
+	}
+	magic = VFS_CAP_REVISION_3;
+	tocopy = VFS_CAP_U32_3;
+	*bytes_p = XATTR_CAPS_SZ_3;
+	rawvfscap->rootid = FIXUP_32BITS(cap_d->rootid);
     }
 
     _cap_debug("setting named file capabilities");
@@ -190,7 +193,7 @@ cap_t cap_get_fd(int fildes)
     /* allocate a new capability set */
     result = cap_init();
     if (result) {
-	struct vfs_cap_data rawvfscap;
+	struct vfs_ns_cap_data rawvfscap;
 	int sizeofcaps;
 
 	_cap_debug("getting fildes capabilities");
@@ -220,7 +223,7 @@ cap_t cap_get_file(const char *filename)
     /* allocate a new capability set */
     result = cap_init();
     if (result) {
-	struct vfs_cap_data rawvfscap;
+	struct vfs_ns_cap_data rawvfscap;
 	int sizeofcaps;
 
 	_cap_debug("getting filename capabilities");
@@ -256,7 +259,7 @@ uid_t cap_get_nsowner(cap_t cap_d)
 
 int cap_set_fd(int fildes, cap_t cap_d)
 {
-    struct vfs_cap_data rawvfscap;
+    struct vfs_ns_cap_data rawvfscap;
     int sizeofcaps;
     struct stat buf;
 
@@ -288,7 +291,7 @@ int cap_set_fd(int fildes, cap_t cap_d)
 
 int cap_set_file(const char *filename, cap_t cap_d)
 {
-    struct vfs_cap_data rawvfscap;
+    struct vfs_ns_cap_data rawvfscap;
     int sizeofcaps;
     struct stat buf;
 
