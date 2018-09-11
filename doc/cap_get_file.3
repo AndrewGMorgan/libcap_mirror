@@ -18,6 +18,10 @@ manipulation on files
 .sp
 .BI "int cap_set_fd(int " fd ", cap_t " caps );
 .sp
+.BI "uid_t cap_get_nsowner(cap_t " caps );
+.sp
+.BI "int cap_set_nsowner(cap_t " caps ", uid_t " rootid );
+.sp
 Link with \fI-lcap\fP.
 .SH DESCRIPTION
 .BR cap_get_file ()
@@ -63,6 +67,17 @@ file owner or the calling process must have the
 flag in its effective capability set.  The effects of writing the
 capability state to any file type other than a regular file are
 undefined.
+.PP
+A capability set held in memory can be associated with the rootid in
+use in a specific namespace. It is possible to get and set this value
+(in the memory copy) with
+.BR cap_get_nsowner ()
+and
+.BR cap_set_nsowner ()
+respectively. The rootid is ignored by the libcap library in all cases
+other than when the capability is written to a file. Only if the value
+is non-zero will the library attempt to include it in the written file
+capability set.
 .SH "RETURN VALUE"
 .BR cap_get_file ()
 and
