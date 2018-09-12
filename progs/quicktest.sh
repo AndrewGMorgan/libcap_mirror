@@ -117,8 +117,6 @@ fail_capsh --drop=cap_setuid --secbits=0x2f --print -- -c "./privileged --uid=$n
 pass_capsh --secbits=47 --inh=cap_setuid,cap_setgid --drop=cap_setuid \
     --uid=500 --print -- -c "./privileged --uid=$nouid"
 
-/bin/rm -f ./privileged
-
 # test that we do not support capabilities on setuid shell-scripts
 /bin/cat > hack.sh <<EOF
 #!/bin/bash
@@ -186,7 +184,18 @@ EOF
     pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- ./hack.sh
 
     /bin/rm -f hack.sh
+
+    # Next force the privileged binary to have an empty capability set.
+    # This is sort of the opposite of privileged - it should ensure that
+    # the file can never aquire privilege by the ambient method.
+    ./setcap = ./privileged
+    fail_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=500"
+
+    # finally remove the capability from the privileged binary and try again.
+    ./setcap -r ./privileged
+    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=500"
 fi
+/bin/rm -f ./privileged
 
 echo "testing namespaced file caps"
 
