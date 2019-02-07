@@ -116,8 +116,8 @@ extern char *  cap_to_name(cap_value_t);
 extern int     cap_compare(cap_t, cap_t);
 
 /* system calls - look to libc for function to system call mapping */
-extern int capset(cap_user_header_t header, cap_user_data_t data);
-extern int capget(cap_user_header_t header, const cap_user_data_t data);
+extern int capget(cap_user_header_t header, cap_user_data_t data);
+extern int capset(cap_user_header_t header, const cap_user_data_t data);
 
 /* deprecated - use cap_get_pid() */
 extern int capgetp(pid_t pid, cap_t cap_d);
