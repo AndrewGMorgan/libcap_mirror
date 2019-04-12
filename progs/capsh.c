@@ -314,7 +314,7 @@ int main(int argc, char *argv[], char *envp[])
     child = 0;
 
     for (i=1; i<argc; ++i) {
-	if (!memcmp("--drop=", argv[i], 4)) {
+	if (!memcmp("--drop=", argv[i], 7)) {
 	    arg_drop(argv[i]+7);
 	} else if (!strcmp("--has-ambient", argv[i])) {
 	    if (!CAP_AMBIENT_SUPPORTED()) {
