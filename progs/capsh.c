@@ -314,23 +314,23 @@ int main(int argc, char *argv[], char *envp[])
     child = 0;
 
     for (i=1; i<argc; ++i) {
-	if (!memcmp("--drop=", argv[i], 7)) {
+	if (!strncmp("--drop=", argv[i], 7)) {
 	    arg_drop(argv[i]+7);
 	} else if (!strcmp("--has-ambient", argv[i])) {
 	    if (!CAP_AMBIENT_SUPPORTED()) {
 		fprintf(stderr, "ambient set not supported\n");
 		exit(1);
 	    }
-	} else if (!memcmp("--addamb=", argv[i], 9)) {
+	} else if (!strncmp("--addamb=", argv[i], 9)) {
 	    arg_change_amb(argv[i]+9, CAP_SET);
-	} else if (!memcmp("--delamb=", argv[i], 9)) {
+	} else if (!strncmp("--delamb=", argv[i], 9)) {
 	    arg_change_amb(argv[i]+9, CAP_CLEAR);
-	} else if (!memcmp("--noamb", argv[i], 7)) {
+	} else if (!strncmp("--noamb", argv[i], 7)) {
 	    if (cap_reset_ambient() != 0) {
 		fprintf(stderr, "failed to reset ambient set\n");
 		exit(1);
 	    }
-	} else if (!memcmp("--inh=", argv[i], 6)) {
+	} else if (!strncmp("--inh=", argv[i], 6)) {
 	    cap_t all, raised_for_setpcap;
 	    char *text;
 	    char *ptr;
@@ -399,7 +399,7 @@ int main(int argc, char *argv[], char *envp[])
 	     */
 
 	    cap_free(all);
-	} else if (!memcmp("--caps=", argv[i], 7)) {
+	} else if (!strncmp("--caps=", argv[i], 7)) {
 	    cap_t all, raised_for_setpcap;
 
 	    raised_for_setpcap = cap_get_proc();
@@ -442,7 +442,7 @@ int main(int argc, char *argv[], char *envp[])
 	     */
 
 	    cap_free(all);
-	} else if (!memcmp("--keep=", argv[i], 7)) {
+	} else if (!strncmp("--keep=", argv[i], 7)) {
 	    unsigned value;
 	    int set;
 
@@ -453,7 +453,7 @@ int main(int argc, char *argv[], char *envp[])
 			value, strerror(errno));
 		exit(1);
 	    }
-	} else if (!memcmp("--chroot=", argv[i], 9)) {
+	} else if (!strncmp("--chroot=", argv[i], 9)) {
 	    int status;
 	    cap_t orig, raised_for_chroot;
 
@@ -498,7 +498,7 @@ int main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "Unable to chroot/chdir to [%s]", argv[i]+9);
 		exit(1);
 	    }
-	} else if (!memcmp("--secbits=", argv[i], 10)) {
+	} else if (!strncmp("--secbits=", argv[i], 10)) {
 	    unsigned value;
 	    int status;
 
@@ -509,7 +509,7 @@ int main(int argc, char *argv[], char *envp[])
 			value, value);
 		exit(1);
 	    }
-	} else if (!memcmp("--forkfor=", argv[i], 10)) {
+	} else if (!strncmp("--forkfor=", argv[i], 10)) {
 	    unsigned value;
 
 	    value = strtoul(argv[i]+10, NULL, 0);
@@ -523,7 +523,7 @@ int main(int argc, char *argv[], char *envp[])
 		sleep(value);
 		exit(0);
 	    }
-	} else if (!memcmp("--killit=", argv[i], 9)) {
+	} else if (!strncmp("--killit=", argv[i], 9)) {
 	    int retval, status;
 	    pid_t result;
 	    unsigned value;
@@ -549,7 +549,7 @@ int main(int argc, char *argv[], char *envp[])
 			, value, WTERMSIG(status));
 		exit(1);
 	    }
-	} else if (!memcmp("--uid=", argv[i], 6)) {
+	} else if (!strncmp("--uid=", argv[i], 6)) {
 	    unsigned value;
 	    int status;
 
@@ -560,7 +560,7 @@ int main(int argc, char *argv[], char *envp[])
 			value, strerror(errno));
 		exit(1);
 	    }
-	} else if (!memcmp("--gid=", argv[i], 6)) {
+	} else if (!strncmp("--gid=", argv[i], 6)) {
 	    unsigned value;
 	    int status;
 
@@ -571,7 +571,7 @@ int main(int argc, char *argv[], char *envp[])
 			value, strerror(errno));
 		exit(1);
 	    }
-        } else if (!memcmp("--groups=", argv[i], 9)) {
+        } else if (!strncmp("--groups=", argv[i], 9)) {
 	  char *ptr, *buf;
 	  long length, max_groups;
 	  gid_t *group_list;
@@ -616,7 +616,7 @@ int main(int argc, char *argv[], char *envp[])
 	    exit(1);
 	  }
 	  free(group_list);
-	} else if (!memcmp("--user=", argv[i], 7)) {
+	} else if (!strncmp("--user=", argv[i], 7)) {
 	    struct passwd *pwd;
 	    const char *user;
 	    gid_t groups[MAX_GROUPS];
@@ -651,7 +651,7 @@ int main(int argc, char *argv[], char *envp[])
 			pwd->pw_uid, user, strerror(errno));
 		exit(1);
 	    }
-	} else if (!memcmp("--decode=", argv[i], 9)) {
+	} else if (!strncmp("--decode=", argv[i], 9)) {
 	    unsigned long long value;
 	    unsigned cap;
 	    const char *sep = "";
@@ -676,7 +676,7 @@ int main(int argc, char *argv[], char *envp[])
 		}
 	    }
 	    printf("\n");
-        } else if (!memcmp("--supports=", argv[i], 11)) {
+        } else if (!strncmp("--supports=", argv[i], 11)) {
 	    cap_value_t cap;
 
 	    if (cap_from_name(argv[i] + 11, &cap) < 0) {
