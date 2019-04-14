@@ -217,7 +217,7 @@ static void parse_args(int argc, const char **argv, struct pam_cap_s *pcs)
 
 	if (!strcmp(*argv, "debug")) {
 	    pcs->debug = 1;
-	} else if (!memcmp(*argv, "config=", 7)) {
+	} else if (!strncmp(*argv, "config=", 7)) {
 	    pcs->conf_filename = 7 + *argv;
 	} else {
 	    _pam_log(LOG_ERR, "unknown option; %s", *argv);
