@@ -40,7 +40,7 @@ PKGCONFIGDIR=$(prefix)/$(lib)/pkgconfig
 # common defines for libcap
 LIBTITLE=libcap
 VERSION=2
-MINOR=26
+MINOR=27
 #
 
 # Compilation specifics
