@@ -205,7 +205,7 @@ rm -f nsprivileged
 cp ./capsh ./nsprivileged && /bin/chmod -s ./nsprivileged
 ./setcap -n 500 all=ep ./nsprivileged
 if [ $? -eq 0 ]; then
-    ./getcap -n ./nsprivileged | /usr/bin/fgrep "[rootid=500]"
+    ./getcap -n ./nsprivileged | fgrep "[rootid=500]"
     if [ $? -ne 0 ]; then
 	echo "FAILED setting ns rootid on file"
 	exit 1
