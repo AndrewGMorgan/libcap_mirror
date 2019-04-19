@@ -131,9 +131,9 @@ struct _cap_struct {
  * kernel API cap set abstraction
  */
 
-#define raise_cap(x,set)   u[(x)>>5].flat[set]       |=  (1<<((x)&31))
-#define lower_cap(x,set)   u[(x)>>5].flat[set]       &= ~(1<<((x)&31))
-#define isset_cap(y,x,set) ((y)->u[(x)>>5].flat[set] &   (1<<((x)&31)))
+#define raise_cap(x, set)    u[(x) >> 5].flat[set]       |=  (1u << ((x)&31))
+#define lower_cap(x, set)    u[(x) >> 5].flat[set]       &= ~(1u << ((x)&31))
+#define isset_cap(y, x, set) ((y)->u[(x) >> 5].flat[set] &   (1u << ((x)&31)))
 
 /*
  * Private definitions for internal use by the library.
