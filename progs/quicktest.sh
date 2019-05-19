@@ -154,11 +154,6 @@ pass_capsh --chroot=$(/bin/pwd)
 pass_capsh --chroot=$(/bin/pwd) ==
 fail_capsh --chroot=$(/bin/pwd) -- -c "echo oops"
 
-exit_early () {
-    echo "$*"
-    exit 0
-}
-
 ./capsh --has-ambient
 if [ $? -eq 0 ]; then
     echo "test ambient capabilities"
@@ -219,3 +214,21 @@ else
     echo "ns file caps not supported - skipping test"
 fi
 rm -f nsprivileged
+
+# If the build tree compiled the Go cap package.
+if [ -f ../go/compare-cap ]; then
+    cp ../go/compare-cap .
+    ./compare-cap
+    if [ $? -ne 0 ]; then
+	echo "FAILED to execute go binary"
+	exit 1
+    fi
+    ./compare-cap 2>&1 | grep "skipping file cap tests"
+    if [ $? -eq 0 ]; then
+	echo "FAILED not engaging file cap tests"
+    fi
+    echo "PASSED"
+else
+    echo "no Go support compiled"
+fi
+rm -f compare-cap

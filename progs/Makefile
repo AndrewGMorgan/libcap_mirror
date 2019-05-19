@@ -32,4 +32,4 @@ endif
 
 clean:
 	$(LOCALCLEAN)
-	rm -f *.o $(BUILD) tcapsh ping hack.sh
+	rm -f *.o $(BUILD) tcapsh ping hack.sh compare-cap

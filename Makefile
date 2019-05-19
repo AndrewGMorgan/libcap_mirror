@@ -13,6 +13,9 @@ all install clean kdebug: %: %-here
 ifneq ($(PAM_CAP),no)
 	$(MAKE) -C pam_cap $@
 endif
+ifeq ($(GOLANG),yes)
+	$(MAKE) -C go $@
+endif
 	$(MAKE) -C progs $@
 	$(MAKE) -C doc $@
 	$(MAKE) -C kdebug $@
