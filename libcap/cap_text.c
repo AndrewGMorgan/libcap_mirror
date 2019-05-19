@@ -390,41 +390,45 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 		(m & LIBCAP_INH) ? "i" : "",
 		(m & LIBCAP_PER) ? "p" : "" ) + buf;
 
-    for (t = 8; t--; )
-	if (t != m && histo[t]) {
-	    *p++ = ' ';
-	    for (n = 0; n < cap_maxbits; n++)
-		if (getstateflags(caps, n) == t) {
-		    char *this_cap_name;
+    for (t = 8; t--; ) {
+	if (t == m || !histo[t]) {
+	    continue;
+	}
+	*p++ = ' ';
+	for (n = 0; n < cap_maxbits; n++) {
+	    if (getstateflags(caps, n) == t) {
+	        char *this_cap_name;
 
-		    this_cap_name = cap_to_name(n);
-		    if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
-			cap_free(this_cap_name);
-			errno = ERANGE;
-			return NULL;
-		    }
-		    p += sprintf(p, "%s,", this_cap_name);
+	        this_cap_name = cap_to_name(n);
+	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
 		    cap_free(this_cap_name);
-		}
-	    p--;
-	    n = t & ~m;
-	    if (n)
-		p += sprintf(p, "+%s%s%s",
-			     (n & LIBCAP_EFF) ? "e" : "",
-			     (n & LIBCAP_INH) ? "i" : "",
-			     (n & LIBCAP_PER) ? "p" : "");
-	    n = ~t & m;
-	    if (n)
-		p += sprintf(p, "-%s%s%s",
-			     (n & LIBCAP_EFF) ? "e" : "",
-			     (n & LIBCAP_INH) ? "i" : "",
-			     (n & LIBCAP_PER) ? "p" : "");
-	    if (p - buf > CAP_TEXT_SIZE) {
-		errno = ERANGE;
-		return NULL;
+		    errno = ERANGE;
+		    return NULL;
+	        }
+	        p += sprintf(p, "%s,", this_cap_name);
+	        cap_free(this_cap_name);
 	    }
 	}
-
+	p--;
+	n = t & ~m;
+	if (n) {
+	    p += sprintf(p, "+%s%s%s",
+			 (n & LIBCAP_EFF) ? "e" : "",
+			 (n & LIBCAP_INH) ? "i" : "",
+			 (n & LIBCAP_PER) ? "p" : "");
+	}
+	n = ~t & m;
+	if (n) {
+	    p += sprintf(p, "-%s%s%s",
+			 (n & LIBCAP_EFF) ? "e" : "",
+			 (n & LIBCAP_INH) ? "i" : "",
+			 (n & LIBCAP_PER) ? "p" : "");
+	}
+	if (p - buf > CAP_TEXT_SIZE) {
+	    errno = ERANGE;
+	    return NULL;
+	}
+    }
     _cap_debug("%s", buf);
     if (length_p) {
 	*length_p = p - buf;
