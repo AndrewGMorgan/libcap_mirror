@@ -6,6 +6,7 @@ include ../Make.Rules
 
 all:
 	$(MAKE) compare-cap
+	$(MAKE) web
 	./compare-cap
 
 src/libcap/cap:
@@ -32,7 +33,10 @@ $(GOPACKAGE): src/libcap/cap/names.go src/libcap/cap/cap.go src/libcap/cap/text.
 compare-cap: compare-cap.go $(GOPACKAGE)
 	GOPATH=$(realpath .) go build $<
 
+web: web.go $(GOPACKAGE)
+	GOPATH=$(realpath .) go build $<
+
 clean:
 	GOPATH=$(realpath .) go clean -x -i libcap/cap || exit 0
-	rm -f *.o *.so mknames compare-cap *~ ../cap/*~ ../cap/names.go
+	rm -f *.o *.so mknames web compare-cap *~ ../cap/*~ ../cap/names.go
 	rm -fr pkg src
