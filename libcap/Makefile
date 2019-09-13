@@ -42,6 +42,7 @@ cap_names.h: _makenames
 
 $(GPERF_OUTPUT): cap_names.list.h
 	perl -e 'print "struct __cap_token_s { const char *name; int index; };\n%{\nconst struct __cap_token_s *__cap_lookup_name(const char *, size_t);\n%}\n%%\n"; while ($$l = <>) { $$l =~ s/[\{\"]//g; $$l =~ s/\}.*// ; print $$l; }' < $< | gperf --ignore-case --language=ANSI-C --readonly --null-strings --global-table --hash-function-name=__cap_hash_name --lookup-function-name="__cap_lookup_name" -c -t -m20 $(INDENT) > $@
+	sed -e 's/unsigned int len/size_t len/' -i $@
 
 cap_names.list.h: Makefile $(KERNEL_HEADERS)/linux/capability.h
 	@echo "=> making $@ from $(KERNEL_HEADERS)/linux/capability.h"
