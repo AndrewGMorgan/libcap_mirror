@@ -15,8 +15,7 @@
 //   sudo setcap cap_net_bind_service=p web
 //   ./web --port=80
 //
-// Make requests using wget and observe the log of web (try --debug as
-// a web command line flag too):
+// Make requests using wget and observe the log of web:
 //
 //   wget -o/dev/null -O/dev/stdout localhost:80
 package main
