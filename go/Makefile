@@ -22,8 +22,11 @@ install: all
 src/libcap/cap/names.go: ../libcap/cap_names.h src/libcap/cap  mknames.go
 	go run mknames.go --header=$< | gofmt > $@ || rm -f $@
 
+src/libcap/cap/syscalls.go: src/libcap/cap ./syscalls.sh
+	./syscalls.sh > $@
+
 GOPACKAGE=pkg/$(GOOSARCH)/libcap/cap.a
-$(GOPACKAGE): src/libcap/cap/names.go src/libcap/cap/cap.go src/libcap/cap/text.go
+$(GOPACKAGE): src/libcap/cap/syscalls.go src/libcap/cap/names.go src/libcap/cap/cap.go src/libcap/cap/text.go
 	echo testing Go package
 	GOPATH=$(realpath .) go test libcap/cap
 	echo building $(GOPACKAGE)
@@ -37,6 +40,7 @@ web: web.go $(GOPACKAGE)
 	GOPATH=$(realpath .) go build $<
 
 clean:
-	GOPATH=$(realpath .) go clean -x -i libcap/cap || exit 0
-	rm -f *.o *.so mknames web compare-cap *~ ../cap/*~ ../cap/names.go
+	GOPATH=$(realpath .) go clean -x -i libcap/cap 2> /dev/null || exit 0
+	rm -f *.o *.so mknames web compare-cap *~
+	rm -f ../cap/*~ ../cap/names.go ../cap/syscalls.go
 	rm -fr pkg src

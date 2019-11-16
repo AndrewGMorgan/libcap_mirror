@@ -1,11 +1,24 @@
 // Progam web provides an example of a webserver using capabilities to
 // bind to a privileged port.
 //
-// While this program serves as a demonstration of how to use
-// libcap/cap to achieve this, it currently reveals how problematic
-// the Go runtime is for actually dropping all privilege. For now, the
-// runtime can only raise and lower effective capabilities in critical
-// sections with any reliability: it cannot drop privilege.
+// This program will not work reliably without the equivalent of
+// the Go runtime patch that adds a POSIX semantics wrappers around
+// the system calls that change kernel state. A patch for the Go
+// compiler/runtime to add this support is available here [2019-11-16]:
+//
+// https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/contrib/go.patch
+//
+// To set this up, compile and empower this binary as follows (package
+// libcap/cap should be installed):
+//
+//   go build web.go
+//   sudo setcap cap_net_bind_service=p web
+//   ./web --port=80
+//
+// Make requests using wget and observe the log of web (try --debug as
+// a web command line flag too):
+//
+//   wget -o/dev/null -O/dev/stdout localhost:80
 package main
 
 import (
@@ -21,23 +34,12 @@ import (
 
 var (
 	port     = flag.Int("port", 0, "port to listen on")
-	debug    = flag.Bool("debug", false, "enable to observe the go runtime os thread state confusion")
 	skipPriv = flag.Bool("skip", false, "skip raising the effective capability - will fail for low ports")
 )
 
 // ensureNotEUID aborts the program if it is running setuid something,
-// since it can't be forced to get euid to match uid etc.  Go's
-// runtime model is fragile with respect fully dropping capabilities,
-// or other forms of privilege, so we need to collapse the runtime to
-// a single os process. Until such time as Go supports some sort of
-// "serialize execution and run this on all hardware threads before
-// resuming" functionality, dropping capabilities and euid vs uid
-// kinds of discrepencies cannot be secured for all hardware threads
-// of the running program.
-//
-// Read more about this here:
-//
-//     https://github.com/golang/go/issues/1435 .
+// or being invoked by root.  That is, the preparer isn't setting up
+// the program correctly.
 func ensureNotEUID() {
 	euid := syscall.Geteuid()
 	uid := syscall.Getuid()
@@ -46,81 +48,57 @@ func ensureNotEUID() {
 	if uid != euid || gid != egid {
 		log.Fatalf("go runtime unable to resolve differing uids:(%d vs %d), gids(%d vs %d)", uid, euid, gid, egid)
 	}
+	if uid == 0 {
+		log.Fatalf("go runtime is running as root - cheating")
+	}
 }
 
 // listen creates a listener by raising effective privilege only to
-// bind to address and then lowering that effective privilege. To set
-// this up, compile and empower this binary as follows (package
-// libcap/cap should be installed):
-//
-//   go build web.go
-//   sudo setcap cap_net_bind_service=p web
-//   ./web --port=80
-//
-// Make requests using wget and observe the log of web (try --debug as
-// a web command line flag too):
-//
-//   wget -o/dev/null -O/dev/stdout localhost:80
+// bind to address and then lowering that effective privilege.
 func listen(network, address string) (net.Listener, error) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	// The intention of the following code is as follows.
-	// Collapse down the number of hardware threads to one so we
-	// can drop privilege and only then up them again. (This does
-	// not seem to do that by killing the surplas threads. You can
-	// run --debug and try "pstree -p ; getpcap <list of pids>" to
-	// get a sense of what is going on.)
-	count := runtime.GOMAXPROCS(1)
-	defer runtime.GOMAXPROCS(count)
-	log.Printf("max proc count = %d", count)
-
-	ensureNotEUID()
-
-	c := cap.GetProc()
-	orig, err := c.Dup()
-	if err != nil {
-		return nil, fmt.Errorf("failed to dup cap.Set: %v", err)
+	if *skipPriv {
+		return net.Listen(network, address)
 	}
-	if *debug {
-		defer func() {
-			if err := cap.NewSet().SetProc(); err != nil {
-				panic(fmt.Errorf("unable to drop all privilege: %v", err))
-			}
-			return
-		}()
-	} else {
-		defer func() {
-			if err := orig.SetProc(); err != nil {
-				panic(fmt.Errorf("unable to lower privilege (%q): %v", orig, err))
-			}
-		}()
+
+	orig := cap.GetProc()
+	defer orig.SetProc() // restore original caps on exit.
+
+	c, err := orig.Dup()
+	if err != nil {
+		return nil, fmt.Errorf("failed to dup caps: %v", err)
 	}
 
 	if on, _ := c.GetFlag(cap.Permitted, cap.NET_BIND_SERVICE); !on {
 		return nil, fmt.Errorf("insufficient privilege to bind to low ports - want %q, have %q", cap.NET_BIND_SERVICE, c)
 	}
-	if !*skipPriv {
-		if err := c.SetFlag(cap.Effective, true, cap.NET_BIND_SERVICE); err != nil {
-			return nil, fmt.Errorf("unable to set capability: %v", err)
-		}
+
+	if err := c.SetFlag(cap.Effective, true, cap.NET_BIND_SERVICE); err != nil {
+		return nil, fmt.Errorf("unable to set capability: %v", err)
 	}
+
 	if err := c.SetProc(); err != nil {
 		return nil, fmt.Errorf("unable to raise capabilities %q: %v", c, err)
 	}
-
 	return net.Listen(network, address)
 }
 
 // Handler is used to abstract the ServeHTTP function.
 type Handler struct{}
 
-// ServeHTTP says hello from a single Go hardware thread and reveals its capabilities.
+// ServeHTTP says hello from a single Go hardware thread and reveals
+// its capabilities.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	runtime.LockOSThread()
+	// Get some numbers consistent to the current execution, so
+	// the returned web page demonstrates that the code execution
+	// is bouncing around on different kernel thread ids.
 	p := syscall.Getpid()
+	t := syscall.Gettid()
 	c := cap.GetProc()
-	log.Printf("Saying hello from proc: %d, caps=%q", p, c)
-	fmt.Fprintf(w, "Hello from proc: %d, caps=%q\n", p, c)
+	runtime.UnlockOSThread()
+
+	log.Printf("Saying hello from proc: %d->%d, caps=%q", p, t, c)
+	fmt.Fprintf(w, "Hello from proc: %d->%d, caps=%q\n", p, t, c)
 }
 
 func main() {
@@ -130,11 +108,19 @@ func main() {
 		log.Fatal("please supply --port value")
 	}
 
+	ensureNotEUID()
+
 	ls, err := listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("aborting: %v", err)
 	}
 	defer ls.Close()
+
+	if !*skipPriv {
+		if err := cap.NewSet().SetProc(); err != nil {
+			panic(fmt.Errorf("unable to drop all privilege: %v", err))
+		}
+	}
 
 	if err := http.Serve(ls, &Handler{}); err != nil {
 		log.Fatalf("server failed: %v", err)

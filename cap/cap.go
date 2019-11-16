@@ -52,12 +52,6 @@ const (
 )
 
 var (
-	// callKernel variables overridable for testing purposes.
-	callKernel  = syscall.Syscall
-	callKernel6 = syscall.Syscall6
-
-	// OS environment provides these.
-
 	// starUp protects setting of the following values: magic,
 	// words, maxValues.
 	startUp sync.Once
@@ -80,25 +74,51 @@ type header struct {
 	pid   int32
 }
 
-// capcall provides a pointer etc wrapper for the system calls
-// associated with getcap and setcap.
-func capcall(call uintptr, h *header, d []data) error {
+// caprcall provides a pointer etc wrapper for the system calls
+// associated with getcap.
+func caprcall(call uintptr, h *header, d []data) error {
 	x := uintptr(0)
 	if d != nil {
 		x = uintptr(unsafe.Pointer(&d[0]))
 	}
-	_, _, err := callKernel(call, uintptr(unsafe.Pointer(h)), x, 0)
+	_, _, err := callRKernel(call, uintptr(unsafe.Pointer(h)), x, 0)
 	if err != 0 {
 		return err
 	}
 	return nil
 }
 
-// prctlcall provides a wrapper for the prctl systemcalls. There is a
-// limited number of arguments needed and the caller should use 0 for
-// those not needed.
-func prctlcall(prVal, v1, v2 uintptr) (int, error) {
-	r, _, err := callKernel6(syscall.SYS_PRCTL, prVal, v1, v2, 0, 0, 0)
+// capwcall provides a pointer etc wrapper for the system calls
+// associated with setcap.
+func capwcall(call uintptr, h *header, d []data) error {
+	x := uintptr(0)
+	if d != nil {
+		x = uintptr(unsafe.Pointer(&d[0]))
+	}
+	_, _, err := callWKernel(call, uintptr(unsafe.Pointer(h)), x, 0)
+	if err != 0 {
+		return err
+	}
+	return nil
+}
+
+// prctlrcall provides a wrapper for the prctl systemcalls that only
+// read kernel state. There is a limited number of arguments needed
+// and the caller should use 0 for those not needed.
+func prctlrcall(prVal, v1, v2 uintptr) (int, error) {
+	r, _, err := callRKernel6(syscall.SYS_PRCTL, prVal, v1, v2, 0, 0, 0)
+	if err != 0 {
+		return int(r), err
+	}
+	return int(r), nil
+}
+
+// prctlwcall provides a wrapper for the prctl systemcalls that
+// write/modify kernel state (where available, these will use the
+// POSIX semantics fixup system calls). There is a limited number of
+// arguments needed and the caller should use 0 for those not needed.
+func prctlwcall(prVal, v1, v2 uintptr) (int, error) {
+	r, _, err := callWKernel6(syscall.SYS_PRCTL, prVal, v1, v2, 0, 0, 0)
 	if err != 0 {
 		return int(r), err
 	}
@@ -111,7 +131,7 @@ func cInit() {
 	h := &header{
 		magic: kv3,
 	}
-	capcall(syscall.SYS_CAPGET, h, nil)
+	caprcall(syscall.SYS_CAPGET, h, nil)
 	magic = h.magic
 	switch magic {
 	case kv1:
@@ -274,7 +294,7 @@ func (c *Set) ClearFlag(vec Flag) error {
 // id; pid=0 is an alias for current.
 func GetPID(pid int) (*Set, error) {
 	v := NewSet()
-	if err := capcall(syscall.SYS_CAPGET, &header{magic: magic, pid: int32(pid)}, v.flat); err != nil {
+	if err := caprcall(syscall.SYS_CAPGET, &header{magic: magic, pid: int32(pid)}, v.flat); err != nil {
 		return nil, err
 	}
 	return v, nil
@@ -298,7 +318,7 @@ func (c *Set) SetProc() error {
 	if c == nil {
 		return ErrBadSet
 	}
-	return capcall(syscall.SYS_CAPSET, &header{magic: magic}, c.flat)
+	return capwcall(syscall.SYS_CAPSET, &header{magic: magic}, c.flat)
 }
 
 // defines from uapi/linux/prctl.h
@@ -311,7 +331,7 @@ const (
 // the local bounding set. On systems where the bounding set Value is
 // not present, this function returns an error.
 func GetBound(val Value) (bool, error) {
-	v, err := prctlcall(PR_CAPBSET_READ, uintptr(val), 0)
+	v, err := prctlrcall(PR_CAPBSET_READ, uintptr(val), 0)
 	if err != nil {
 		return false, err
 	}
@@ -328,7 +348,7 @@ func GetBound(val Value) (bool, error) {
 // ill-defined state.
 func DropBound(val ...Value) error {
 	for _, v := range val {
-		if _, err := prctlcall(PR_CAPBSET_DROP, uintptr(v), 0); err != nil {
+		if _, err := prctlwcall(PR_CAPBSET_DROP, uintptr(v), 0); err != nil {
 			return err
 		}
 	}
@@ -349,7 +369,7 @@ const (
 // the local ambient set. On systems where the ambient set Value is
 // not present, this function returns an error.
 func GetAmbient(val Value) (bool, error) {
-	r, err := prctlcall(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, uintptr(val))
+	r, err := prctlrcall(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, uintptr(val))
 	return r > 0, err
 }
 
@@ -364,7 +384,7 @@ func SetAmbient(enable bool, val ...Value) error {
 		dir = PR_CAP_AMBIENT_RAISE
 	}
 	for _, v := range val {
-		_, err := prctlcall(PR_CAP_AMBIENT, dir, uintptr(v))
+		_, err := prctlwcall(PR_CAP_AMBIENT, dir, uintptr(v))
 		if err != nil {
 			return err
 		}
@@ -374,6 +394,6 @@ func SetAmbient(enable bool, val ...Value) error {
 
 // ResetAmbient attempts to fully clear the Ambient set.
 func ResetAmbient() error {
-	_, err := prctlcall(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0)
+	_, err := prctlwcall(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0)
 	return err
 }

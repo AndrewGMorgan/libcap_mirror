@@ -74,7 +74,7 @@ DYNAMIC := $(shell if [ ! -d "$(topdir)/.git" ]; then echo yes; fi)
 GOLANG := $(shell if [ -n "$(shell go version 2>/dev/null)" ]; then echo yes ; else echo no ; fi)
 ifeq ($(GOLANG),yes)
 GOROOT := $(shell go env GOROOT)
-GOCGO := $(shell if [ "$(shell go env CGO_ENABLED)" == 1 ]; then echo yes ; else echo no ; fi)
+GOCGO := $(shell if [ "$(shell go env CGO_ENABLED)" = 1 ]; then echo yes ; else echo no ; fi)
 GOOSARCH := $(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 endif
 

@@ -45,7 +45,7 @@ const (
 	iBin      = (1 << Inheritable)
 )
 
-var combos = []string{"", "e", "p", "ep", "i", "ei", "pi", "epi"}
+var combos = []string{"", "e", "p", "ep", "i", "ei", "ip", "eip"}
 
 // histo generates a histogram of flag state combinations.
 func (c *Set) histo(m uint, bins []int, patterns []uint, from, limit Value) uint {

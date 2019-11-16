@@ -1,0 +1,328 @@
+From dcf7596bf3ac7170352c162af4bd61292b720f24 Mon Sep 17 00:00:00 2001
+From: "Andrew G. Morgan" <morgan@kernel.org>
+Date: Sat, 16 Nov 2019 08:46:24 -0800
+Subject: [PATCH] POSIX semantics support for some Linux syscalls
+
+This change adds two new methods for invoking system calls
+under Linux: syscall.PosixSyscall() and syscall.PosixSyscall6().
+
+These system call wrappers ensure that all OSThreads mirror
+a common system call. The wrappers serialize execution of the
+runtime to ensure no race conditions where any Go code observes
+a non-atomic OS state change. As such, the syscalls have
+higher runtime overhead than regular system calls, and only
+need to be used where such thread (or 'm' in the parlance
+of the runtime sources) consistency is required.
+
+The new support is used to enable syscall.Setuid() and
+syscall.Setgid() support under Linux.
+
+Extensive discussion of the background issue addressed in this
+patch can be found here:
+
+   https://github.com/golang/go/issues/1435
+
+Signed-off-by: Andrew G. Morgan <morgan@kernel.org>
+---
+ src/runtime/proc.go          |  93 +++++++++++++++++++++++++++++++++++++-
+ src/runtime/runtime2.go      |   3 ++
+ src/syscall/syscall_linux.go | 105 ++++++++++++++++++++++++++++++++++++++++---
+ 3 files changed, 193 insertions(+), 8 deletions(-)
+
+diff --git a/src/runtime/proc.go b/src/runtime/proc.go
+index 56e9530ab6..aa96e84385 100644
+--- a/src/runtime/proc.go
++++ b/src/runtime/proc.go
+@@ -877,6 +877,68 @@ func startTheWorld() {
+ 	getg().m.preemptoff = ""
+ }
+ 
++// doPosixSyscall serializes Go execution and executes a specified
++// syscall on all m's.
++//go:linkname doPosixSyscall syscall.doPosixSyscall
++func doPosixSyscall(fn func(bool) bool) {
++	if fn == nil {
++		return
++	}
++	stopTheWorld("doposixsyscall")
++	if x := fn(true); x {
++		var n int32
++		_g_ := getg()
++		tid := _g_.m.procid
++		for tm := allm; tm != nil; tm = tm.alllink {
++			if tm.procid == tid || tm.procid == 0 {
++				continue
++			}
++			n++
++			lock(&tm.mfixlock)
++			tm.mfixupfn = fn
++			if tm.park.key == 0 {
++				// Because tm.mfixupfn is set, this
++				// will cause the wakeup to be short
++				// lived (once the mutex is
++				// unlocked). The next real wakeup
++				// will occur after startTheWorld() is
++				// called.
++				notewakeup(&tm.park)
++			}
++			unlock(&tm.mfixlock)
++		}
++		for {
++			done := true
++			for tm := allm; tm != nil; tm = tm.alllink {
++				if tm.procid == tid {
++					continue
++				}
++				lock(&tm.mfixlock)
++				done = done && (tm.mfixupfn == nil)
++				unlock(&tm.mfixlock)
++			}
++			if done {
++				break
++			}
++			// if needed force sysmon and/or newmHandoff to wakeup.
++			lock(&sched.lock)
++			if atomic.Load(&sched.sysmonwait) != 0 {
++				atomic.Store(&sched.sysmonwait, 0)
++				notewakeup(&sched.sysmonnote)
++			}
++			unlock(&sched.lock)
++			lock(&newmHandoff.lock)
++			if newmHandoff.waiting {
++				newmHandoff.waiting = false
++				notewakeup(&newmHandoff.wake)
++			}
++			unlock(&newmHandoff.lock)
++			usleep(293)
++		}
++	}
++	startTheWorld()
++}
++
+ // stopTheWorldGC has the same effect as stopTheWorld, but blocks
+ // until the GC is not running. It also blocks a GC from starting
+ // until startTheWorldGC is called.
+@@ -1796,6 +1858,21 @@ func startTemplateThread() {
+ 	newm(templateThread, nil)
+ }
+ 
++// mDidFixup runs any outstanding fixup function for the running m.
++//go:nosplit
++//go:nowritebarrierrec
++func mDidFixup() bool {
++	_g_ := getg()
++	lock(&_g_.m.mfixlock)
++	fn := _g_.m.mfixupfn
++	if fn != nil {
++		atomic.Storeuintptr((*uintptr)(unsafe.Pointer(&_g_.m.mfixupfn)), 0)
++		fn(false)
++	}
++	unlock(&_g_.m.mfixlock)
++	return fn != nil
++}
++
+ // templateThread is a thread in a known-good state that exists solely
+ // to start new threads in known-good states when the calling thread
+ // may not be in a good state.
+@@ -1832,6 +1909,7 @@ func templateThread() {
+ 		noteclear(&newmHandoff.wake)
+ 		unlock(&newmHandoff.lock)
+ 		notesleep(&newmHandoff.wake)
++		mDidFixup()
+ 	}
+ }
+ 
+@@ -1853,8 +1931,14 @@ func stopm() {
+ 	lock(&sched.lock)
+ 	mput(_g_.m)
+ 	unlock(&sched.lock)
+-	notesleep(&_g_.m.park)
+-	noteclear(&_g_.m.park)
++	// Loop only if we are woken up to perform a mfixupfn call.
++	for {
++		notesleep(&_g_.m.park)
++		noteclear(&_g_.m.park)
++		if !mDidFixup() {
++			break
++		}
++	}
+ 	acquirep(_g_.m.nextp.ptr())
+ 	_g_.m.nextp = 0
+ }
+@@ -4464,6 +4548,7 @@ func sysmon() {
+ 	lasttrace := int64(0)
+ 	idle := 0 // how many cycles in succession we had not wokeup somebody
+ 	delay := uint32(0)
++
+ 	for {
+ 		if idle == 0 { // start with 20us sleep...
+ 			delay = 20
+@@ -4474,6 +4559,7 @@ func sysmon() {
+ 			delay = 10 * 1000
+ 		}
+ 		usleep(delay)
++		mDidFixup()
+ 		now := nanotime()
+ 		next := timeSleepUntil()
+ 		if debug.schedtrace <= 0 && (sched.gcwaiting != 0 || atomic.Load(&sched.npidle) == uint32(gomaxprocs)) {
+@@ -4493,6 +4579,7 @@ func sysmon() {
+ 						osRelax(true)
+ 					}
+ 					notetsleep(&sched.sysmonnote, sleep)
++					mDidFixup()
+ 					if shouldRelax {
+ 						osRelax(false)
+ 					}
+@@ -4529,12 +4616,14 @@ func sysmon() {
+ 				incidlelocked(1)
+ 			}
+ 		}
++		mDidFixup()
+ 		if next < now {
+ 			// There are timers that should have already run,
+ 			// perhaps because there is an unpreemptible P.
+ 			// Try to start an M to run them.
+ 			startm(nil, false)
+ 		}
++
+ 		// retake P's blocked in syscalls
+ 		// and preempt long running G's
+ 		if retake(now) != 0 {
+diff --git a/src/runtime/runtime2.go b/src/runtime/runtime2.go
+index fe1147e247..b10d29ab39 100644
+--- a/src/runtime/runtime2.go
++++ b/src/runtime/runtime2.go
+@@ -525,6 +525,9 @@ type m struct {
+ 	thread        uintptr // thread handle
+ 	freelink      *m      // on sched.freem
+ 
++	mfixlock mutex           // lock to protect mfixupfn
++	mfixupfn func(bool) bool // used to synchronize OS related m state (credentials etc)
++
+ 	// these are here because they are too large to be on the stack
+ 	// of low-level NOSPLIT functions.
+ 	libcall   libcall
+diff --git a/src/syscall/syscall_linux.go b/src/syscall/syscall_linux.go
+index 2eba033d7c..39a918f6ff 100644
+--- a/src/syscall/syscall_linux.go
++++ b/src/syscall/syscall_linux.go
+@@ -943,17 +943,110 @@ func Getpgrp() (pid int) {
+ //sysnb	Setsid() (pid int, err error)
+ //sysnb	Settimeofday(tv *Timeval) (err error)
+ 
+-// issue 1435.
+-// On linux Setuid and Setgid only affects the current thread, not the process.
+-// This does not match what most callers expect so we must return an error
+-// here rather than letting the caller think that the call succeeded.
++// posixCaller holds the input and output state for performing a
++// posixSyscall that needs to synchronize all OS thread state. Linux
++// generally does not always support this natively, so we have to
++// manipulate the runtime to fix things up.
++type posixCaller struct {
++	// arguments
++	trap, a1, a2, a3, a4, a5, a6 uintptr
++
++	// return values (only set by 0th invocation)
++	r1, r2 uintptr
++
++	// err is the error code
++	err Errno
++}
++
++// doSyscall is a callback for executing a syscall on the current m
++// (OS thread).
++//go:nosplit
++func (pc *posixCaller) doSyscall(initial bool) bool {
++	r1, r2, err := RawSyscall(pc.trap, pc.a1, pc.a2, pc.a3)
++	if initial {
++		pc.r1 = r1
++		pc.r2 = r2
++		pc.err = err
++	}
++	return err == 0
++}
++
++// doSyscall6 is a callback for executing a syscall6 on the current m
++// (OS thread).
++//go:nosplit
++func (pc *posixCaller) doSyscall6(initial bool) bool {
++	r1, r2, err := RawSyscall6(pc.trap, pc.a1, pc.a2, pc.a3, pc.a4, pc.a5, pc.a6)
++	if initial {
++		pc.r1 = r1
++		pc.r2 = r2
++		pc.err = err
++	}
++	return err == 0
++}
++
++// PosixSyscall performs a syscall with POSIX semantics - namely it
++// serializes the runtime and performs the syscall once for each OS
++// thread of the Go runtime.  The return values and error status are
++// from the first invocation.  If this first invocation fails, no more
++// attempts are made.
++func PosixSyscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno) {
++	pc := &posixCaller{
++		trap: trap,
++		a1:   a1,
++		a2:   a2,
++		a3:   a3,
++	}
++	doPosixSyscall(pc.doSyscall)
++	r1 = pc.r1
++	r2 = pc.r2
++	err = pc.err
++	return
++}
++
++// PosixSyscall6 performs a syscall6 with POSIX semantics - namely it
++// serializes the runtime and performs the syscall once for each OS
++// thread of the Go runtime.  The return values and error status are
++// from the first invocation.  If this first invocation fails, no more
++// attempts are made.
++func PosixSyscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno) {
++	pc := &posixCaller{
++		trap: trap,
++		a1:   a1,
++		a2:   a2,
++		a3:   a3,
++		a4:   a4,
++		a5:   a5,
++		a6:   a6,
++	}
++	doPosixSyscall(pc.doSyscall6)
++	r1 = pc.r1
++	r2 = pc.r2
++	err = pc.err
++	return
++}
++
++// issue 1435.  On linux the raw system calls Setuid, Setgid etc only
++// affect the current thread, not the process (and all its peer
++// threads). So, to match what most callers expect, we use the
++// runtime.doPosixSyscall wrapper for the following syscalls.
++//
++// Provided by runtime.doPosixSyscall which serializes the world and
++// invokes the fn on each OS thread (what the runtime refers to as
++// m's). Once this function returns, all threads are in sync.
++func doPosixSyscall(fn func(bool) bool)
+ 
+ func Setuid(uid int) (err error) {
+-	return EOPNOTSUPP
++	if _, _, e1 := PosixSyscall(sys_SETUID, uintptr(uid), 0, 0); e1 != 0 {
++		err = errnoErr(e1)
++	}
++	return
+ }
+ 
+ func Setgid(gid int) (err error) {
+-	return EOPNOTSUPP
++	if _, _, e1 := PosixSyscall(sys_SETGID, uintptr(gid), 0, 0); e1 != 0 {
++		err = errnoErr(e1)
++	}
++	return
+ }
+ 
+ //sys	Setpriority(which int, who int, prio int) (err error)
+-- 
+2.11.0
+
