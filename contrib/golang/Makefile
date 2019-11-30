@@ -1,0 +1,13 @@
+all: posix.go posix-cgo.go
+	go build posix.go
+	go build posix-cgo.go
+
+posix.go: ptest.go posix.stub_go Makefile
+	sed -e '/\/\/ main_here/ r posix.stub_go' ptest.go > $@
+
+posix-cgo.go: ptest.go posix-cgo.stub_go Makefile
+	sed -e '/\/\/ main_here/ r posix-cgo.stub_go' ptest.go > $@
+
+clean:
+	rm -f posix.go posix
+	rm -f posix-cgo.go posix-cgo

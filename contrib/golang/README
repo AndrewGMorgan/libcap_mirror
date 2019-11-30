@@ -1,0 +1,22 @@
+This directory contains the code needed to enable POSIX system calls
+in the Go runtime for linux.
+
+  go.patch
+
+It also contains two test programs that verify that the patched go
+runtime supports all of the set* groups and uids glibc equivalents
+both with and without cgo compilation. In the latter case, the
+syscall.Setuid() etc are redirected to the glibc equivalents, which
+consistently (thanks to nptl:setxid) cause all threads to maintain
+consistent [gu]id state.
+
+With a patched Go runtime library:
+
+  make
+  sudo ./posix
+  sudo ./posix-cgo
+
+should validate that all is working as intended.
+
+Andrew G. Morgan <morgan@kernel.org>
+2019-11-30

@@ -1,7 +1,9 @@
-From e73f9f919d3ce6fa2d8596ae73e44985a672588a Mon Sep 17 00:00:00 2001
+From 6bd35cb712bfe4cc8bba3725f37408cdf09de045 Mon Sep 17 00:00:00 2001
 From: "Andrew G. Morgan" <morgan@kernel.org>
-Date: Fri, 29 Nov 2019 23:18:19 -0800
+Date: Sat, 30 Nov 2019 10:19:55 -0800
 Subject: [PATCH] POSIX semantics support for some Linux syscalls
+
+Fixes #1435
 
 This change adds two new methods for invoking system calls
 under Linux: syscall.PosixSyscall() and syscall.PosixSyscall6().
@@ -14,8 +16,13 @@ higher runtime overhead than regular system calls, and only
 need to be used where such thread (or 'm' in the parlance
 of the runtime sources) consistency is required.
 
-The new support is used to enable syscall.Setuid() and
-syscall.Setgid() support under Linux.
+The new support is used to enable these functions under Linux:
+
+  syscall.Setegid(), syscall.Seteuid(), syscall.Setgroups(),
+  syscall.Setgid(), syscall.Setregid(), syscall.Setreuid(),
+  syscall.Setresgid(), syscall.Setresuid() and syscall.Setuid().
+
+They work identically to their glibc counterparts.
 
 Extensive discussion of the background issue addressed in this
 patch can be found here:
@@ -24,22 +31,27 @@ patch can be found here:
 
 In the case where cgo is used, the C runtime can launch
 pthreads that are not managed by the Go runtime. As such, the
-added features do not extend to these threads. However, there
-are system calls that glibc wraps with the a nptl:setxid
-fixup mechanism and this mechanism extends to the pthreads
-used in the Go runtime - achieving POSIX semantics for these
-functions on the combined Go and C runtime. As such, when cgo
-is enabled, we redirect the following syscall functions:
-Setgroups; Set[gu]id; Sete[gu]id; Seter[gu]id and Seters[gu]id,
-to use their glibc equivalents.
+added syscall.PosixSyscall*() functions do not extend to these
+C launched threads. However, for the 9 syscall.Set*() functions
+listed above, when cgo is active, the functions redirect to
+invoke their C.set*() equivalents in glibc, which wraps the
+raw system calls with a nptl:setxid fixup mechanism. This achieves
+POSIX semantics for these functions in the combined Go and C
+runtime.
+
+As a side note, the glibc/nptl:setxid support (2019-11-30) does
+not extend to all security related system calls under Linux so
+using native Go for security related applications is likely to be
+more rational. That is, using the syscall.PosixSyscall wrappers
+for things like setting state through SYS_PRCTL and SYS_SETCAP etc.
 
 Signed-off-by: Andrew G. Morgan <morgan@kernel.org>
 ---
  src/runtime/cgo/linux.go               |  74 +++++++++++
  src/runtime/cgo/linux_syscall.c        | 100 ++++++++++++++
  src/runtime/cgocall.go                 |  15 +++
- src/runtime/proc.go                    |  94 +++++++++++++-
- src/runtime/runtime2.go                |   3 +
+ src/runtime/proc.go                    | 101 +++++++++++++-
+ src/runtime/runtime2.go                |   4 +
  src/syscall/setuidgid_32_linux.go      |   6 +
  src/syscall/setuidgid_linux.go         |   6 +
  src/syscall/syscall_linux.go           | 231 +++++++++++++++++++++++++++++++--
@@ -64,7 +76,7 @@ Signed-off-by: Andrew G. Morgan <morgan@kernel.org>
  src/syscall/zsyscall_linux_ppc64le.go  |  50 -------
  src/syscall/zsyscall_linux_riscv64.go  |  50 -------
  src/syscall/zsyscall_linux_s390x.go    |  50 -------
- 29 files changed, 513 insertions(+), 662 deletions(-)
+ 29 files changed, 521 insertions(+), 662 deletions(-)
  create mode 100644 src/runtime/cgo/linux.go
  create mode 100644 src/runtime/cgo/linux_syscall.c
 
@@ -281,10 +293,20 @@ index 5f8ff8139a..04a6b89cf0 100644
  //go:nosplit
  func cgocall(fn, arg unsafe.Pointer) int32 {
 diff --git a/src/runtime/proc.go b/src/runtime/proc.go
-index 56e9530ab6..ec3c9a8cae 100644
+index 56e9530ab6..ccae983f37 100644
 --- a/src/runtime/proc.go
 +++ b/src/runtime/proc.go
-@@ -877,6 +877,69 @@ func startTheWorld() {
+@@ -130,6 +130,9 @@ func main() {
+ 	mainStarted = true
+ 
+ 	if GOARCH != "wasm" { // no threads on wasm yet, so no sysmon
++		// For doPosixSyscall, we register sysmon is not ready
++		// for the world to be stopped.
++		atomic.Store(&sched.sysmonflux, 1)
+ 		systemstack(func() {
+ 			newm(sysmon, nil)
+ 		})
+@@ -877,6 +880,69 @@ func startTheWorld() {
  	getg().m.preemptoff = ""
  }
  
@@ -295,6 +317,9 @@ index 56e9530ab6..ec3c9a8cae 100644
 +	if fn == nil {
 +		return
 +	}
++	for atomic.Load(&sched.sysmonflux) != 0 {
++		usleep(57) // wait for sysmon to be fully up.
++	}
 +	stopTheWorld("doposixsyscall")
 +	if x := fn(true); x {
 +		_g_ := getg()
@@ -302,9 +327,6 @@ index 56e9530ab6..ec3c9a8cae 100644
 +		for tm := allm; tm != nil; tm = tm.alllink {
 +			if tm.procid == tid {
 +				continue
-+			}
-+			for tm.procid == 0 {
-+				usleep(57) // wait for this prodid to become set
 +			}
 +			lock(&tm.mfixlock)
 +			tm.mfixupfn = fn
@@ -322,7 +344,7 @@ index 56e9530ab6..ec3c9a8cae 100644
 +		for {
 +			done := true
 +			for tm := allm; tm != nil; tm = tm.alllink {
-+				if tm.procid == tid {
++				if tm.procid == tid || tm.procid == 0 {
 +					continue
 +				}
 +				lock(&tm.mfixlock)
@@ -354,7 +376,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  // stopTheWorldGC has the same effect as stopTheWorld, but blocks
  // until the GC is not running. It also blocks a GC from starting
  // until startTheWorldGC is called.
-@@ -1796,6 +1859,21 @@ func startTemplateThread() {
+@@ -1796,6 +1862,21 @@ func startTemplateThread() {
  	newm(templateThread, nil)
  }
  
@@ -376,7 +398,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  // templateThread is a thread in a known-good state that exists solely
  // to start new threads in known-good states when the calling thread
  // may not be in a good state.
-@@ -1832,6 +1910,7 @@ func templateThread() {
+@@ -1832,6 +1913,7 @@ func templateThread() {
  		noteclear(&newmHandoff.wake)
  		unlock(&newmHandoff.lock)
  		notesleep(&newmHandoff.wake)
@@ -384,7 +406,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  	}
  }
  
-@@ -1853,8 +1932,14 @@ func stopm() {
+@@ -1853,8 +1935,14 @@ func stopm() {
  	lock(&sched.lock)
  	mput(_g_.m)
  	unlock(&sched.lock)
@@ -401,7 +423,14 @@ index 56e9530ab6..ec3c9a8cae 100644
  	acquirep(_g_.m.nextp.ptr())
  	_g_.m.nextp = 0
  }
-@@ -4464,6 +4549,7 @@ func sysmon() {
+@@ -4461,9 +4549,14 @@ func sysmon() {
+ 	checkdead()
+ 	unlock(&sched.lock)
+ 
++	// For doPosixSyscall, sysmon is sufficiently up to
++	// participate in fixups.
++	atomic.Store(&sched.sysmonflux, 0)
++
  	lasttrace := int64(0)
  	idle := 0 // how many cycles in succession we had not wokeup somebody
  	delay := uint32(0)
@@ -409,7 +438,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  	for {
  		if idle == 0 { // start with 20us sleep...
  			delay = 20
-@@ -4474,6 +4560,7 @@ func sysmon() {
+@@ -4474,6 +4567,7 @@ func sysmon() {
  			delay = 10 * 1000
  		}
  		usleep(delay)
@@ -417,7 +446,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  		now := nanotime()
  		next := timeSleepUntil()
  		if debug.schedtrace <= 0 && (sched.gcwaiting != 0 || atomic.Load(&sched.npidle) == uint32(gomaxprocs)) {
-@@ -4493,6 +4580,7 @@ func sysmon() {
+@@ -4493,6 +4587,7 @@ func sysmon() {
  						osRelax(true)
  					}
  					notetsleep(&sched.sysmonnote, sleep)
@@ -425,7 +454,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  					if shouldRelax {
  						osRelax(false)
  					}
-@@ -4529,12 +4617,14 @@ func sysmon() {
+@@ -4529,12 +4624,14 @@ func sysmon() {
  				incidlelocked(1)
  			}
  		}
@@ -441,7 +470,7 @@ index 56e9530ab6..ec3c9a8cae 100644
  		// and preempt long running G's
  		if retake(now) != 0 {
 diff --git a/src/runtime/runtime2.go b/src/runtime/runtime2.go
-index fe1147e247..b10d29ab39 100644
+index fe1147e247..980442dfe8 100644
 --- a/src/runtime/runtime2.go
 +++ b/src/runtime/runtime2.go
 @@ -525,6 +525,9 @@ type m struct {
@@ -454,6 +483,14 @@ index fe1147e247..b10d29ab39 100644
  	// these are here because they are too large to be on the stack
  	// of low-level NOSPLIT functions.
  	libcall   libcall
+@@ -727,6 +730,7 @@ type schedt struct {
+ 	stopnote   note
+ 	sysmonwait uint32
+ 	sysmonnote note
++	sysmonflux uint32 // while true, sysmon state in flux
+ 
+ 	// safepointFn should be called on each P at the next GC
+ 	// safepoint if p.runSafePointFn is set.
 diff --git a/src/syscall/setuidgid_32_linux.go b/src/syscall/setuidgid_32_linux.go
 index 1fe7120d1c..b0b7f61d22 100644
 --- a/src/syscall/setuidgid_32_linux.go
