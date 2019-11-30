@@ -6,7 +6,7 @@
 // the system calls that change kernel state. A patch for the Go
 // compiler/runtime to add this support is available here [2019-11-16]:
 //
-// https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/contrib/go.patch
+// https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/contrib/golang/go.patch
 //
 // To set this up, compile and empower this binary as follows (package
 // libcap/cap should be installed):

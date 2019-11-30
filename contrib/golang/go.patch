@@ -1,6 +1,6 @@
-From 6bd35cb712bfe4cc8bba3725f37408cdf09de045 Mon Sep 17 00:00:00 2001
+From 60797de30be0e1dc8fcc670c489f65546de991d2 Mon Sep 17 00:00:00 2001
 From: "Andrew G. Morgan" <morgan@kernel.org>
-Date: Sat, 30 Nov 2019 10:19:55 -0800
+Date: Sat, 30 Nov 2019 13:22:28 -0800
 Subject: [PATCH] POSIX semantics support for some Linux syscalls
 
 Fixes #1435
@@ -48,13 +48,13 @@ for things like setting state through SYS_PRCTL and SYS_SETCAP etc.
 Signed-off-by: Andrew G. Morgan <morgan@kernel.org>
 ---
  src/runtime/cgo/linux.go               |  74 +++++++++++
- src/runtime/cgo/linux_syscall.c        | 100 ++++++++++++++
+ src/runtime/cgo/linux_syscall.c        | 100 +++++++++++++++
  src/runtime/cgocall.go                 |  15 +++
- src/runtime/proc.go                    | 101 +++++++++++++-
+ src/runtime/proc.go                    | 101 ++++++++++++++-
  src/runtime/runtime2.go                |   4 +
  src/syscall/setuidgid_32_linux.go      |   6 +
  src/syscall/setuidgid_linux.go         |   6 +
- src/syscall/syscall_linux.go           | 231 +++++++++++++++++++++++++++++++--
+ src/syscall/syscall_linux.go           | 224 ++++++++++++++++++++++++++++++---
  src/syscall/syscall_linux_386.go       |   5 -
  src/syscall/syscall_linux_amd64.go     |   5 -
  src/syscall/syscall_linux_arm.go       |   5 -
@@ -64,19 +64,19 @@ Signed-off-by: Andrew G. Morgan <morgan@kernel.org>
  src/syscall/syscall_linux_ppc64x.go    |   5 -
  src/syscall/syscall_linux_riscv64.go   |   5 -
  src/syscall/syscall_linux_s390x.go     |   5 -
- src/syscall/zsyscall_linux_386.go      |  50 -------
- src/syscall/zsyscall_linux_amd64.go    |  50 -------
- src/syscall/zsyscall_linux_arm.go      |  50 -------
- src/syscall/zsyscall_linux_arm64.go    |  50 -------
- src/syscall/zsyscall_linux_mips.go     |  50 -------
- src/syscall/zsyscall_linux_mips64.go   |  50 -------
- src/syscall/zsyscall_linux_mips64le.go |  50 -------
- src/syscall/zsyscall_linux_mipsle.go   |  50 -------
- src/syscall/zsyscall_linux_ppc64.go    |  50 -------
- src/syscall/zsyscall_linux_ppc64le.go  |  50 -------
- src/syscall/zsyscall_linux_riscv64.go  |  50 -------
- src/syscall/zsyscall_linux_s390x.go    |  50 -------
- 29 files changed, 521 insertions(+), 662 deletions(-)
+ src/syscall/zsyscall_linux_386.go      |  50 --------
+ src/syscall/zsyscall_linux_amd64.go    |  50 --------
+ src/syscall/zsyscall_linux_arm.go      |  50 --------
+ src/syscall/zsyscall_linux_arm64.go    |  50 --------
+ src/syscall/zsyscall_linux_mips.go     |  50 --------
+ src/syscall/zsyscall_linux_mips64.go   |  50 --------
+ src/syscall/zsyscall_linux_mips64le.go |  50 --------
+ src/syscall/zsyscall_linux_mipsle.go   |  50 --------
+ src/syscall/zsyscall_linux_ppc64.go    |  50 --------
+ src/syscall/zsyscall_linux_ppc64le.go  |  50 --------
+ src/syscall/zsyscall_linux_riscv64.go  |  50 --------
+ src/syscall/zsyscall_linux_s390x.go    |  50 --------
+ 29 files changed, 514 insertions(+), 662 deletions(-)
  create mode 100644 src/runtime/cgo/linux.go
  create mode 100644 src/runtime/cgo/linux_syscall.c
 
@@ -522,7 +522,7 @@ index 22fa334bfa..38c83c92f9 100644
 +	sys_SETRESUID = SYS_SETRESUID
  )
 diff --git a/src/syscall/syscall_linux.go b/src/syscall/syscall_linux.go
-index 2eba033d7c..7f5a5a7d0e 100644
+index 2eba033d7c..a4c43976c9 100644
 --- a/src/syscall/syscall_linux.go
 +++ b/src/syscall/syscall_linux.go
 @@ -257,16 +257,29 @@ func Getgroups() (gids []int, err error) {
@@ -553,16 +553,16 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +			err = errnoErr(e1)
 +		}
 +		return
- 	}
--	return setgroups(len(a), &a[0])
++	}
 +	if ret := cgocaller(cgo_libc_setgroups, n, arr); ret != 0 {
 +		err = errnoErr(Errno(ret))
-+	}
+ 	}
+-	return setgroups(len(a), &a[0])
 +	return
  }
  
  type WaitStatus uint32
-@@ -943,17 +956,207 @@ func Getpgrp() (pid int) {
+@@ -943,17 +956,200 @@ func Getpgrp() (pid int) {
  //sysnb	Setsid() (pid int, err error)
  //sysnb	Settimeofday(tv *Timeval) (err error)
  
@@ -634,7 +634,9 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +	err = pc.err
 +	return
 +}
-+
+ 
+-func Setuid(uid int) (err error) {
+-	return EOPNOTSUPP
 +// PosixSyscall6 performs a syscall6 with POSIX semantics - namely it
 +// serializes the runtime and performs the syscall once for each OS
 +// thread of the Go runtime.  The return values and error status are
@@ -656,9 +658,7 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +	err = pc.err
 +	return
 +}
- 
--func Setuid(uid int) (err error) {
--	return EOPNOTSUPP
++
 +// linked by runtime.cgocall.go
 +func cgocaller(unsafe.Pointer, ...uintptr) uintptr
 +
@@ -671,7 +671,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(SYS_SETRESGID, minus1, uintptr(egid), minus1); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_setegid, uintptr(egid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
@@ -685,7 +684,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(SYS_SETRESUID, minus1, uintptr(euid), minus1); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_seteuid, uintptr(euid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
@@ -700,7 +698,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(sys_SETGID, uintptr(gid), 0, 0); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_setgid, uintptr(gid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
@@ -714,7 +711,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(sys_SETREGID, uintptr(rgid), uintptr(egid), 0); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_setregid, uintptr(rgid), uintptr(egid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
@@ -728,7 +724,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(sys_SETRESGID, uintptr(rgid), uintptr(egid), uintptr(sgid)); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_setresgid, uintptr(rgid), uintptr(egid), uintptr(sgid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
@@ -742,7 +737,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(sys_SETRESUID, uintptr(ruid), uintptr(euid), uintptr(suid)); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_setresuid, uintptr(ruid), uintptr(euid), uintptr(suid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
@@ -756,7 +750,6 @@ index 2eba033d7c..7f5a5a7d0e 100644
 +		if _, _, e1 := PosixSyscall(sys_SETREUID, uintptr(ruid), uintptr(euid), 0); e1 != 0 {
 +			err = errnoErr(e1)
 +		}
-+		return
 +	} else if ret := cgocaller(cgo_libc_setreuid, uintptr(ruid), uintptr(euid)); ret != 0 {
 +		err = errnoErr(Errno(ret))
 +	}
