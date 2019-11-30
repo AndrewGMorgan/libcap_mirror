@@ -106,7 +106,7 @@ func capwcall(call uintptr, h *header, d []data) error {
 // read kernel state. There is a limited number of arguments needed
 // and the caller should use 0 for those not needed.
 func prctlrcall(prVal, v1, v2 uintptr) (int, error) {
-	r, _, err := callRKernel6(syscall.SYS_PRCTL, prVal, v1, v2, 0, 0, 0)
+	r, _, err := callRKernel(syscall.SYS_PRCTL, prVal, v1, v2)
 	if err != 0 {
 		return int(r), err
 	}
@@ -118,7 +118,7 @@ func prctlrcall(prVal, v1, v2 uintptr) (int, error) {
 // POSIX semantics fixup system calls). There is a limited number of
 // arguments needed and the caller should use 0 for those not needed.
 func prctlwcall(prVal, v1, v2 uintptr) (int, error) {
-	r, _, err := callWKernel6(syscall.SYS_PRCTL, prVal, v1, v2, 0, 0, 0)
+	r, _, err := callWKernel(syscall.SYS_PRCTL, prVal, v1, v2)
 	if err != 0 {
 		return int(r), err
 	}
@@ -168,7 +168,7 @@ var ErrBadSet = errors.New("bad capability set")
 
 // Dup returns a copy of the specified capability set.
 func (c *Set) Dup() (*Set, error) {
-	if c == nil {
+	if c == nil || len(c.flat) == 0 {
 		return nil, ErrBadSet
 	}
 	n := NewSet()
@@ -197,7 +197,7 @@ func bitOf(vec Flag, val Value) (uint, uint32, error) {
 // GetFlag determines if the requested bit is enabled in the Flag
 // vector of the capability Set.
 func (c *Set) GetFlag(vec Flag, val Value) (bool, error) {
-	if c == nil {
+	if c == nil || len(c.flat) == 0 {
 		// Checked this first, because otherwise we are sure
 		// cInit has been called.
 		return false, ErrBadSet
@@ -217,7 +217,7 @@ func (c *Set) GetFlag(vec Flag, val Value) (bool, error) {
 // bits be checked for validity and permission by the kernel. If the
 // function returns an error, the Set will not be modified.
 func (c *Set) SetFlag(vec Flag, enable bool, val ...Value) error {
-	if c == nil {
+	if c == nil || len(c.flat) == 0 {
 		// Checked this first, because otherwise we are sure
 		// cInit has been called.
 		return ErrBadSet
@@ -254,7 +254,7 @@ func (c *Set) SetFlag(vec Flag, enable bool, val ...Value) error {
 
 // Clear fully clears a capability set.
 func (c *Set) Clear() error {
-	if c == nil {
+	if c == nil || len(c.flat) == 0 {
 		return ErrBadSet
 	}
 	// startUp.Do(cInit) is not called here because c cannot be
@@ -269,7 +269,7 @@ func (c *Set) Clear() error {
 
 // forceFlag sets all capability values of a flag vector to enable.
 func (c *Set) forceFlag(vec Flag, enable bool) error {
-	if c == nil || vec > Inheritable {
+	if c == nil || len(c.flat) == 0 || vec > Inheritable {
 		return ErrBadSet
 	}
 	m := uint32(0)
@@ -315,7 +315,7 @@ func GetProc() *Set {
 // process. The kernel will perform permission checks and an error
 // will be returned if the attempt fails.
 func (c *Set) SetProc() error {
-	if c == nil {
+	if c == nil || len(c.flat) == 0 {
 		return ErrBadSet
 	}
 	return capwcall(syscall.SYS_CAPSET, &header{magic: magic}, c.flat)
