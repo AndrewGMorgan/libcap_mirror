@@ -113,12 +113,37 @@ func prctlrcall(prVal, v1, v2 uintptr) (int, error) {
 	return int(r), nil
 }
 
+// prctlrcall6 provides a wrapper for the prctl systemcalls that only
+// read kernel state and require 6 arguments - ambient cap API, I'm
+// looking at you. There is a limited number of arguments needed and
+// the caller should use 0 for those not needed.
+func prctlrcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error) {
+	r, _, err := callRKernel6(syscall.SYS_PRCTL, prVal, v1, v2, v3, v4, v5)
+	if err != 0 {
+		return int(r), err
+	}
+	return int(r), nil
+}
+
 // prctlwcall provides a wrapper for the prctl systemcalls that
-// write/modify kernel state (where available, these will use the
-// POSIX semantics fixup system calls). There is a limited number of
+// write/modify kernel state. Where available, these will use the
+// POSIX semantics fixup system calls. There is a limited number of
 // arguments needed and the caller should use 0 for those not needed.
 func prctlwcall(prVal, v1, v2 uintptr) (int, error) {
 	r, _, err := callWKernel(syscall.SYS_PRCTL, prVal, v1, v2)
+	if err != 0 {
+		return int(r), err
+	}
+	return int(r), nil
+}
+
+// prctlwcall6 provides a wrapper for the prctl systemcalls that
+// write/modify kernel state and require 6 arguments - ambient cap
+// API, I'm looking at you. (Where available, these will use the POSIX
+// semantics fixup system calls). There is a limited number of
+// arguments needed and the caller should use 0 for those not needed.
+func prctlwcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error) {
+	r, _, err := callWKernel6(syscall.SYS_PRCTL, prVal, v1, v2, v3, v4, v5)
 	if err != 0 {
 		return int(r), err
 	}
@@ -369,7 +394,7 @@ const (
 // the local ambient set. On systems where the ambient set Value is
 // not present, this function returns an error.
 func GetAmbient(val Value) (bool, error) {
-	r, err := prctlrcall(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, uintptr(val))
+	r, err := prctlrcall6(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, uintptr(val), 0, 0, 0)
 	return r > 0, err
 }
 
@@ -384,7 +409,7 @@ func SetAmbient(enable bool, val ...Value) error {
 		dir = PR_CAP_AMBIENT_RAISE
 	}
 	for _, v := range val {
-		_, err := prctlwcall(PR_CAP_AMBIENT, dir, uintptr(v))
+		_, err := prctlwcall6(PR_CAP_AMBIENT, dir, uintptr(v), 0, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -394,6 +419,6 @@ func SetAmbient(enable bool, val ...Value) error {
 
 // ResetAmbient attempts to fully clear the Ambient set.
 func ResetAmbient() error {
-	_, err := prctlwcall(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0)
+	_, err := prctlwcall6(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0, 0)
 	return err
 }
