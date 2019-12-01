@@ -187,7 +187,6 @@ extern char *_libcap_strdup(const char *text);
  */
 
 extern int capget(cap_user_header_t header, cap_user_data_t data);
-extern int capset(cap_user_header_t header, const cap_user_data_t data);
 extern int capgetp(pid_t pid, cap_t cap_d);
 extern int capsetp(pid_t pid, cap_t cap_d);
 

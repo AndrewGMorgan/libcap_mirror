@@ -1,12 +1,86 @@
 /*
- * Copyright (c) 1997-8,2007,2011 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2007,2011,2019 Andrew G Morgan <morgan@kernel.org>
  *
  * This file deals with getting and setting capabilities on processes.
  */
 
+#include <sys/syscall.h>
 #include <sys/prctl.h>
+#include <unistd.h>
 
 #include "libcap.h"
+
+/*
+ * libcap uses this abstraction for all system calls that change
+ * kernel managed capability state. This permits the user to redirect
+ * it for testing and also to better implement posix semantics when
+ * using pthreads.
+ */
+
+static long int _cap_syscall(long int syscall_nr,
+			     long int arg1, long int arg2, long int arg3)
+{
+    return syscall(syscall_nr, arg1, arg2, arg3);
+}
+
+static long int _cap_syscall6(long int syscall_nr,
+			      long int arg1, long int arg2, long int arg3,
+			      long int arg4, long int arg5, long int arg6)
+{
+    return syscall(syscall_nr, arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+static long int (*_libcap_syscall)(long int, long int, long int, long int)
+    = _cap_syscall;
+static long int (*_libcap_syscall6)(long int, long int, long int, long int,
+    long int, long int, long int) = _cap_syscall6;
+
+void cap_set_syscall(long int (*new_syscall)(long int,
+					     long int, long int, long int),
+		     long int (*new_syscall6)(long int,
+					      long int, long int, long int,
+					      long int, long int, long int))
+{
+    _libcap_syscall = new_syscall;
+    _libcap_syscall6 = new_syscall6;
+}
+
+/*
+ * libcap<->libpsx subtle linking trick. If -lpsx is linked, then this
+ * function will get called when psx is initialized. In so doing,
+ * libcap will opt to use POSIX compliant syscalls for all state
+ * changing system calls - via psx_syscall().
+ */
+void share_psx_syscall(long int (*syscall_fn)(long int,
+					      long int, long int, long int),
+		       long int (*syscall6_fn)(long int,
+					       long int, long int, long int,
+					       long int, long int, long int));
+
+void share_psx_syscall(long int (*syscall_fn)(long int,
+					      long int, long int, long int),
+		       long int (*syscall6_fn)(long int,
+					       long int, long int, long int,
+					       long int, long int, long int))
+{
+    cap_set_syscall(syscall_fn, syscall6_fn);
+}
+
+static int _libcap_capset(cap_user_header_t header, const cap_user_data_t data)
+{
+    return _libcap_syscall(SYS_capset, (long int) header, (long int) data, 0);
+}
+
+static int _libcap_prctl(long int pr_cmd, long int arg1, long int arg2)
+{
+    return _libcap_syscall(SYS_prctl, pr_cmd, arg1, arg2);
+}
+
+static int _libcap_prctl6(long int pr_cmd, long int arg1, long int arg2,
+			  long int arg3, long int arg4, long int arg5)
+{
+    return _libcap_syscall6(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
+}
 
 cap_t cap_get_proc(void)
 {
@@ -37,7 +111,7 @@ int cap_set_proc(cap_t cap_d)
     }
 
     _cap_debug("setting process capabilities");
-    retval = capset(&cap_d->head, &cap_d->u[0].set);
+    retval = _libcap_capset(&cap_d->head, &cap_d->u[0].set);
 
     return retval;
 }
@@ -85,7 +159,10 @@ cap_t cap_get_pid(pid_t pid)
     return result;
 }
 
-/* set the caps on a specific process/pg etc.. */
+/*
+ * set the caps on a specific process/pg etc.. The kernel has long
+ * since deprecated this asynchronus interface.
+ */
 
 int capsetp(pid_t pid, cap_t cap_d)
 {
@@ -114,7 +191,7 @@ int cap_get_bound(cap_value_t cap)
 {
     int result;
 
-    result = prctl(PR_CAPBSET_READ, pr_arg(cap));
+    result = _libcap_prctl(PR_CAPBSET_READ, pr_arg(cap), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -128,7 +205,7 @@ int cap_drop_bound(cap_value_t cap)
 {
     int result;
 
-    result = prctl(PR_CAPBSET_DROP, pr_arg(cap));
+    result = _libcap_prctl(PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -166,8 +243,8 @@ int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
 	errno = EINVAL;
 	return -1;
     }
-    result = prctl(PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
-		   pr_arg(0), pr_arg(0));
+    result = _libcap_prctl6(PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
+			    pr_arg(0), pr_arg(0), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -181,8 +258,8 @@ int cap_reset_ambient()
 {
     int result;
 
-    result = prctl(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
-		   pr_arg(0), pr_arg(0), pr_arg(0));
+    result = _libcap_prctl6(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
+			    pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;

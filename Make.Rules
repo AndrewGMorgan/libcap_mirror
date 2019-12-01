@@ -79,6 +79,9 @@ ifeq ($(GOLANG),yes)
 GOROOT := $(shell go env GOROOT)
 GOCGO := $(shell if [ "$(shell go env CGO_ENABLED)" = 1 ]; then echo yes ; else echo no ; fi)
 GOOSARCH := $(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
+CGO_CFLAGS := -I$(topdir)/libcap/include
+CGO_LDFLAGS := -L$(topdir)/libcap
+CGO_LDFLAGS_ALLOW := -Wl,-wrap,.+
 endif
 
 # When installing setcap, set its inheritable bit to be able to place

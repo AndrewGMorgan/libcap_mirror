@@ -1,15 +1,23 @@
 // Progam web provides an example of a webserver using capabilities to
-// bind to a privileged port.
+// bind to a privileged port, and then drop all capabilities before
+// handling the first web request.
 //
-// This program will not work reliably without the equivalent of
-// the Go runtime patch that adds a POSIX semantics wrappers around
-// the system calls that change kernel state. A patch for the Go
-// compiler/runtime to add this support is available here [2019-11-16]:
+// This program cannot work reliably as a pure Go application without
+// the equivalent of the Go runtime patch that adds a POSIX semantics
+// wrapper around the system calls that change kernel state. A patch
+// for the pure Go compiler/runtime to add this support is available
+// here [2019-11-16]:
 //
 // https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/contrib/golang/go.patch
 //
+// Until that patch, or something like it, is absorbed into the Go
+// runtime the only way to get capabilities to work reliably on the Go
+// runtime is to use something like libpsx to do capability setting
+// syscalls in C with POSIX semantics. As of this build of the Go
+// libcap/cap package, this is how things work.
+//
 // To set this up, compile and empower this binary as follows (package
-// libcap/cap should be installed):
+// libcap/cap should be installed, as must libpsx.a):
 //
 //   go build web.go
 //   sudo setcap cap_net_bind_service=p web

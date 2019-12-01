@@ -2,7 +2,7 @@
  * <sys/capability.h>
  *
  * Copyright (C) 1997   Aleph One
- * Copyright (C) 1997-8,2008 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (C) 1997-8,2008,2019 Andrew G. Morgan <morgan@kernel.org>
  *
  * defunct POSIX.1e Standard: 25.2 Capabilities           <sys/capability.h>
  */
@@ -115,7 +115,18 @@ extern char *  cap_to_name(cap_value_t);
 #define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
 extern int     cap_compare(cap_t, cap_t);
 
-/* system calls - look to libc for function to system call mapping */
+/* libcap/cap_proc.c */
+extern void cap_set_syscall(long int (*new_syscall)(long int,
+				long int, long int, long int),
+			    long int (*new_syscall6)(long int,
+				long int, long int, long int,
+				long int, long int, long int));
+
+/*
+ * system calls - look to libc for function to system call
+ * mapping. Note, libcap does not use capset directly, but permits the
+ * cap_set_syscall() to redirect the system call function.
+ */
 extern int capget(cap_user_header_t header, cap_user_data_t data);
 extern int capset(cap_user_header_t header, const cap_user_data_t data);
 
