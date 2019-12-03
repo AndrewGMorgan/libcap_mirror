@@ -61,6 +61,9 @@ WARNINGS=-Wall -Wwrite-strings \
         -Wnested-externs -Winline -Wshadow
 LD=$(CC) -Wl,-x -shared
 LDFLAGS := #-g
+LIBCAPLIB := -L$(topdir)/libcap -lcap
+LIBPSXLIB := -L$(topdir)/libcap -lpsx -lpthread
+
 BUILD_GPERF := $(shell which gperf >/dev/null 2>/dev/null && echo yes)
 
 SYSTEM_HEADERS = /usr/include

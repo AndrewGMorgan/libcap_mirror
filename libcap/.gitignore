@@ -3,5 +3,6 @@ cap_names.list.h
 _caps_output.gperf
 libcap.a
 libcap.so*
+libpsx.a
 _makenames
 libcap.pc

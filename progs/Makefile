@@ -11,12 +11,11 @@ BUILD=$(PROGS)
 ifneq ($(DYNAMIC),yes)
 LDFLAGS += --static
 endif
-LDLIBS += -L../libcap -lcap
 
 all: $(BUILD)
 
 $(BUILD): %: %.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
 
 %.o: %.c $(INCS)
 	$(CC) $(IPATH) $(CFLAGS) -c $< -o $@

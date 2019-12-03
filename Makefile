@@ -16,6 +16,7 @@ endif
 ifeq ($(GOLANG),yes)
 	$(MAKE) -C go $@
 endif
+	$(MAKE) -C tests $@
 	$(MAKE) -C progs $@
 	$(MAKE) -C doc $@
 	$(MAKE) -C kdebug $@

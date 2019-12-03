@@ -9,16 +9,20 @@ include ../Make.Rules
 LIBNAME=$(LIBTITLE).so
 STALIBNAME=$(LIBTITLE).a
 #
+STAPSXLIBNAME=libpsx.a
 
-FILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file
+CAPFILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file
+PSXFILES=psx
 
 INCLS=libcap.h cap_names.h $(INCS)
-OBJS=$(addsuffix .o, $(FILES))
+CAPOBJS=$(addsuffix .o, $(CAPFILES))
+PSXOBJS=$(addsuffix .o, $(PSXFILES))
+
 MAJLIBNAME=$(LIBNAME).$(VERSION)
 MINLIBNAME=$(MAJLIBNAME).$(MINOR)
 GPERF_OUTPUT = _caps_output.gperf
 
-all: $(MINLIBNAME) $(STALIBNAME) libcap.pc
+all: $(MINLIBNAME) $(STALIBNAME) libcap.pc $(STAPSXLIBNAME)
 
 ifeq ($(BUILD_GPERF),yes)
 USE_GPERF_OUTPUT = $(GPERF_OUTPUT)
@@ -48,11 +52,15 @@ cap_names.list.h: Makefile $(KERNEL_HEADERS)/linux/capability.h
 	@echo "=> making $@ from $(KERNEL_HEADERS)/linux/capability.h"
 	perl -e 'while ($$l=<>) { if ($$l =~ /^\#define[ \t](CAP[_A-Z]+)[ \t]+([0-9]+)\s+$$/) { $$tok=$$1; $$val=$$2; $$tok =~ tr/A-Z/a-z/; print "{\"$$tok\",$$val},\n"; } }' $(KERNEL_HEADERS)/linux/capability.h | fgrep -v 0x > $@
 
-$(STALIBNAME): $(OBJS)
+$(STALIBNAME): $(CAPOBJS)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
-$(MINLIBNAME): $(OBJS)
+$(STAPSXLIBNAME): $(PSXOBJS)
+	$(AR) rcs $@ $^
+	$(RANLIB) $@
+
+$(MINLIBNAME): $(CAPOBJS)
 	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJLIBNAME) -o $@ $^
 	ln -sf $(MINLIBNAME) $(MAJLIBNAME)
 	ln -sf $(MAJLIBNAME) $(LIBNAME)
@@ -79,6 +87,7 @@ endif
 
 clean:
 	$(LOCALCLEAN)
-	rm -f $(OBJS) $(LIBNAME)* $(STALIBNAME) libcap.pc
+	rm -f $(CAPOBJS) $(LIBNAME)* $(STALIBNAME) libcap.pc
+	rm -f $(PSXOBJS) $(STAPSXLIBNAME)
 	rm -f cap_names.h cap_names.list.h _makenames $(GPERF_OUTPUT)
 	cd include/sys && $(LOCALCLEAN)
