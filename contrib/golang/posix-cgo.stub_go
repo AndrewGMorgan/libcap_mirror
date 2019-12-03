@@ -19,6 +19,7 @@
 //     pthread_mutex_unlock(&mu);
 //   }
 //   printf("tid=%d done\n", pthread_self());
+//   return NULL;
 // }
 //
 // void trial(int argc) {
