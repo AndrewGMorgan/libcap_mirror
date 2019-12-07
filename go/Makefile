@@ -48,7 +48,7 @@ compare-cap: compare-cap.go $(CAPGOPACKAGE)
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(realpath .) go build $<
 
 web: web.go $(CAPGOPACKAGE)
-	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(realpath .) go build $<
+	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(realpath .) go build $<
 
 clean:
 	GOPATH=$(realpath .) go clean -x -i libcap/cap 2> /dev/null || exit 0
