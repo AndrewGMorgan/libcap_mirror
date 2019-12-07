@@ -705,6 +705,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
 		   "  --drop=xxx     remove xxx,.. capabilities from bset\n"
+		   "  --has-ambient  fail immediately unless ambient supported\n"
 		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
 		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
 		   "  --noamb=xxx    reset the ambient capabilities\n"

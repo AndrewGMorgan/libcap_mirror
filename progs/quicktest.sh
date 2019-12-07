@@ -44,7 +44,6 @@ pass_capsh () {
 
 pass_capsh --print
 
-
 # Make a local non-setuid-0 version of capsh and call it privileged
 cp ./capsh ./privileged && /bin/chmod -s ./privileged
 if [ $? -ne 0 ]; then
@@ -209,7 +208,7 @@ if [ $? -eq 0 ]; then
     # lead to a privilege escalation outside of the namespace it
     # refers to. We suppress uid=0 privilege and confirm this
     # nsprivileged binary does not have the power to change uid.
-    fail_capsh --secbits=0x2f --print -- -c "./nsprivileged --uid=$nouid"
+    fail_capsh --secbits=$secbits --print -- -c "./nsprivileged --uid=$nouid"
 else
     echo "ns file caps not supported - skipping test"
 fi
