@@ -7,7 +7,7 @@ include ../Make.Rules
 # Library version
 #
 LIBNAME=$(LIBTITLE).so
-STALIBNAME=$(LIBTITLE).a
+STACAPLIBNAME=$(LIBTITLE).a
 #
 STAPSXLIBNAME=libpsx.a
 
@@ -22,7 +22,7 @@ MAJLIBNAME=$(LIBNAME).$(VERSION)
 MINLIBNAME=$(MAJLIBNAME).$(MINOR)
 GPERF_OUTPUT = _caps_output.gperf
 
-all: $(MINLIBNAME) $(STALIBNAME) libcap.pc $(STAPSXLIBNAME)
+all: $(MINLIBNAME) $(STACAPLIBNAME) libcap.pc $(STAPSXLIBNAME)
 
 ifeq ($(BUILD_GPERF),yes)
 USE_GPERF_OUTPUT = $(GPERF_OUTPUT)
@@ -52,7 +52,7 @@ cap_names.list.h: Makefile $(KERNEL_HEADERS)/linux/capability.h
 	@echo "=> making $@ from $(KERNEL_HEADERS)/linux/capability.h"
 	perl -e 'while ($$l=<>) { if ($$l =~ /^\#define[ \t](CAP[_A-Z]+)[ \t]+([0-9]+)\s+$$/) { $$tok=$$1; $$val=$$2; $$tok =~ tr/A-Z/a-z/; print "{\"$$tok\",$$val},\n"; } }' $(KERNEL_HEADERS)/linux/capability.h | fgrep -v 0x > $@
 
-$(STALIBNAME): $(CAPOBJS)
+$(STACAPLIBNAME): $(CAPOBJS)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
@@ -74,8 +74,10 @@ cap_text.o: cap_text.c $(USE_GPERF_OUTPUT) $(INCLS)
 install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(INCDIR)/sys
 	install -m 0644 include/sys/capability.h $(FAKEROOT)$(INCDIR)/sys
+	install -m 0644 include/sys/psx_syscall.h $(FAKEROOT)$(INCDIR)/sys
 	mkdir -p -m 0755 $(FAKEROOT)$(LIBDIR)
-	install -m 0644 $(STALIBNAME) $(FAKEROOT)$(LIBDIR)/$(STALIBNAME)
+	install -m 0644 $(STACAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STACAPLIBNAME)
+	install -m 0644 $(STAPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STAPSXLIBNAME)
 	install -m 0644 $(MINLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MINLIBNAME)
 	ln -sf $(MINLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MAJLIBNAME)
 	ln -sf $(MAJLIBNAME) $(FAKEROOT)$(LIBDIR)/$(LIBNAME)
@@ -84,10 +86,16 @@ ifeq ($(FAKEROOT),)
 endif
 	mkdir -p -m 0755 $(FAKEROOT)$(PKGCONFIGDIR)
 	install -m 0644 libcap.pc $(FAKEROOT)$(PKGCONFIGDIR)/libcap.pc
+ifeq ($(GOLANG),yes)
+	mkdir -p -m 0755 $(FAKEROOT)$(GOPKGDIR)/libcap/cap
+	install -m 0644 src/libcap/cap/* $(FAKEROOT)$(GOPKGDIR)/libcap/cap/
+	mkdir -p -m 0755 $(FAKEROOT)$(GOPKGDIR)/libcap/psx
+	install -m 0644 src/libcap/psx/* $(FAKEROOT)$(GOPKGDIR)/libcap/psx/
+endif
 
 clean:
 	$(LOCALCLEAN)
-	rm -f $(CAPOBJS) $(LIBNAME)* $(STALIBNAME) libcap.pc
+	rm -f $(CAPOBJS) $(LIBNAME)* $(STACAPLIBNAME) libcap.pc
 	rm -f $(PSXOBJS) $(STAPSXLIBNAME)
 	rm -f cap_names.h cap_names.list.h _makenames $(GPERF_OUTPUT)
 	cd include/sys && $(LOCALCLEAN)

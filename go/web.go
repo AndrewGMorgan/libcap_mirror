@@ -12,12 +12,13 @@
 //
 // Until that patch, or something like it, is absorbed into the Go
 // runtime the only way to get capabilities to work reliably on the Go
-// runtime is to use something like libpsx to do capability setting
-// syscalls in C with POSIX semantics. As of this build of the Go
-// libcap/cap package, this is how things work.
+// runtime is to use something like libpsx via cgo to do capability
+// setting syscalls in C with POSIX semantics. As of this build of the
+// Go "libcap/cap" package, courtesy of the "libcap/psx" package, this
+// is how things work.
 //
-// To set this up, compile and empower this binary as follows (package
-// libcap/cap should be installed, as must libpsx.a):
+// To set this up, compile and empower this binary as follows
+// (packages libcap/{cap,psx} should be installed, as must libpsx.a):
 //
 //   go build web.go
 //   sudo setcap cap_net_bind_service=p web

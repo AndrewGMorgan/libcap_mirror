@@ -1,7 +1,16 @@
 // Package cap is the Linux capabilities user space API (libcap)
-// bindings in native Go. The key advantage is no requirement for cgo
-// linking etc. which can enable striaghtforward cross-compilation of
-// different architectures just the Go compiler.
+// bindings in native Go.
+//
+// For cgo linked binaries, package "libcap/psx" is used to broker the
+// POSIX semantics system calls that manipulate process state.
+//
+// If the Go runtime syscall interface contains the
+// syscall.PosixSyscall() API then then this package will use that to
+// invoke capability setting system calls for pure Go binaries. To
+// force this behavior use the CGO_ENABLED=0 environment variable.
+//
+// If syscall.PosixSyscall() is not present, the "libcap/cap" package
+// will failover to using "libcap/psx".
 package cap
 
 import (

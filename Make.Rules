@@ -36,6 +36,7 @@ SBINDIR=$(exec_prefix)/sbin
 INCDIR=$(inc_prefix)/include
 LIBDIR=$(lib_prefix)/$(lib)
 PKGCONFIGDIR=$(prefix)/$(lib)/pkgconfig
+GOPKGDIR=$(prefix)/share/gocode/src
 
 # common defines for libcap
 LIBTITLE=libcap
