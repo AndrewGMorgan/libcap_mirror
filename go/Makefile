@@ -2,7 +2,7 @@
 # construct a go friendly src tree.
 
 topdir=$(realpath ..)
-include ../Make.Rules
+include $(topdir)/Make.Rules
 
 GOPATH="$(realpath .)"
 PSXGOPACKAGE=pkg/$(GOOSARCH)/libcap/psx.a
@@ -16,13 +16,13 @@ all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap
 
 src/libcap/psx:
 	mkdir -p src/libcap
-	ln -s $(realpath ..)/psx src/libcap/
+	ln -s $(topdir)/psx src/libcap/
 
 src/libcap/cap:
 	mkdir -p src/libcap
-	ln -s $(realpath ..)/cap src/libcap/
+	ln -s $(topdir)/cap src/libcap/
 
-$(PSXGOPACKAGE): src/libcap/psx ../psx/psx.go ../psx/psx_test.go
+$(PSXGOPACKAGE): src/libcap/psx $(topdir)/psx/psx.go $(topdir)/psx/psx_test.go
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH="$(GOPATH)" go test libcap/psx
 	mkdir -p pkg
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH="$(GOPATH)" go build libcap/psx
@@ -34,10 +34,10 @@ $(CAPGOPACKAGE): src/libcap/cap/syscalls.go src/libcap/cap/names.go src/libcap/c
 install: all
 # TODO - install the Go package somewhere useful (ex. /usr/share/gocode/src/libcap/cap/ )
 
-../libcap/cap_names.h:
-	make -C ../libcap
+$(topdir)/libcap/cap_names.h:
+	make -C $(topdir)/libcap
 
-src/libcap/cap/names.go: ../libcap/cap_names.h src/libcap/cap  mknames.go
+src/libcap/cap/names.go: $(topdir)/libcap/cap_names.h src/libcap/cap  mknames.go
 	go run mknames.go --header=$< | gofmt > $@ || rm -f $@
 
 src/libcap/cap/syscalls.go: ./syscalls.sh src/libcap/cap
@@ -54,6 +54,6 @@ clean:
 	GOPATH=$(realpath .) go clean -x -i libcap/cap 2> /dev/null || exit 0
 	GOPATH=$(realpath .) go clean -x -i libcap/psx 2> /dev/null || exit 0
 	rm -f *.o *.so mknames web compare-cap *~
-	rm -f ../cap/*~ ../cap/names.go ../cap/syscalls*.go
-	rm -f ../psx/*~
+	rm -f $(topdir)/cap/*~ $(topdir)/cap/names.go $(topdir)/cap/syscalls*.go
+	rm -f $(topdir)/psx/*~
 	rm -fr pkg src
