@@ -1,5 +1,5 @@
 all: posix.go posix-cgo.go
-	go build posix.go
+	CGO_ENABLED=0 go build posix.go
 	go build posix-cgo.go
 
 posix.go: ptest.go posix.stub_go Makefile

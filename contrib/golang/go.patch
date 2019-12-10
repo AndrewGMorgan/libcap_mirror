@@ -1,4 +1,4 @@
-From 60797de30be0e1dc8fcc670c489f65546de991d2 Mon Sep 17 00:00:00 2001
+From b6d0ea13bdcf6ee80825d485c7161792c41600a1 Mon Sep 17 00:00:00 2001
 From: "Andrew G. Morgan" <morgan@kernel.org>
 Date: Sat, 30 Nov 2019 13:22:28 -0800
 Subject: [PATCH] POSIX semantics support for some Linux syscalls
@@ -41,9 +41,11 @@ runtime.
 
 As a side note, the glibc/nptl:setxid support (2019-11-30) does
 not extend to all security related system calls under Linux so
-using native Go for security related applications is likely to be
-more rational. That is, using the syscall.PosixSyscall wrappers
-for things like setting state through SYS_PRCTL and SYS_SETCAP etc.
+using native Go (CGO_ENABLED=0) and these PosixSyscall()s where
+needed will yield more well defined/consistent behavior over all
+threads of a Go program. That is, using the syscall.PosixSyscall
+wrappers for things like setting state through SYS_PRCTL and
+SYS_CAPSET etc.
 
 Signed-off-by: Andrew G. Morgan <morgan@kernel.org>
 ---
@@ -293,7 +295,7 @@ index 5f8ff8139a..04a6b89cf0 100644
  //go:nosplit
  func cgocall(fn, arg unsafe.Pointer) int32 {
 diff --git a/src/runtime/proc.go b/src/runtime/proc.go
-index 56e9530ab6..ccae983f37 100644
+index d264e1d120..7464304fa4 100644
 --- a/src/runtime/proc.go
 +++ b/src/runtime/proc.go
 @@ -130,6 +130,9 @@ func main() {
@@ -306,7 +308,7 @@ index 56e9530ab6..ccae983f37 100644
  		systemstack(func() {
  			newm(sysmon, nil)
  		})
-@@ -877,6 +880,69 @@ func startTheWorld() {
+@@ -885,6 +888,69 @@ func startTheWorld() {
  	getg().m.preemptoff = ""
  }
  
@@ -376,7 +378,7 @@ index 56e9530ab6..ccae983f37 100644
  // stopTheWorldGC has the same effect as stopTheWorld, but blocks
  // until the GC is not running. It also blocks a GC from starting
  // until startTheWorldGC is called.
-@@ -1796,6 +1862,21 @@ func startTemplateThread() {
+@@ -1804,6 +1870,21 @@ func startTemplateThread() {
  	newm(templateThread, nil)
  }
  
@@ -398,7 +400,7 @@ index 56e9530ab6..ccae983f37 100644
  // templateThread is a thread in a known-good state that exists solely
  // to start new threads in known-good states when the calling thread
  // may not be in a good state.
-@@ -1832,6 +1913,7 @@ func templateThread() {
+@@ -1840,6 +1921,7 @@ func templateThread() {
  		noteclear(&newmHandoff.wake)
  		unlock(&newmHandoff.lock)
  		notesleep(&newmHandoff.wake)
@@ -406,7 +408,7 @@ index 56e9530ab6..ccae983f37 100644
  	}
  }
  
-@@ -1853,8 +1935,14 @@ func stopm() {
+@@ -1861,8 +1943,14 @@ func stopm() {
  	lock(&sched.lock)
  	mput(_g_.m)
  	unlock(&sched.lock)
@@ -423,7 +425,7 @@ index 56e9530ab6..ccae983f37 100644
  	acquirep(_g_.m.nextp.ptr())
  	_g_.m.nextp = 0
  }
-@@ -4461,9 +4549,14 @@ func sysmon() {
+@@ -4457,9 +4545,14 @@ func sysmon() {
  	checkdead()
  	unlock(&sched.lock)
  
@@ -438,7 +440,7 @@ index 56e9530ab6..ccae983f37 100644
  	for {
  		if idle == 0 { // start with 20us sleep...
  			delay = 20
-@@ -4474,6 +4567,7 @@ func sysmon() {
+@@ -4470,6 +4563,7 @@ func sysmon() {
  			delay = 10 * 1000
  		}
  		usleep(delay)
@@ -446,7 +448,7 @@ index 56e9530ab6..ccae983f37 100644
  		now := nanotime()
  		next := timeSleepUntil()
  		if debug.schedtrace <= 0 && (sched.gcwaiting != 0 || atomic.Load(&sched.npidle) == uint32(gomaxprocs)) {
-@@ -4493,6 +4587,7 @@ func sysmon() {
+@@ -4489,6 +4583,7 @@ func sysmon() {
  						osRelax(true)
  					}
  					notetsleep(&sched.sysmonnote, sleep)
@@ -454,7 +456,7 @@ index 56e9530ab6..ccae983f37 100644
  					if shouldRelax {
  						osRelax(false)
  					}
-@@ -4529,12 +4624,14 @@ func sysmon() {
+@@ -4525,12 +4620,14 @@ func sysmon() {
  				incidlelocked(1)
  			}
  		}
@@ -470,12 +472,12 @@ index 56e9530ab6..ccae983f37 100644
  		// and preempt long running G's
  		if retake(now) != 0 {
 diff --git a/src/runtime/runtime2.go b/src/runtime/runtime2.go
-index fe1147e247..980442dfe8 100644
+index 3f9e51c528..7bfc8a2998 100644
 --- a/src/runtime/runtime2.go
 +++ b/src/runtime/runtime2.go
-@@ -525,6 +525,9 @@ type m struct {
- 	thread        uintptr // thread handle
- 	freelink      *m      // on sched.freem
+@@ -524,6 +524,9 @@ type m struct {
+ 	syscalltick   uint32
+ 	freelink      *m // on sched.freem
  
 +	mfixlock mutex           // lock to protect mfixupfn
 +	mfixupfn func(bool) bool // used to synchronize OS related m state (credentials etc)
@@ -483,7 +485,7 @@ index fe1147e247..980442dfe8 100644
  	// these are here because they are too large to be on the stack
  	// of low-level NOSPLIT functions.
  	libcall   libcall
-@@ -727,6 +730,7 @@ type schedt struct {
+@@ -726,6 +729,7 @@ type schedt struct {
  	stopnote   note
  	sysmonwait uint32
  	sysmonnote note
