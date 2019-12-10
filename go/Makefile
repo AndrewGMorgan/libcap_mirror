@@ -4,7 +4,7 @@
 topdir=$(realpath ..)
 include $(topdir)/Make.Rules
 
-GOPATH="$(realpath .)"
+GOPATH=$(realpath .)
 PSXGOPACKAGE=pkg/$(GOOSARCH)/libcap/psx.a
 CAPGOPACKAGE=pkg/$(GOOSARCH)/libcap/cap.a
 
