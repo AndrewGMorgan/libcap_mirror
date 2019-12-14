@@ -35,7 +35,11 @@ release: distclean
 	cd .. && ln -s libcap libcap-$(VERSION).$(MINOR) && tar cvf libcap-$(VERSION).$(MINOR).tar --exclude patches libcap-$(VERSION).$(MINOR)/* && rm libcap-$(VERSION).$(MINOR)
 
 test: all
-	cd progs && sudo ./quicktest.sh
+	make -C tests test
+ifeq ($(GOLANG),yes)
+	make -C go test
+endif
+	make -C progs test
 
 morganrelease: distclean
 	@echo "sign the tag twice: older DSA key; and newer RSA kernel.org key"
