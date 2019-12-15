@@ -4,9 +4,11 @@
  * This file deals with getting and setting capabilities on processes.
  */
 
-#include <sys/syscall.h>
 #include <sys/prctl.h>
+#include <sys/securebits.h>
+#include <sys/syscall.h>
 #include <unistd.h>
+#include <grp.h>
 
 #include "libcap.h"
 
@@ -35,6 +37,8 @@ static long int (*_libcap_syscall)(long int, long int, long int, long int)
 static long int (*_libcap_syscall6)(long int, long int, long int, long int,
     long int, long int, long int) = _cap_syscall6;
 
+static int _libcap_overrode_syscalls;
+
 void cap_set_syscall(long int (*new_syscall)(long int,
 					     long int, long int, long int),
 		     long int (*new_syscall6)(long int,
@@ -43,6 +47,7 @@ void cap_set_syscall(long int (*new_syscall)(long int,
 {
     _libcap_syscall = new_syscall;
     _libcap_syscall6 = new_syscall6;
+    _libcap_overrode_syscalls = 1;
 }
 
 /*
@@ -265,4 +270,251 @@ int cap_reset_ambient()
 	return -1;
     }
     return result;
+}
+
+/*
+ * Read the security mode of the current process.
+ */
+unsigned cap_get_secbits(void)
+{
+    return (unsigned) prctl(PR_GET_SECUREBITS, pr_arg(0), pr_arg(0));
+}
+/*
+ * Set the security mode of the current process.
+ */
+int cap_set_secbits(unsigned bits)
+{
+    return _libcap_prctl(PR_SET_SECUREBITS, bits, 0);
+}
+
+/*
+ * Some predefined
+ */
+#define CAP_SECURED_BITS_BASIC                                 \
+    (SECBIT_NOROOT | SECBIT_NOROOT_LOCKED |                    \
+     SECBIT_NO_SETUID_FIXUP | SECBIT_NO_SETUID_FIXUP_LOCKED |  \
+     SECBIT_KEEP_CAPS_LOCKED)
+
+#define CAP_SECURED_BITS_AMBIENT  (CAP_SECURED_BITS_BASIC |    \
+     SECBIT_NO_CAP_AMBIENT_RAISE | SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED)
+
+/*
+ * cap_set_mode locks the overarching capability framework of the
+ * present process and thus its children to a predefined flavor. Once
+ * set, these modes cannot be undone by the affected process tree and
+ * can only be done by "cap_setpcap" permitted processes. Note, a side
+ * effect of this function, whether it succeeds or fails, is to clear
+ * atleast the CAP_EFFECTIVE flags for the current process.
+ */
+int cap_set_mode(cap_mode_t flavor)
+{
+    const cap_value_t raise_cap_setpcap[] = {CAP_SETPCAP};
+    cap_t working = cap_get_proc();
+    int ret = cap_set_flag(working, CAP_EFFECTIVE,
+			   1, raise_cap_setpcap, CAP_SET);
+    ret = ret | cap_set_proc(working);
+    int olderrno = errno;
+    unsigned secbits = CAP_SECURED_BITS_AMBIENT;
+
+    if (ret == 0) {
+	switch (flavor) {
+	case CAP_MODE_NOPRIV:
+	    /* fall through */
+	case CAP_MODE_PURE1E_INIT:
+	    (void) cap_clear_flag(working, CAP_INHERITABLE);
+	    /* fall through */
+	case CAP_MODE_PURE1E:
+	    for (cap_flag_t c = 0; !ret; c++) {
+		ret = cap_get_ambient(c);
+		if (ret == -1) {
+		    if (c == 0) {
+			secbits = CAP_SECURED_BITS_BASIC;
+		    }
+		    errno = olderrno;
+		    ret = 0;
+		    break;
+		}
+		if (!ret) {
+		    continue;
+		}
+		ret = cap_reset_ambient();
+		break;
+	    }
+	    if (ret) {
+		break; /* ambient dropping failed */
+	    }
+
+	    ret = cap_set_secbits(secbits);
+	    if (flavor != CAP_MODE_NOPRIV) {
+		break;
+	    }
+
+	    /* just for "case CAP_MODE_NOPRIV:" */
+
+	    for (cap_value_t c = 0; cap_get_bound(c) >= 0; c++) {
+		(void) cap_drop_bound(c);
+	    }
+	    (void) cap_clear_flag(working, CAP_PERMITTED);
+	    break;
+	default:
+	    errno = EINVAL;
+	    ret = -1;
+	    break;
+	}
+    }
+
+    (void) cap_clear_flag(working, CAP_EFFECTIVE);
+    ret = cap_set_proc(working) | ret;
+    (void) cap_free(working);
+    return ret;
+}
+
+/*
+ * cap_get_mode attempts to determine what the current capability mode
+ * is. If it can find no match in the libcap pre-defined modes, it
+ * returns CAP_MODE_UNCERTAIN.
+ */
+cap_mode_t cap_get_mode(void)
+{
+    unsigned secbits = cap_get_secbits();
+
+    if ((secbits & CAP_SECURED_BITS_BASIC) != CAP_SECURED_BITS_BASIC) {
+	return CAP_MODE_UNCERTAIN;
+    }
+
+    /* validate ambient is not set */
+    int olderrno = errno;
+    int ret = 0;
+    for (cap_flag_t c = 0; !ret; c++) {
+	ret = cap_get_ambient(c);
+	if (ret == -1) {
+	    errno = olderrno;
+	    if (c && secbits != CAP_SECURED_BITS_AMBIENT) {
+		return CAP_MODE_UNCERTAIN;
+	    }
+	    break;
+	}
+	if (ret) {
+	    return CAP_MODE_UNCERTAIN;
+	}
+    }
+
+    cap_t working = cap_get_proc();
+    cap_t empty = cap_init();
+    int cf = cap_compare(empty, working);
+    cap_free(empty);
+    cap_free(working);
+
+    if (CAP_DIFFERS(cf, CAP_INHERITABLE)) {
+	return CAP_MODE_PURE1E;
+    }
+    if (CAP_DIFFERS(cf, CAP_PERMITTED) || CAP_DIFFERS(cf, CAP_EFFECTIVE)) {
+	return CAP_MODE_PURE1E_INIT;
+    }
+
+    for (cap_value_t c = 0; ; c++) {
+	int v = cap_get_bound(c);
+	if (v == -1) {
+	    break;
+	}
+	if (v) {
+	    return CAP_MODE_PURE1E_INIT;
+	}
+    }
+
+    return CAP_MODE_NOPRIV;
+}
+
+/*
+ * cap_setuid attempts to set the uid of the process without dropping
+ * any permitted capabilities in the process. A side effect of a call
+ * to this function is that the effective set will be cleared by the
+ * time the function returns.
+ */
+int cap_setuid(uid_t uid)
+{
+    const cap_value_t raise_cap_setuid[] = {CAP_SETUID};
+    cap_t working = cap_get_proc();
+    (void) cap_set_flag(working, CAP_EFFECTIVE,
+			1, raise_cap_setuid, CAP_SET);
+    /*
+     * Note, we are cognizant of not using glibc's setuid in the case
+     * that we've modified the way libcap is doing setting
+     * syscalls. This is because prctl needs to be working in a POSIX
+     * compliant way for the code below to work, so we are either
+     * all-broken or not-broken and don't allow for "sort of working".
+     */
+    (void) _libcap_prctl(PR_SET_KEEPCAPS, 1, 0);
+    int ret = cap_set_proc(working);
+    if (ret == 0) {
+	if (_libcap_overrode_syscalls) {
+	    ret = _libcap_syscall(SYS_setuid, (long int) uid, 0, 0);
+	    if (ret < 0) {
+		errno = -ret;
+		ret = -1;
+	    }
+	} else {
+	    ret = setuid(uid);
+	}
+    }
+    int olderrno = errno;
+    (void) _libcap_prctl(PR_SET_KEEPCAPS, 0, 0);
+
+    (void) cap_clear_flag(working, CAP_EFFECTIVE);
+    (void) cap_set_proc(working);
+    (void) cap_free(working);
+
+    errno = olderrno;
+    return ret;
+}
+
+/*
+ * cap_setgroups combines setting the gid with changing the set of
+ * supplemental groups for a user into one call that raises the needed
+ * capabilities to do it for the duration of the call. A side effect
+ * of a call to this function is that the effective set will be
+ * cleared by the time the function returns.
+ */
+int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
+{
+    const cap_value_t raise_cap_setgid[] = {CAP_SETGID};
+    cap_t working = cap_get_proc();
+    (void) cap_set_flag(working, CAP_EFFECTIVE,
+			1, raise_cap_setgid, CAP_SET);
+    /*
+     * Note, we are cognizant of not using glibc's setgid etc in the
+     * case that we've modified the way libcap is doing setting
+     * syscalls. This is because prctl needs to be working in a POSIX
+     * compliant way for the other functions of this file so we are
+     * all-broken or not-broken and don't allow for "sort of working".
+     */
+    int ret = cap_set_proc(working);
+    if (_libcap_overrode_syscalls) {
+	if (ret == 0) {
+	    ret = _libcap_syscall(SYS_setgid, (long int) gid, 0, 0);
+	}
+	if (ret == 0) {
+	    ret = _libcap_syscall(SYS_setgroups, (long int) ngroups,
+				  (long int) groups, 0);
+	}
+	if (ret < 0) {
+	    errno = -ret;
+	    ret = -1;
+	}
+    } else {
+	if (ret == 0) {
+	    ret = setgid(gid);
+	}
+	if (ret == 0) {
+	    ret = setgroups(ngroups, groups);
+	}
+    }
+    int olderrno = errno;
+
+    (void) cap_clear_flag(working, CAP_EFFECTIVE);
+    (void) cap_set_proc(working);
+    (void) cap_free(working);
+
+    errno = olderrno;
+    return ret;
 }

@@ -111,18 +111,29 @@ long int psx_syscall6(long int syscall_nr,
 }
 
 /*
+ * psx_signal_start initializes the signal handler as a constructor
+ * using a linker trick. This runs before Go has a chance to mess with
+ * all the signal handlers. The constructor index is the priority we
+ * can use without generating a linker complaint.
+ */
+static void psx_signal_start(void) {
+    /*
+     * glibc nptl picks from the SIGRTMIN end, so we pick from the
+     * SIGRTMAX end
+     */
+    psx_tracker.psx_sig = SIGRTMAX;
+    psx_tracker.sig_action.sa_handler = psx_posix_syscall_handler;
+    sigemptyset(&psx_tracker.sig_action.sa_mask);
+    psx_tracker.sig_action.sa_flags = 0;
+    sigaction(psx_tracker.psx_sig, &psx_tracker.sig_action, NULL);
+}
+
+/*
  * psx_syscall_start initializes the subsystem.
  */
 static void psx_syscall_start(void) {
     psx_tracker.initialized = 1;
-
-    psx_tracker.psx_sig = 42; /* default signal number for syscall syncing */
-    psx_tracker.sig_action.sa_handler = psx_posix_syscall_handler;
-    sigemptyset(&psx_tracker.sig_action.sa_mask);
-    psx_tracker.sig_action.sa_flags = 0;
-
-    sigaction(psx_tracker.psx_sig, &psx_tracker.sig_action, NULL);
-
+    psx_signal_start();
     share_psx_syscall(psx_syscall3, psx_syscall6);
 }
 
@@ -247,8 +258,9 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	return -1;
     }
 
-    pthread_mutex_lock(&psx_tracker.mu);
     long int ret;
+
+    pthread_mutex_lock(&psx_tracker.mu);
 
     psx_tracker.cmd.syscall_nr = syscall_nr;
     psx_tracker.cmd.arg1 = count > 0 ? arg[0] : 0;

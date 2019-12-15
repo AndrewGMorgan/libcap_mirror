@@ -14,26 +14,34 @@ import (
 // #include <stdlib.h>
 // #include <sys/capability.h>
 // #cgo CFLAGS: -I../libcap/include
-// #cgo LDFLAGS: -L../libcap/ -lcap
+// #cgo LDFLAGS: -L../libcap -lcap
 import "C"
 
 // tryFileCaps attempts to use the cap package to manipulate file
 // capabilities. No reference to libcap in this function.
 func tryFileCaps() {
+	saved := cap.GetProc()
+
+	// Capabilities we will place on a file.
 	want := cap.NewSet()
 	if err := want.SetFlag(cap.Permitted, true, cap.SETFCAP, cap.DAC_OVERRIDE); err != nil {
-		log.Fatalf("failed to make desired file capability: %v", err)
+		log.Fatalf("failed to explore desired file capability: %v", err)
+	}
+	if err := want.SetFlag(cap.Effective, true, cap.SETFCAP, cap.DAC_OVERRIDE); err != nil {
+		log.Fatalf("failed to raise the effective bits: %v", err)
 	}
 
-	c := cap.GetProc()
-	if perm, err := c.GetFlag(cap.Permitted, cap.SETFCAP); err != nil {
+	if perm, err := saved.GetFlag(cap.Permitted, cap.SETFCAP); err != nil {
 		log.Fatalf("failed to read capability: %v", err)
 	} else if !perm {
 		log.Printf("skipping file cap tests - insufficient privilege")
 		return
 	}
 
-	if err := want.SetProc(); err != nil {
+	if err := saved.ClearFlag(cap.Effective); err != nil {
+		log.Fatalf("failed to drop effective: %v", err)
+	}
+	if err := saved.SetProc(); err != nil {
 		log.Fatalf("failed to limit capabilities: %v", err)
 	}
 
@@ -43,8 +51,12 @@ func tryFileCaps() {
 		log.Fatalf("failed to be blocked from removing filecaps: %v", err)
 	}
 
-	// The privilege we want (in the case we are root, we need the DAC_OVERRIDE too).
-	working := cap.GetProc()
+	// The privilege we want (in the case we are root, we need the
+	// DAC_OVERRIDE too).
+	working, err := saved.Dup()
+	if err != nil {
+		log.Fatalf("failed to duplicate (%v): %v", saved, err)
+	}
 	if err := working.SetFlag(cap.Effective, true, cap.DAC_OVERRIDE, cap.SETFCAP); err != nil {
 		log.Fatalf("failed to raise effective: %v", err)
 	}
@@ -60,18 +72,18 @@ func tryFileCaps() {
 	if got, err := cap.GetFile(os.Args[0]); err == nil {
 		log.Fatalf("read deleted file caps: %v", got)
 	}
-	// Create file caps (this uses employs the effective bit).
-	if err := working.SetFile(os.Args[0]); err != nil {
+	// Create file caps (this use employs the effective bit).
+	if err := want.SetFile(os.Args[0]); err != nil {
 		log.Fatalf("failed to set file capability: %v", err)
 	}
-	if err := want.SetProc(); err != nil {
+	if err := saved.SetProc(); err != nil {
 		log.Fatalf("failed to lower effective capability: %v", err)
 	}
 	// End of critical section.
 
 	if got, err := cap.GetFile(os.Args[0]); err != nil {
 		log.Fatalf("failed to read caps: %v", err)
-	} else if is, was := got.String(), working.String(); is != was {
+	} else if is, was := got.String(), want.String(); is != was {
 		log.Fatalf("read file caps do not match desired: got=%q want=%q", is, was)
 	}
 
@@ -87,6 +99,9 @@ func tryFileCaps() {
 		log.Fatalf("failed to be blocked from fremoving filecaps: %v", err)
 	}
 
+	// For the next section, we won't set the effective bit on the file.
+	want.ClearFlag(cap.Effective)
+
 	// Critical (privilege using) section:
 	if err := working.SetProc(); err != nil {
 		log.Fatalf("failed to enable effective privilege: %v", err)
@@ -97,11 +112,11 @@ func tryFileCaps() {
 	if got, err := cap.GetFd(f); err == nil {
 		log.Fatalf("read fdeleted file caps: %v", got)
 	}
-	// This one does not set the effective bit. (ie., want != working)
+	// This one does not set the effective bit.
 	if err := want.SetFd(f); err != nil {
 		log.Fatalf("failed to fset file capability: %v", err)
 	}
-	if err := want.SetProc(); err != nil {
+	if err := saved.SetProc(); err != nil {
 		log.Fatalf("failed to lower effective capability: %v", err)
 	}
 	// End of critical section.
@@ -111,6 +126,65 @@ func tryFileCaps() {
 	} else if is, was := got.String(), want.String(); is != was {
 		log.Fatalf("fread file caps do not match desired: got=%q want=%q", is, was)
 	}
+}
+
+// tryProcCaps performs a set of convenience functions and compares the
+// results with those seen by libcap. At the end of this function, the
+// running process has no privileges at all. So exiting is the only
+// option.
+func tryProcCaps() {
+	c := cap.GetProc()
+	if v, err := c.GetFlag(cap.Permitted, cap.SETPCAP); err != nil {
+		log.Fatalf("failed to read permitted setpcap: %v", err)
+	} else if !v {
+		log.Printf("skipping proc cap tests - insufficient privilege")
+		return
+	}
+	if err := cap.SetUID(99); err != nil {
+		log.Fatalf("failed to set uid=99: %v", err)
+	}
+	if u := syscall.Getuid(); u != 99 {
+		log.Fatal("uid=99 did not take: got=%d", u)
+	}
+	if err := cap.SetGroups(98, 100, 101); err != nil {
+		log.Fatalf("failed to set groups=98 [100, 101]: %v", err)
+	}
+	if g := syscall.Getgid(); g != 98 {
+		log.Fatalf("gid=98 did not take: got=%d", g)
+	}
+	if gs, err := syscall.Getgroups(); err != nil {
+		log.Fatalf("error getting groups: %v", err)
+	} else if len(gs) != 2 || gs[0] != 100 || gs[1] != 101 {
+		log.Fatalf("wrong of groups: got=%v want=[100 l01]", gs)
+	}
+
+	if mode := cap.GetMode(); mode != cap.ModeUncertain {
+		log.Fatalf("initial mode should be 0 (UNCERTAIN), got: %d (%v)", mode, mode)
+	}
+
+	// To distinguish PURE1E and PURE1E_INIT we need an inheritable capability set.
+	working := cap.GetProc()
+	if err := working.SetFlag(cap.Inheritable, true, cap.SETPCAP); err != nil {
+		log.Fatalf("unable to raise inheritable bit: %v", err)
+	}
+	if err := working.SetProc(); err != nil {
+		log.Fatalf("failed to add inheritable bit: %v", err)
+	}
+
+	for i, mode := range []cap.Mode{cap.ModePure1E, cap.ModePure1EInit, cap.ModeNoPriv} {
+		if err := mode.Set(); err != nil {
+			log.Fatalf("[%d] failed to set mode to %d (%v): %v", i, mode, mode, err)
+		}
+		if got := cap.GetMode(); got != mode {
+			log.Fatalf("[%d] unable to recognise mode %d (%v), got: %d (%v)", i, mode, mode, got, got)
+		}
+		cM := C.cap_get_mode()
+		if mode != cap.Mode(cM) {
+			log.Fatalf("[%d] C and Go disagree on mode: %d vs %d", cM, mode)
+		}
+	}
+
+	// The current process is now without any access to privelege.
 }
 
 func main() {
@@ -202,6 +276,8 @@ func main() {
 	// the current program is capable enough and do not involve
 	// any cgo calls to libcap.
 	tryFileCaps()
+	tryProcCaps()
 
+	// Since we have no privilege, there is nothing left to do but exit.
 	log.Printf("compare-cap success!")
 }

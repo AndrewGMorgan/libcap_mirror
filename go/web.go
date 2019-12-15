@@ -6,9 +6,9 @@
 // the equivalent of the Go runtime patch that adds a POSIX semantics
 // wrapper around the system calls that change kernel state. A patch
 // for the pure Go compiler/runtime to add this support is available
-// here [2019-11-16]:
+// here [2019-12-14]:
 //
-// https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/contrib/golang/go.patch
+//    https://go-review.googlesource.com/c/go/+/210639/
 //
 // Until that patch, or something like it, is absorbed into the Go
 // runtime the only way to get capabilities to work reliably on the Go
@@ -21,7 +21,7 @@
 // (packages libcap/{cap,psx} should be installed, as must libpsx.a):
 //
 //   go build web.go
-//   sudo setcap cap_net_bind_service=p web
+//   sudo setcap cap_setpcap,cap_net_bind_service=p web
 //   ./web --port=80
 //
 // Make requests using wget and observe the log of web:
@@ -54,7 +54,7 @@ func ensureNotEUID() {
 	egid := syscall.Getegid()
 	gid := syscall.Getgid()
 	if uid != euid || gid != egid {
-		log.Fatalf("go runtime unable to resolve differing uids:(%d vs %d), gids(%d vs %d)", uid, euid, gid, egid)
+		log.Fatalf("go runtime is setuid uids:(%d vs %d), gids(%d vs %d)", uid, euid, gid, egid)
 	}
 	if uid == 0 {
 		log.Fatalf("go runtime is running as root - cheating")
@@ -125,7 +125,7 @@ func main() {
 	defer ls.Close()
 
 	if !*skipPriv {
-		if err := cap.NewSet().SetProc(); err != nil {
+		if err := cap.ModeNoPriv.Set(); err != nil {
 			panic(fmt.Errorf("unable to drop all privilege: %v", err))
 		}
 	}

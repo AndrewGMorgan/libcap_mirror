@@ -63,6 +63,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# validate libcap modes:
+pass_capsh --inh=cap_chown --mode=PURE1E --print --inmode=PURE1E
+pass_capsh --mode=NOPRIV --print --inmode=NOPRIV
+pass_capsh --mode=PURE1E --print --mode=NOPRIV --inmode=NOPRIV
+fail_capsh --mode=NOPRIV --print --mode=PURE1E
+fail_capsh --user=nobody --mode=NOPRIV --print -- ./privileged
+
 # Explore keep_caps support
 pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 
@@ -72,9 +79,15 @@ pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 /bin/chmod u+s tcapsh
 /bin/ls -l tcapsh
 
-# leverage keep caps maintain capabilities accross a change of uid
+# leverage keep caps to maintain capabilities accross a change of euid
 # from setuid root to capable luser (as per wireshark/dumpcap 0.99.7)
-pass_capsh --uid=500 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --uid=500 --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
+# This test is subtle. It is testing that a change to self, dropping
+# euid=0 back to that of the luser keeps capabilities.
+pass_capsh --uid=500 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --print --uid=500 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
+
+# this test is a change of user to a new user, note we need to raise
+# the cap_setuid capability (libcap has a function for that) in this case.
+pass_capsh --uid=500 -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_admin=ip cap_setuid=p\" --print --cap-uid=501 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
 
 # This fails, on 2.6.24, but shouldn't
 pass_capsh --uid=500 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --uid=500 --forkfor=10 --caps= --print --killit=9 --print"
@@ -146,7 +159,7 @@ if ./capsh --has-ambient ; then
     secbits="0xef --noamb"
 fi
 pass_capsh --keep=1 --uid=$nouid --caps=cap_setpcap=ep \
-    --drop=all --secbits=$secbits --caps= --print
+	   --drop=all --secbits=$secbits --caps= --print
 
 # Verify we can chroot
 pass_capsh --chroot=$(/bin/pwd)
@@ -217,12 +230,12 @@ rm -f nsprivileged
 # If the build tree compiled the Go cap package.
 if [ -f ../go/compare-cap ]; then
     cp ../go/compare-cap .
-    ./compare-cap
+    LD_LIBRARY_PATH=../libcap ./compare-cap
     if [ $? -ne 0 ]; then
 	echo "FAILED to execute go binary"
 	exit 1
     fi
-    ./compare-cap 2>&1 | grep "skipping file cap tests"
+    LD_LIBRARY_PATH=../libcap ./compare-cap 2>&1 | grep "skipping file cap tests"
     if [ $? -eq 0 ]; then
 	echo "FAILED not engaging file cap tests"
     fi

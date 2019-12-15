@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-11,16 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 2008-11,16,19 Andrew G. Morgan <morgan@kernel.org>
  *
  * This is a simple 'bash' wrapper program that can be used to
  * raise and lower both the bset and pI capabilities before invoking
@@ -12,17 +12,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/prctl.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <pwd.h>
 #include <grp.h>
 #include <errno.h>
 #include <ctype.h>
 #include <sys/capability.h>
+#include <sys/prctl.h>
 #include <sys/securebits.h>
 #include <sys/wait.h>
-#include <sys/prctl.h>
+#include <unistd.h>
 
 #define MAX_GROUPS       100   /* max number of supplementary groups for user */
 
@@ -72,14 +71,15 @@ static void display_prctl_set(const char *name, int (*fn)(cap_value_t))
 /* arg_print displays the current capability state of the process */
 static void arg_print(void)
 {
-    int set, status, j;
+    long set;
+    int status, j;
     cap_t all;
     char *text;
     const char *sep;
     struct group *g;
     gid_t groups[MAX_GROUPS], gid;
-    uid_t uid;
-    struct passwd *u;
+    uid_t uid, euid;
+    struct passwd *u, *eu;
 
     all = cap_get_proc();
     text = cap_to_text(all, NULL);
@@ -89,11 +89,10 @@ static void arg_print(void)
 
     display_prctl_set("Bounding", cap_get_bound);
     display_prctl_set("Ambient", cap_get_ambient);
-    set = prctl(PR_GET_SECUREBITS);
+    set = cap_get_secbits();
     if (set >= 0) {
-	const char *b;
-	b = binary(set);  /* use verilog convention for binary string */
-	printf("Securebits: 0%o/0x%x/%u'b%s\n", set, set,
+	const char *b = binary(set);  /* verilog convention for binary string */
+	printf("Securebits: 0%lo/0x%lx/%u'b%s\n", set, set,
 	       (unsigned) strlen(b), b);
 	printf(" secure-noroot: %s (%s)\n",
 	       (set & SECBIT_NOROOT) ? "yes":"no",
@@ -122,7 +121,9 @@ static void arg_print(void)
     }
     uid = getuid();
     u = getpwuid(uid);
-    printf("uid=%u(%s)\n", getuid(), u ? u->pw_name : "???");
+    euid = geteuid();
+    eu = getpwuid(euid);
+    printf("uid=%u(%s) euid=%u(%s)\n", uid, u ? u->pw_name : "???", euid, eu ? eu->pw_name : "???");
     gid = getgid();
     g = getgrgid(gid);
     printf("gid=%u(%s)\n", gid, g ? g->gr_name : "???");
@@ -135,6 +136,8 @@ static void arg_print(void)
 	sep = ",";
     }
     printf("\n");
+    cap_mode_t mode = cap_get_mode();
+    printf("Guessed mode: %s (%d)\n", cap_mode_name(mode), mode);
 }
 
 static const cap_value_t raise_setpcap[1] = { CAP_SETPCAP };
@@ -442,6 +445,50 @@ int main(int argc, char *argv[], char *envp[])
 	     */
 
 	    cap_free(all);
+	} else if (!strcmp("--modes", argv[i])) {
+	    cap_mode_t c;
+	    printf("Supported modes:");
+	    for (c = 1; ; c++) {
+		const char *m = cap_mode_name(c);
+		if (strcmp("UNKNOWN", m) == 0) {
+		    break;
+		}
+		printf(" %s", m);
+	    }
+	    printf("\n");
+	} else if (!strncmp("--mode=", argv[i], 7)) {
+	    const char *target = argv[i]+7;
+	    cap_mode_t c;
+	    int found = 0;
+	    for (c = 1; ; c++) {
+		const char *m = cap_mode_name(c);
+		if (!strcmp("UNKNOWN", m)) {
+		    found = 0;
+		    break;
+		}
+		if (!strcmp(m, target)) {
+		    found = 1;
+		    break;
+		}
+	    }
+	    if (!found) {
+		printf("unsupported mode: %s\n", target);
+		exit(1);
+	    }
+	    int ret = cap_set_mode(c);
+	    if (ret != 0) {
+		printf("failed to set mode [%s]: %s\n",
+		       target, strerror(errno));
+		exit(1);
+	    }
+	} else if (!strncmp("--inmode=", argv[i], 9)) {
+	    const char *target = argv[i]+9;
+	    cap_mode_t c = cap_get_mode();
+	    const char *m = cap_mode_name(c);
+	    if (strcmp(m, target)) {
+		printf("mismatched mode got=%s want=%s\n", m, target);
+		exit(1);
+	    }
 	} else if (!strncmp("--keep=", argv[i], 7)) {
 	    unsigned value;
 	    int set;
@@ -501,9 +548,8 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strncmp("--secbits=", argv[i], 10)) {
 	    unsigned value;
 	    int status;
-
 	    value = strtoul(argv[i]+10, NULL, 0);
-	    status = prctl(PR_SET_SECUREBITS, value);
+	    status = cap_set_secbits(value);
 	    if (status < 0) {
 		fprintf(stderr, "failed to set securebits to 0%o/0x%x\n",
 			value, value);
@@ -511,7 +557,10 @@ int main(int argc, char *argv[], char *envp[])
 	    }
 	} else if (!strncmp("--forkfor=", argv[i], 10)) {
 	    unsigned value;
-
+	    if (child != 0) {
+		fprintf(stderr, "already forked\n");
+		exit(1);
+	    }
 	    value = strtoul(argv[i]+10, NULL, 0);
 	    if (value == 0) {
 		goto usage;
@@ -549,6 +598,7 @@ int main(int argc, char *argv[], char *envp[])
 			, value, WTERMSIG(status));
 		exit(1);
 	    }
+	    child = 0;
 	} else if (!strncmp("--uid=", argv[i], 6)) {
 	    unsigned value;
 	    int status;
@@ -557,6 +607,17 @@ int main(int argc, char *argv[], char *envp[])
 	    status = setuid(value);
 	    if (status < 0) {
 		fprintf(stderr, "Failed to set uid=%u: %s\n",
+			value, strerror(errno));
+		exit(1);
+	    }
+	} else if (!strncmp("--cap-uid=", argv[i], 10)) {
+	    unsigned value;
+	    int status;
+
+	    value = strtoul(argv[i]+10, NULL, 0);
+	    status = cap_setuid(value);
+	    if (status < 0) {
+		fprintf(stderr, "Failed to cap_setuid(%u): %s\n",
 			value, strerror(errno));
 		exit(1);
 	    }
@@ -634,18 +695,12 @@ int main(int argc, char *argv[], char *envp[])
 	      perror("Unable to get group list for user");
 	      exit(1);
 	    }
-	    status = setgroups(ngroups, groups);
+	    status = cap_setgroups(pwd->pw_gid, ngroups, groups);
 	    if (status != 0) {
-	      perror("Unable to set group list for user");
-	      exit(1);
-	    }
-	    status = setgid(pwd->pw_gid);
-	    if (status < 0) {
-		fprintf(stderr, "Failed to set gid=%u(user=%s): %s\n",
-			pwd->pw_gid, user, strerror(errno));
+		perror("Unable to set group list for user");
 		exit(1);
 	    }
-	    status = setuid(pwd->pw_uid);
+	    status = cap_setuid(pwd->pw_uid);
 	    if (status < 0) {
 		fprintf(stderr, "Failed to set uid=%u(user=%s): %s\n",
 			pwd->pw_uid, user, strerror(errno));
@@ -708,16 +763,20 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --has-ambient  fail immediately unless ambient supported\n"
 		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
 		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
-		   "  --noamb=xxx    reset the ambient capabilities\n"
+		   "  --noamb        reset (drop) all ambient capabilities\n"
 		   "  --caps=xxx     set caps as per cap_from_text()\n"
 		   "  --inh=xxx      set xxx,.. inheritiable set\n"
 		   "  --secbits=<n>  write a new value for securebits\n"
 		   "  --keep=<n>     set keep-capabability bit to <n>\n"
 		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
+		   "  --cap-uid=<n>  libcap cap_setuid() to change uid\n"
 		   "  --gid=<n>      set gid to <n> (hint: id <username>)\n"
 		   "  --groups=g,... set the supplemental groups\n"
                    "  --user=<name>  set uid,gid and groups to that of user\n"
 		   "  --chroot=path  chroot(2) to this path\n"
+		   "  --modes        list libcap named capability modes\n"
+		   "  --mode=<xxx>   set capability mode to <xxx>\n"
+		   "  --inmode=<xxx> exit 1 if current mode is not <xxx>\n"
 		   "  --killit=<n>   send signal(n) to child\n"
 		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
 		   "  ==             re-exec(capsh) with args as for --\n"

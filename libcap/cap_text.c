@@ -141,7 +141,7 @@ cap_t cap_from_text(const char *str)
 	errno = EINVAL;
 	return NULL;
     }
-    
+
     _cap_debug("%s", str);
 
     for (;;) {
@@ -435,4 +435,22 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
     }
 
     return (_libcap_strdup(buf));
+}
+
+/*
+ * cap_mode_name returns a text token naming the specified mode.
+ */
+const char *cap_mode_name(cap_mode_t flavor) {
+    switch (flavor) {
+    case CAP_MODE_NOPRIV:
+	return "NOPRIV";
+    case CAP_MODE_PURE1E_INIT:
+	return "PURE1E_INIT";
+    case CAP_MODE_PURE1E:
+	return "PURE1E";
+    case CAP_MODE_UNCERTAIN:
+	return "UNCERTAIN";
+    default:
+	return "UNKNOWN";
+    }
 }

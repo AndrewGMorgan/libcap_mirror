@@ -54,15 +54,6 @@ int __real_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
       return -1;                                                         \
     }
 
-#define PSX_DEFAULT_INTERRUPT 42
-
-/*
- * psx_set_interrupt specifies the non-default interrupt number used
- * by the psx abstraction. Return status of 0 means success, -1
- * otherwise and errno is set to the cause.
- */
-int psx_set_interrupt(int interrupt_number);
-
 /*
  * psx_syscall performs the specified syscall on all psx registered
  * threads. The mecanism by which this occurs is much less efficient

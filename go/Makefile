@@ -48,14 +48,14 @@ web: web.go $(CAPGOPACKAGE)
 	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go build $<
 ifeq ($(RAISE_GO_FILECAP),yes)
 	make -C ../progs setcap
-	sudo ../progs/setcap cap_net_bind_service=p web
+	sudo ../progs/setcap cap_setpcap,cap_net_bind_service=p web
 	@echo "NOTE: RAISED cap_net_bind_service ON web binary"
 endif
 
 test: all
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH="$(GOPATH)" go test libcap/psx
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go test libcap/cap
-	./compare-cap
+	LD_LIBRARY_PATH=../libcap ./compare-cap
 
 sudotest: test
 

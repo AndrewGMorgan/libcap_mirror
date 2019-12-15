@@ -67,6 +67,12 @@ typedef enum {
  * User-space capability manipulation routines
  */
 
+typedef unsigned cap_mode_t;
+#define CAP_MODE_UNCERTAIN    ((cap_mode_t) 0)
+#define CAP_MODE_NOPRIV       ((cap_mode_t) 1)
+#define CAP_MODE_PURE1E_INIT  ((cap_mode_t) 2)
+#define CAP_MODE_PURE1E       ((cap_mode_t) 3)
+
 /* libcap/cap_alloc.c */
 extern cap_t   cap_dup(cap_t);
 extern int     cap_free(void *);
@@ -121,6 +127,16 @@ extern void cap_set_syscall(long int (*new_syscall)(long int,
 			    long int (*new_syscall6)(long int,
 				long int, long int, long int,
 				long int, long int, long int));
+
+extern int cap_set_mode(cap_mode_t flavor);
+extern cap_mode_t cap_get_mode(void);
+extern const char *cap_mode_name(cap_mode_t flavor);
+
+extern unsigned cap_get_secbits(void);
+extern int cap_set_secbits(unsigned bits);
+
+extern int cap_setuid(uid_t uid);
+extern int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[]);
 
 /*
  * system calls - look to libc for function to system call
