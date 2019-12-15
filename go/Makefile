@@ -40,7 +40,7 @@ $(CAPGOPACKAGE): src/libcap/cap/syscalls.go src/libcap/cap/names.go src/libcap/c
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go install libcap/cap
 
 # Compiles something with this package to compare it to libcap. This
-# tests more when run under sudo (see ../progs/quicktest.sh for that).
+# tests more when run under sudotest (see ../progs/quicktest.sh for that).
 compare-cap: compare-cap.go $(CAPGOPACKAGE)
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go build $<
 
@@ -56,6 +56,8 @@ test: all
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH="$(GOPATH)" go test libcap/psx
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go test libcap/cap
 	./compare-cap
+
+sudotest: test
 
 install: all
 	mkdir -p $(FAKEROOT)$(GOPKGDIR)/libcap/psx

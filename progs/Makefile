@@ -35,6 +35,8 @@ ifeq ($(RAISE_SETFCAP),yes)
 endif
 
 test: $(PROGS)
+
+sudotest: test
 	sudo ./quicktest.sh
 
 clean:

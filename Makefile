@@ -41,6 +41,13 @@ ifeq ($(GOLANG),yes)
 endif
 	make -C progs test
 
+sudotest: all
+	make -C tests sudotest
+ifeq ($(GOLANG),yes)
+	make -C go sudotest
+endif
+	make -C progs sudotest
+
 morganrelease: distclean
 	@echo "sign the tag twice: older DSA key; and newer RSA kernel.org key"
 	git tag -u D41A6DF2 -s libcap-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"

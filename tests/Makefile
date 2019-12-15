@@ -14,6 +14,8 @@ $(DEPS):
 
 test: run_psx_test run_libcap_psx_test
 
+sudotest: test
+
 install: all
 
 run_psx_test: psx_test psx_test_wrap
