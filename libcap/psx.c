@@ -69,11 +69,13 @@ static struct psx_tracker_s {
 } psx_tracker;
 
 /*
- * psx_posix_syscall_handler performs the system call on the targeted
+ * psx_posix_syscall_actor performs the system call on the targeted
  * thread and decreases the outstanding syscall counter.
  */
-static void psx_posix_syscall_handler(int signum) {
-    if (!psx_tracker.cmd.active || signum != psx_tracker.psx_sig) {
+static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
+    /* bail early if this isn't something we recognize */
+    if (signum != psx_tracker.psx_sig || !psx_tracker.cmd.active ||
+	info == NULL || info->si_code != SI_TKILL || info->si_pid != getpid()) {
 	return;
     }
 
@@ -122,9 +124,9 @@ static void psx_signal_start(void) {
      * SIGRTMAX end
      */
     psx_tracker.psx_sig = SIGRTMAX;
-    psx_tracker.sig_action.sa_handler = psx_posix_syscall_handler;
+    psx_tracker.sig_action.sa_sigaction = psx_posix_syscall_actor;
     sigemptyset(&psx_tracker.sig_action.sa_mask);
-    psx_tracker.sig_action.sa_flags = 0;
+    psx_tracker.sig_action.sa_flags = SA_SIGINFO | SA_RESTART;;
     sigaction(psx_tracker.psx_sig, &psx_tracker.sig_action, NULL);
 }
 
