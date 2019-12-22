@@ -5,6 +5,44 @@ import (
 	"testing"
 )
 
+func TestAllMask(t *testing.T) {
+	oldMask := maxValues
+	oldWords := words
+	defer func() {
+		maxValues = oldMask
+		words = oldWords
+	}()
+
+	maxValues = 35
+	words = 3
+
+	vs := []struct {
+		val   Value
+		index uint
+		bit   uint32
+		mask  uint32
+	}{
+		{val: CHOWN, index: 0, bit: 0x1, mask: ^uint32(0)},
+		{val: 38, index: 1, bit: (1 << 6), mask: 0x7},
+		{val: 34, index: 1, bit: (1 << 2), mask: 0x7},
+		{val: 65, index: 2, bit: (1 << 1), mask: 0},
+	}
+	for i, v := range vs {
+		index, bit, err := bitOf(Inheritable, v.val)
+		if err != nil {
+			t.Fatalf("[%d] %v(%d) - not bitOf: %v", i, v.val, v.val, err)
+		} else if index != v.index {
+			t.Errorf("[%d] %v(%d) - index: got=%d want=%d", i, v.val, v.val, index, v.index)
+		}
+		if bit != v.bit {
+			t.Errorf("[%d] %v(%d) - bit: got=%b want=%b", i, v.val, v.val, bit, v.bit)
+		}
+		if mask := allMask(index); mask != v.mask {
+			t.Errorf("[%d] %v(%d) - mask: got=%b want=%b", i, v.val, v.val, mask, v.mask)
+		}
+	}
+}
+
 func TestString(t *testing.T) {
 	a := CHOWN
 	if got, want := a.String(), "cap_chown"; got != want {
@@ -65,6 +103,13 @@ func same(a, b *Set) error {
 }
 
 func TestImportExport(t *testing.T) {
+	wantQ := "=ep cap_chown-e 63+ip"
+	if q, err := FromText(wantQ); err != nil {
+		t.Fatalf("failed to parse %q: %v", wantQ, err)
+	} else if gotQ := q.String(); gotQ != wantQ {
+		t.Fatalf("static test failed %q -> q -> %q", wantQ, gotQ)
+	}
+
 	// Sanity check empty import/export.
 	c := NewSet()
 	if ex, err := c.Export(); err != nil {
@@ -83,15 +128,15 @@ func TestImportExport(t *testing.T) {
 		v := Value(i % (maxValues + 3))
 		c.SetFlag(s, i&17 < 8, v)
 		if ex, err := c.Export(); err != nil {
-			t.Fatalf("[%d] failed to export empty set: %v", i, err)
+			t.Fatalf("[%d] failed to export (%q): %v", i, c, err)
 		} else if im, err := Import(ex); err != nil {
-			t.Fatalf("[%d] failed to import empty set: %v", i, err)
+			t.Fatalf("[%d] failed to import (%q) set: %v", i, c, err)
 		} else if got, want := im.String(), c.String(); got != want {
 			t.Fatalf("[%d] import != export: got=%q want=%q [%02x]", i, got, want, ex)
 		} else if parsed, err := FromText(got); err != nil {
 			t.Fatalf("[%d] failed to parse %q: %v", i, got, err)
 		} else if err := same(c, parsed); err != nil {
-			t.Fatalf("[%d] miscompare: %v", i, err)
+			t.Fatalf("[%d] miscompare (%q vs. %q): %v", i, got, parsed, err)
 		}
 	}
 }

@@ -90,7 +90,25 @@ func bitOf(vec Flag, val Value) (uint, uint32, error) {
 	return u / 32, uint32(1) << (u % 32), nil
 }
 
-// forceFlag sets all capability values of a flag vector to enable.
+// allMask returns the mask of valid bits in the all mask for index.
+func allMask(index uint) (mask uint32) {
+	if maxValues == 0 {
+		panic("uninitialized package")
+	}
+	base := 32 * uint(index)
+	if maxValues <= base {
+		return
+	}
+	if maxValues >= 32+base {
+		mask = ^mask
+		return
+	}
+	mask = uint32((uint64(1) << (maxValues % 32)) - 1)
+	return
+}
+
+// forceFlag sets 'all' capability values (supported by the kernel) of
+// a flag vector to enable.
 func (c *Set) forceFlag(vec Flag, enable bool) error {
 	if c == nil || len(c.flat) == 0 || vec > Inheritable {
 		return ErrBadSet
@@ -102,7 +120,7 @@ func (c *Set) forceFlag(vec Flag, enable bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for i := range c.flat {
-		c.flat[i][vec] = m
+		c.flat[i][vec] = m & allMask(uint(i))
 	}
 	return nil
 }

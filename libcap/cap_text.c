@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8,2007-8 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2007-8,2019 Andrew G Morgan <morgan@kernel.org>
  * Copyright (c) 1997 Andrew Main <zefram@dcs.warwick.ac.uk>
  *
  * This file deals with exchanging internal and textual
@@ -56,11 +56,22 @@ static char const *namcmp(char const *str, char const *nam)
     return str;
 }
 
+/*
+ * forceall forces all of the named capabilities to be assigned the
+ * masked value, and zeroed otherwise.
+ */
 static void forceall(__u32 *flat, __u32 value, unsigned blks)
 {
-    unsigned n;
-
-    for (n = blks; n--; flat[n] = value);
+    for (unsigned n = blks; n--; ) {
+	unsigned base = 32*n;
+	__u32 mask = 0;
+	if (__CAP_BITS >= base + 32) {
+	    mask = ~0;
+	} else if (__CAP_BITS > base) {
+	    mask = (unsigned) ((1ULL << (__CAP_BITS % 32)) - 1);
+	}
+	flat[n] = value & mask;
+    }
 
     return;
 }
@@ -149,7 +160,7 @@ cap_t cap_from_text(const char *str)
 	char op;
 	int flags = 0, listed=0;
 
-	forceall(list, 0, __CAP_BLKS);
+	memset(list, 0, sizeof(__u32)*__CAP_BLKS);
 
 	/* skip leading spaces */
 	while (isspace((unsigned char)*str))
@@ -366,8 +377,8 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 
     memset(histo, 0, sizeof(histo));
 
-    /* default prevailing state to the upper - unnamed bits */
-    for (n = cap_maxbits-1; n > __CAP_BITS; n--)
+    /* default prevailing state to the named bits */
+    for (n = 0; n < __CAP_BITS; n++)
 	histo[getstateflags(caps, n)]++;
 
     /* find which combination of capability sets shares the most bits
@@ -377,12 +388,6 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
     for (m=t=7; t--; )
 	if (histo[t] >= histo[m])
 	    m = t;
-
-    /* capture remaining bits - selecting m from only the unnamed bits,
-       we maximize the likelihood that we won't see numeric capability
-       values in the text output. */
-    while (n--)
-	histo[getstateflags(caps, n)]++;
 
     /* blank is not a valid capability set */
     p = sprintf(buf, "=%s%s%s",
@@ -397,9 +402,7 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	*p++ = ' ';
 	for (n = 0; n < cap_maxbits; n++) {
 	    if (getstateflags(caps, n) == t) {
-	        char *this_cap_name;
-
-	        this_cap_name = cap_to_name(n);
+	        char *this_cap_name = cap_to_name(n);
 	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
 		    cap_free(this_cap_name);
 		    errno = ERANGE;
@@ -429,6 +432,40 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    return NULL;
 	}
     }
+
+    /* capture remaining unnamed bits - which must all be +. */
+    memset(histo, 0, sizeof(histo));
+    for (n = cap_maxbits-1; n >= __CAP_BITS; n--)
+	histo[getstateflags(caps, n)]++;
+
+    for (t = 8; t-- > 1; ) {
+	if (!histo[t]) {
+	    continue;
+	}
+	*p++ = ' ';
+	for (n = __CAP_BITS; n < cap_maxbits; n++) {
+	    if (getstateflags(caps, n) == t) {
+		char *this_cap_name = cap_to_name(n);
+	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
+		    cap_free(this_cap_name);
+		    errno = ERANGE;
+		    return NULL;
+	        }
+		p += sprintf(p, "%s,", this_cap_name);
+		cap_free(this_cap_name);
+	    }
+	}
+	p--;
+	p += sprintf(p, "+%s%s%s",
+		     (t & LIBCAP_EFF) ? "e" : "",
+		     (t & LIBCAP_INH) ? "i" : "",
+		     (t & LIBCAP_PER) ? "p" : "");
+	if (p - buf > CAP_TEXT_SIZE) {
+	    errno = ERANGE;
+	    return NULL;
+	}
+    }
+
     _cap_debug("%s", buf);
     if (length_p) {
 	*length_p = p - buf;

@@ -271,6 +271,16 @@ func main() {
 		log.Fatalf("c import from go yielded bad caps: got=%q want=%q", got, want)
 	}
 
+	// Validate that everyone agrees what all is:
+	want := "=ep"
+	all, err := cap.FromText("all=ep")
+	if err != nil {
+		log.Fatalf("unable to parse all=ep: %v", err)
+	}
+	if got := all.String(); got != want {
+		log.Fatalf("all decode failed in Go: got=%q, want=%q", got, want)
+	}
+
 	// Next, we attempt to manipulate some file capabilities on
 	// the running program.  These are optional, based on whether
 	// the current program is capable enough and do not involve

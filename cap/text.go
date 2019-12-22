@@ -51,13 +51,13 @@ var combos = []string{"", "e", "p", "ep", "i", "ei", "ip", "eip"}
 func (c *Set) histo(m uint, bins []int, patterns []uint, from, limit Value) uint {
 	for v := from; v < limit; v++ {
 		b := uint(v & 31)
-		u, mask, err := bitOf(0, v)
+		u, bit, err := bitOf(0, v)
 		if err != nil {
 			break
 		}
-		x := uint((c.flat[u][Effective]&mask)>>b) * eBin
-		x |= uint((c.flat[u][Permitted]&mask)>>b) * pBin
-		x |= uint((c.flat[u][Inheritable]&mask)>>b) * iBin
+		x := uint((c.flat[u][Effective]&bit)>>b) * eBin
+		x |= uint((c.flat[u][Permitted]&bit)>>b) * pBin
+		x |= uint((c.flat[u][Inheritable]&bit)>>b) * iBin
 		bins[x]++
 		patterns[uint(v)] = x
 		if bins[m] <= bins[x] {
@@ -70,7 +70,7 @@ func (c *Set) histo(m uint, bins []int, patterns []uint, from, limit Value) uint
 // String converts a full capability Set into it canonical readable
 // string representation (which may contain spaces).
 func (c *Set) String() string {
-	if c == nil {
+	if c == nil || len(c.flat) == 0 {
 		return "<invalid>"
 	}
 	bins := make([]int, 8)
@@ -81,14 +81,10 @@ func (c *Set) String() string {
 
 	// Note, in order to have a *Set pointer, startUp.Do(cInit)
 	// must have been called which sets maxValues.
-	m := c.histo(0, bins, patterns, Value(maxValues), 32*Value(words))
-	// Background state is the most popular of the unnamed bits,
-	// this has the effect of tending to not list numerical values
-	// for unnamed capabilities in the generated text.
-	vs := []string{"=" + combos[m]}
+	m := c.histo(0, bins, patterns, 0, Value(maxValues))
 
-	// Extend the histogram with the remaining Value occurrences.
-	c.histo(m, bins, patterns, 0, Value(maxValues))
+	// Background state is the most popular of the named bits.
+	vs := []string{"=" + combos[m]}
 	for i := uint(8); i > 0; {
 		i--
 		if i == m || bins[i] == 0 {
@@ -108,6 +104,27 @@ func (c *Set) String() string {
 			vs = append(vs, strings.Join(list, ",")+"-"+combos[cf])
 		}
 	}
+
+	// The unnamed bits can only add to the above named ones since
+	// unnamed ones are always defaulted to lowered.
+	uBins := make([]int, 8)
+	uPatterns := make([]uint, 32*words)
+	c.histo(0, uBins, uPatterns, Value(maxValues), 32*Value(words))
+	for i := uint(8); i > 1; {
+		i--
+		if uBins[i] == 0 {
+			continue
+		}
+		var list []string
+		for j, p := range uPatterns {
+			if p != i {
+				continue
+			}
+			list = append(list, Value(j).String())
+		}
+		vs = append(vs, strings.Join(list, ",")+"+"+combos[i])
+	}
+
 	return strings.Join(vs, " ")
 }
 
@@ -157,13 +174,16 @@ func FromText(text string) (*Set, error) {
 			}
 		}
 		if sep == '=' {
-			keep := len(vs) == 0 // '=' means default to off except setting individual values.
+			// '=' means default to off for all named flags.
+			// '=ep' means default on for named e & p.
+			keep := len(vs) == 0
 			c.forceFlag(Effective, fE && keep)
 			c.forceFlag(Permitted, fP && keep)
 			c.forceFlag(Inheritable, fI && keep)
 			if keep {
 				continue
 			}
+
 		}
 		if fE {
 			c.SetFlag(Effective, sep != '-', vs...)
