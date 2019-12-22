@@ -1,6 +1,7 @@
-.TH CAP_GET_PROC 3 "2019-12-14" "" "Linux Programmer's Manual"
+.TH CAP_GET_PROC 3 "2019-12-21" "" "Linux Programmer's Manual"
 .SH NAME
 cap_get_proc, cap_set_proc, capgetp, cap_get_bound, cap_drop_bound, \
+cap_get_ambient, cap_set_ambient, cap_reset_ambient, \
 cap_get_secbits, cap_set_secbits, cap_get_mode, cap_set_mode, \
 cap_mode_name, cap_get_pid, cap_setuid, cap_setgroups \
 \- capability manipulation on processes
@@ -16,6 +17,14 @@ cap_mode_name, cap_get_pid, cap_setuid, cap_setgroups \
 .BI "CAP_IS_SUPPORTED(cap_value_t " cap );
 .sp
 .BI "int cap_drop_bound(cap_value_t " cap );
+.sp
+.BI "int cap_get_ambient(cap_value_t " cap );
+.sp
+.BI "int cap_set_ambient(cap_value_t " cap ", cap_flag_value_t " value );
+.sp
+.B int cap_reset_ambient(void);
+.sp
+.BI CAP_AMBIENT_SUPPORTED();
 .sp
 .B "unsigned cap_get_secbits(void);"
 .sp
@@ -89,16 +98,43 @@ If the system does not support the capability, this function returns
 .PP
 .BR cap_drop_bound ()
 can be used to lower the specified bounding set capability,
-.BR cap ,
+.BR cap .
 To complete successfully, the prevailing
 .I effective
 capability set must have a raised
 .BR CAP_SETPCAP .
 .PP
+.BR cap_get_ambient ()
+returns the prevailing value of the specified ambient capability, or
+-1 if the capability is not supported by the running kernel.  A macro
+.BR CAP_AMBIENT_SUPPORTED ()
+uses this function to determine if ambient capabilities are supported
+by the kernel.
+.PP
+.BR cap_set_ambient ()
+sets the specified ambient capability to a specific value. To complete
+successfully, the prevailing
+.I effective
+capability set must have a raised
+.BR CAP_SETPCAP .
+.PP
+.BR cap_reset_ambient ()
+resets all of the ambient capabilities for the current process to
+their lowered value. To complete successfully, the prevailing
+.I effective
+capability set must have a raised
+.BR CAP_SETPCAP .
+Note, the ambient set is intended to operate in a legacy environment
+where the application has limited awareness of capabilities in
+general. Executing a file with associated filesystem capabilities, the
+kernel will implicitly reset the ambient set of the process. Also,
+changes to the inheritable set by the program code without explicitly
+fixing up the ambient set can also drop ambient bits.
+.PP
 .BR cap_get_secbits ()
-returns the securebits of the current process. These bits affect the way
-in which the current process implements things like setuid-root fixup and
-ambient capabilities.
+returns the securebits of the current process. These bits affect the
+way in which the current process implements things like setuid-root
+fixup and ambient capabilities.
 .PP
 .BR cap_set_secbits ()
 attempts to modify the securebits of the current process. Note
