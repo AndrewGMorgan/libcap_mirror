@@ -8,4 +8,5 @@ int main(int argc, char **argv) {
     psx_register(pthread_self());
     cap_t start = cap_get_proc();
     cap_set_proc(start);
+    return 0;
 }

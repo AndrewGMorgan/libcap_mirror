@@ -4,11 +4,15 @@
  * This file deals with getting and setting capabilities on processes.
  */
 
+#define _GNU_SOURCE
+
 #include <sys/prctl.h>
 #include <sys/securebits.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <grp.h>
+
+#include <linux/limits.h>
 
 #include "libcap.h"
 
@@ -317,6 +321,8 @@ int cap_set_mode(cap_mode_t flavor)
     unsigned secbits = CAP_SECURED_BITS_AMBIENT;
 
     if (ret == 0) {
+	cap_flag_t c;
+
 	switch (flavor) {
 	case CAP_MODE_NOPRIV:
 	    /* fall through */
@@ -324,7 +330,7 @@ int cap_set_mode(cap_mode_t flavor)
 	    (void) cap_clear_flag(working, CAP_INHERITABLE);
 	    /* fall through */
 	case CAP_MODE_PURE1E:
-	    for (cap_flag_t c = 0; !ret; c++) {
+	    for (c = 0; !ret; c++) {
 		ret = cap_get_ambient(c);
 		if (ret == -1) {
 		    if (c == 0) {
@@ -351,7 +357,7 @@ int cap_set_mode(cap_mode_t flavor)
 
 	    /* just for "case CAP_MODE_NOPRIV:" */
 
-	    for (cap_value_t c = 0; cap_get_bound(c) >= 0; c++) {
+	    for (c = 0; cap_get_bound(c) >= 0; c++) {
 		(void) cap_drop_bound(c);
 	    }
 	    (void) cap_clear_flag(working, CAP_PERMITTED);
@@ -385,7 +391,8 @@ cap_mode_t cap_get_mode(void)
     /* validate ambient is not set */
     int olderrno = errno;
     int ret = 0;
-    for (cap_flag_t c = 0; !ret; c++) {
+    cap_value_t c;
+    for (c = 0; !ret; c++) {
 	ret = cap_get_ambient(c);
 	if (ret == -1) {
 	    errno = olderrno;
@@ -412,7 +419,7 @@ cap_mode_t cap_get_mode(void)
 	return CAP_MODE_PURE1E_INIT;
     }
 
-    for (cap_value_t c = 0; ; c++) {
+    for (c = 0; ; c++) {
 	int v = cap_get_bound(c);
 	if (v == -1) {
 	    break;

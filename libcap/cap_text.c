@@ -62,7 +62,8 @@ static char const *namcmp(char const *str, char const *nam)
  */
 static void forceall(__u32 *flat, __u32 value, unsigned blks)
 {
-    for (unsigned n = blks; n--; ) {
+    unsigned n;
+    for (n = blks; n--; ) {
 	unsigned base = 32*n;
 	__u32 mask = 0;
 	if (__CAP_BITS >= base + 32) {

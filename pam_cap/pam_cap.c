@@ -7,6 +7,8 @@
 
 /* #define DEBUG */
 
+#define _DEFAULT_SOURCE
+
 #include <errno.h>
 #include <grp.h>
 #include <limits.h>
@@ -18,6 +20,7 @@
 #include <syslog.h>
 #include <sys/capability.h>
 #include <sys/types.h>
+#include <linux/limits.h>
 
 #include <security/pam_modules.h>
 #include <security/_pam_macros.h>
@@ -55,8 +58,8 @@ static int load_groups(const char *user, char ***groups, int *groups_n) {
     }
 
     *groups = calloc(ngrps, sizeof(char *));
-    int g_n = 0;
-    for (int i = 0; i < ngrps; i++) {
+    int g_n = 0, i;
+    for (i = 0; i < ngrps; i++) {
 	const struct group *g = getgrgid(grps[i]);
 	if (g == NULL) {
 	    continue;
@@ -128,7 +131,8 @@ static char *read_capabilities_for_user(const char *user, const char *source)
 		D(("user [%s] is not [%s] - skipping", user, line));
 	    }
 
-	    for (int i=0; i < groups_n; i++) {
+	    int i;
+	    for (i=0; i < groups_n; i++) {
 		if (!strcmp(groups[i], line+1)) {
 		    D(("user group matched [%s]", line));
 		    found_one = 1;
@@ -154,7 +158,8 @@ static char *read_capabilities_for_user(const char *user, const char *source)
 defer:
     memset(buffer, 0, CAP_FILE_BUFFER_SIZE);
 
-    for (int i = 0; i < groups_n; i++) {
+    int i;
+    for (i = 0; i < groups_n; i++) {
 	char *g = groups[i];
 	_pam_overwrite(g);
 	_pam_drop(g);
@@ -221,7 +226,7 @@ static int set_capabilities(struct pam_cap_s *cs)
 	goto cleanup_caps;
     }
     if (cap_reset_ambient() == 0) {
-	// Ambient set fully declared by this config.
+	/* Ambient set fully declared by this config. */
 	has_ambient = 1;
     }
 
@@ -241,7 +246,7 @@ static int set_capabilities(struct pam_cap_s *cs)
 	if (has_bound) {
 	    bound = calloc(max_caps, sizeof(int));
 	    if (has_ambient) {
-		// In kernel lineage, bound came first.
+		/* In kernel lineage, bound came first. */
 		ambient = calloc(max_caps, sizeof(int));
 	    }
 	}
@@ -316,7 +321,8 @@ static int set_capabilities(struct pam_cap_s *cs)
     if (cap_set_proc(cap_s)) {
 	D(("failed to set specified capabilities: %s", strerror(errno)));
     } else {
-	for (cap_value_t c = 0; c < max_caps; c++) {
+	cap_value_t c;
+	for (c = 0; c < max_caps; c++) {
 	    if (ambient != NULL && ambient[c]) {
 		cap_set_ambient(c, CAP_SET);
 	    }

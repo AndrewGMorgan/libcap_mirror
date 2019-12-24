@@ -52,8 +52,8 @@ static void *say_hello(void *args) {
 
 int main(int argc, char **argv) {
     pthread_t tid[3];
-
-    for (int i = 0; i<10; i++) {
+    int i;
+    for (i = 0; i<10; i++) {
 	printf("iteration: %d\n", i);
 
 	pthread_mutex_lock(&mu);
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 	if (i < 3) {
 	    launched++;
 	    if (i == 1) {
-		// Confirm this works whether or not we are WRAPPING.
+		/* Confirm this works whether or not we are WRAPPING. */
 		psx_pthread_create(&tid[i], NULL, say_hello, NULL);
 	    } else if (i < 3) {
 #ifdef NOWRAP
@@ -86,14 +86,14 @@ int main(int argc, char **argv) {
 		pthread_create(&tid[i], NULL, say_hello, NULL);
 #endif
 	    }
-	    // Confirm that the thread is started.
+	    /* Confirm that the thread is started. */
 	    pthread_mutex_lock(&mu);
 	    while (started < launched) {
 		pthread_cond_wait(&cond, &mu);
 	    }
 	    pthread_mutex_unlock(&mu);
 	} else if (i < 6) {
-	    // Confirm one thread has finished.
+	    /* Confirm one thread has finished. */
 	    pthread_join(tid[i-3], NULL);
 	    launched--;
 	}

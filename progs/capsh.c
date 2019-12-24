@@ -9,6 +9,8 @@
  * capability manipulations work as expected (or not).
  */
 
+#define _DEFAULT_SOURCE
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

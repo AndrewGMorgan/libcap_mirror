@@ -17,15 +17,15 @@ const char *test_users[] = {
 };
 #define n_users sizeof(test_users)/sizeof(*test_users)
 
-// Note about memberships:
-//
-//   user gid   suppl groups
-//  root  root
-//  alpha one   two
-//  beta  two   three four
-//  gamma three four five six
-//  delta four  five six seven [eight]
-//
+/* Note about memberships:
+ *
+ *  user gid   suppl groups
+ *  root  root
+ *  alpha one   two
+ *  beta  two   three four
+ *  gamma three four five six
+ *  delta four  five six seven [eight]
+ */
 
 static char *test_user;
 
@@ -76,7 +76,8 @@ struct group *getgrgid(gid_t gid) {
 
 static struct passwd pw;
 struct passwd *getpwnam(const char *name) {
-    for (int i = 0; i < n_users; i++) {
+    int i;
+    for (i = 0; i < n_users; i++) {
 	if (strcmp(name, test_users[i]) == 0) {
 	    pw.pw_gid = i;
 	    return &pw;
@@ -99,7 +100,8 @@ struct passwd *getpwnam(const char *name) {
 static void load_vectors(unsigned long int bits[3]) {
     memset(bits, 0, 3*sizeof(unsigned long int));
     cap_t prev = cap_get_proc();
-    for (int i = 0; i < 64; i++) {
+    int i;
+    for (i = 0; i < 64; i++) {
 	unsigned long int mask = (1ULL << i);
 	int v = cap_get_bound(i);
 	if (v < 0) {
@@ -160,7 +162,7 @@ int main(int argc, char *argv[]) {
 	exit(1);
     }
 
-    // Now it is time to execute the credential setting
+    /* Now it is time to execute the credential setting */
     load_vectors(before);
 
     status = pam_sm_setcred(NULL, PAM_ESTABLISH_CRED, argc-4,

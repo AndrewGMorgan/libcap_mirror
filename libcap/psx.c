@@ -9,6 +9,8 @@
  * psx_syscall()-like function that leveraged the nptl:setxid
  * mechanism to synchronize thread state over the whole process.
  */
+#define _POSIX_C_SOURCE 199309L
+#define _GNU_SOURCE
 
 #include <errno.h>
 #include <pthread.h>
@@ -16,8 +18,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/psx_syscall.h>
 #include <unistd.h>
+#include <sys/psx_syscall.h>
+#include <sys/syscall.h>
 
 /*
  * share_psx_syscall() is invoked to advertize the two functions
@@ -144,7 +147,7 @@ static void psx_do_registration(pthread_t thread) {
     (void) pthread_once(&psx_tracker_initialized, psx_syscall_start);
 
     if (first_time) {
-	// First invocation, use recursion to register main() thread.
+	/* First invocation, use recursion to register main() thread. */
 	psx_do_registration(pthread_self());
     }
 
@@ -246,10 +249,11 @@ int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
  */
 long int __psx_syscall(long int syscall_nr, ...) {
     long int arg[7];
+    int i;
 
     va_list aptr;
     va_start(aptr, syscall_nr);
-    for (int i = 0; i < 7; i++) {
+    for (i = 0; i < 7; i++) {
 	arg[i] = va_arg(aptr, long int);
     }
     va_end(aptr);
@@ -298,8 +302,8 @@ long int __psx_syscall(long int syscall_nr, ...) {
     psx_tracker.cmd.active = 1;
 
     pthread_t self = pthread_self();
-    registered_thread_t *next = NULL;
-    for (registered_thread_t *ref = psx_tracker.root; ref; ref = next) {
+    registered_thread_t *next = NULL, *ref;
+    for (ref = psx_tracker.root; ref; ref = next) {
 	next = ref->next;
 	if (ref->thread == self) {
 	    continue;
