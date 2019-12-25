@@ -47,19 +47,26 @@ typedef struct registered_thread_s {
 
 static pthread_once_t psx_tracker_initialized = PTHREAD_ONCE_INIT;
 
+typedef int psx_tracker_state_t;
+
+#define _PSX_IDLE    ((psx_tracker_state_t) 0)
+#define _PSX_SETUP   ((psx_tracker_state_t) 1)
+#define _PSX_SYSCALL ((psx_tracker_state_t) 2)
+#define _PSX_CREATE  ((psx_tracker_state_t) 3)
+
 /*
  * This global structure holds the global coordination state for
  * libcap's psx_posix_syscall() support.
  */
 static struct psx_tracker_s {
-    pthread_mutex_t mu;
+    pthread_mutex_t state_mu;
+    pthread_cond_t cond;
+    psx_tracker_state_t state;
 
     int initialized;
     int psx_sig;
 
     struct {
-	pthread_mutex_t mu;
-	pthread_cond_t cond;
 	long syscall_nr;
 	long arg1, arg2, arg3, arg4, arg5, arg6;
 	int six;
@@ -97,11 +104,10 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 		       psx_tracker.cmd.arg6);
     }
 
-    pthread_mutex_lock(&psx_tracker.cmd.mu);
-    if (! --psx_tracker.cmd.todo) {
-	pthread_cond_signal(&psx_tracker.cmd.cond);
-    }
-    pthread_mutex_unlock(&psx_tracker.cmd.mu);
+    pthread_mutex_lock(&psx_tracker.state_mu);
+    --psx_tracker.cmd.todo;
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
 }
 
 long int psx_syscall3(long int syscall_nr,
@@ -187,14 +193,69 @@ static void psx_do_registration(pthread_t thread) {
  * Note, there is no need to ever register the main() process thread.
  */
 void psx_register(pthread_t thread) {
-    pthread_mutex_lock(&psx_tracker.mu);
+    pthread_mutex_lock(&psx_tracker.state_mu);
     psx_do_registration(thread);
-    pthread_mutex_unlock(&psx_tracker.mu);
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
 }
 
 /* provide a prototype */
 int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 			  void *(*start_routine) (void *), void *arg);
+
+/*
+ * psx_wait_for_idle waits for the psx_tracker to become idle and then
+ * announces a thread creation is in progress.
+ */
+static void psx_wait_for_idle(void) {
+    psx_tracker_state_t state;
+    sigset_t old;
+    int unblocked = 0;
+
+    pthread_mutex_lock(&psx_tracker.state_mu);
+    for (;;) {
+	state = psx_tracker.state;
+	if (state == _PSX_IDLE) {
+	    if (unblocked) {
+		pthread_sigmask(SIG_BLOCK, &old, NULL);
+	    }
+	    psx_tracker.state = _PSX_CREATE;
+	    break;
+	}
+	if (state == _PSX_SYSCALL && !unblocked) {
+	    /*
+	     * We may have signals blocked, in which case we
+	     * atomically unblock that signal and wait for the syscall
+	     * to complete. This will cause the current thread to
+	     * perform the signal handling.
+	     */
+	    sigset_t new;
+	    sigemptyset(&new);
+	    sigaddset(&new, psx_tracker.psx_sig);
+	    pthread_cond_broadcast(&psx_tracker.cond);
+	    pthread_mutex_unlock(&psx_tracker.state_mu);
+
+	    pthread_sigmask(SIG_UNBLOCK, &new, &old);
+	    unblocked = 1;
+
+	    pthread_mutex_lock(&psx_tracker.state_mu);
+	}
+	pthread_cond_wait(&psx_tracker.cond, &psx_tracker.state_mu);
+    }
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
+}
+
+/*
+ * psx_resume_idle announces completion of a thread creation by
+ * restoring the psx_tracker state to idle.
+ */
+static void psx_resume_idle(void) {
+    pthread_mutex_lock(&psx_tracker.state_mu);
+    psx_tracker.state = _PSX_IDLE;
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
+}
 
 /*
  * psx_pthread_create is a wrapper for pthread_create() that registers
@@ -207,12 +268,12 @@ int psx_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 	return __wrap_pthread_create(thread, attr, start_routine, arg);
     }
 
-    pthread_mutex_lock(&psx_tracker.mu);
+    psx_wait_for_idle();
     int ret = pthread_create(thread, attr, start_routine, arg);
     if (ret != -1) {
 	psx_do_registration(*thread);
     }
-    pthread_mutex_unlock(&psx_tracker.mu);
+    psx_resume_idle();
     return ret;
 }
 
@@ -222,12 +283,12 @@ int psx_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
  */
 int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 			  void *(*start_routine) (void *), void *arg) {
-    pthread_mutex_lock(&psx_tracker.mu);
+    psx_wait_for_idle();
     int ret = __real_pthread_create(thread, attr, start_routine, arg);
     if (ret != -1) {
 	psx_do_registration(*thread);
     }
-    pthread_mutex_unlock(&psx_tracker.mu);
+    psx_resume_idle();
     return ret;
 }
 
@@ -266,7 +327,13 @@ long int __psx_syscall(long int syscall_nr, ...) {
 
     long int ret;
 
-    pthread_mutex_lock(&psx_tracker.mu);
+    pthread_mutex_lock(&psx_tracker.state_mu);
+    while (psx_tracker.state != _PSX_IDLE) {
+	pthread_cond_wait(&psx_tracker.cond, &psx_tracker.state_mu);
+    }
+    psx_tracker.state = _PSX_SETUP;
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
 
     psx_tracker.cmd.syscall_nr = syscall_nr;
     psx_tracker.cmd.arg1 = count > 0 ? arg[0] : 0;
@@ -299,7 +366,12 @@ long int __psx_syscall(long int syscall_nr, ...) {
     }
 
     int restore_errno = errno;
+
+    pthread_mutex_lock(&psx_tracker.state_mu);
+    psx_tracker.state = _PSX_SYSCALL;
     psx_tracker.cmd.active = 1;
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
 
     pthread_t self = pthread_self();
     registered_thread_t *next = NULL, *ref;
@@ -308,14 +380,18 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	if (ref->thread == self) {
 	    continue;
 	}
+	pthread_mutex_lock(&psx_tracker.state_mu);
+	psx_tracker.cmd.todo++;
+	pthread_cond_broadcast(&psx_tracker.cond);
+	pthread_mutex_unlock(&psx_tracker.state_mu);
 	if (pthread_kill(ref->thread, psx_tracker.psx_sig) == 0) {
-	    pthread_mutex_lock(&psx_tracker.cmd.mu);
-	    psx_tracker.cmd.todo++;
-	    pthread_mutex_unlock(&psx_tracker.cmd.mu);
 	    continue;
 	}
-
-	/* need to remove now invalid thread id from linked list */
+	/*
+	 * need to remove now invalid thread id from linked list
+	 */
+	pthread_mutex_lock(&psx_tracker.state_mu);
+	psx_tracker.cmd.todo--;
 	if (ref == psx_tracker.root) {
 	    psx_tracker.root = next;
 	} else if (ref->prev) {
@@ -324,20 +400,26 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	if (next) {
 	    next->prev = ref->prev;
 	}
+	pthread_cond_broadcast(&psx_tracker.cond);
+	pthread_mutex_unlock(&psx_tracker.state_mu);
 	free(ref);
     }
 
-    pthread_mutex_lock(&psx_tracker.cmd.mu);
+    pthread_mutex_lock(&psx_tracker.state_mu);
     while (psx_tracker.cmd.todo) {
-	pthread_cond_wait(&psx_tracker.cmd.cond, &psx_tracker.cmd.mu);
+	pthread_cond_wait(&psx_tracker.cond, &psx_tracker.state_mu);
     }
-    pthread_mutex_unlock(&psx_tracker.cmd.mu);
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
 
     errno = restore_errno;
-defer:
 
+defer:
+    pthread_mutex_lock(&psx_tracker.state_mu);
+    psx_tracker.state = _PSX_IDLE;
     psx_tracker.cmd.active = 0;
-    pthread_mutex_unlock(&psx_tracker.mu);
+    pthread_cond_broadcast(&psx_tracker.cond);
+    pthread_mutex_unlock(&psx_tracker.state_mu);
 
     return ret;
 }
