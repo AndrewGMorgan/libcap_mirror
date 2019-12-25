@@ -144,27 +144,11 @@ func (m Mode) Set() error {
 		return ErrBadMode
 	}
 
-	// The ambient bits are really sensitive. Once you've locked
-	// them, you can no long drop them or reset them. So, we have
-	// to look to see if any of them are set and only then attempt
-	// to reset them - this way we can clamp down ever more
-	// aggressive modes with successive Mode.Set() calls.
 	sb := securedAmbientBits
-	for c := Value(0); ; c++ {
-		v, err := GetAmbient(c)
-		if err != nil {
-			if c == 0 {
-				sb = securedBasicBits
-			}
-			break
-		}
-		if !v {
-			continue
-		}
-		if err := ResetAmbient(); err != nil {
-			return err
-		}
-		break
+	if _, err := GetAmbient(0); err != nil {
+		sb = securedBasicBits
+	} else if err := ResetAmbient(); err != nil {
+		return err
 	}
 
 	if err := sb.Set(); err != nil {

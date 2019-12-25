@@ -261,11 +261,25 @@ int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
     return result;
 }
 
-/* erase all ambient capabilities */
-
+/*
+ * cap_reset_ambient erases all ambient capabilities - this reads the
+ * ambient caps before performing the erase to workaround the corner
+ * case where the set is empty already but the ambient cap API is
+ * locked.
+ */
 int cap_reset_ambient()
 {
-    int result;
+    int olderrno = errno;
+    cap_value_t c;
+    int result = 0;
+
+    for (c = 0; !result; c++) {
+	result = cap_get_ambient(c);
+	if (result == -1) {
+	    errno = olderrno;
+	    return 0;
+	}
+    }
 
     result = _libcap_prctl6(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
 			    pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
@@ -314,11 +328,11 @@ int cap_set_mode(cap_mode_t flavor)
 {
     const cap_value_t raise_cap_setpcap[] = {CAP_SETPCAP};
     cap_t working = cap_get_proc();
+    unsigned secbits = CAP_SECURED_BITS_AMBIENT;
+
     int ret = cap_set_flag(working, CAP_EFFECTIVE,
 			   1, raise_cap_setpcap, CAP_SET);
     ret = ret | cap_set_proc(working);
-    int olderrno = errno;
-    unsigned secbits = CAP_SECURED_BITS_AMBIENT;
 
     if (ret == 0) {
 	cap_flag_t c;
@@ -330,26 +344,14 @@ int cap_set_mode(cap_mode_t flavor)
 	    (void) cap_clear_flag(working, CAP_INHERITABLE);
 	    /* fall through */
 	case CAP_MODE_PURE1E:
-	    for (c = 0; !ret; c++) {
-		ret = cap_get_ambient(c);
-		if (ret == -1) {
-		    if (c == 0) {
-			secbits = CAP_SECURED_BITS_BASIC;
-		    }
-		    errno = olderrno;
-		    ret = 0;
-		    break;
-		}
-		if (!ret) {
-		    continue;
-		}
+	    if (!CAP_AMBIENT_SUPPORTED()) {
+		secbits = CAP_SECURED_BITS_BASIC;
+	    } else {
 		ret = cap_reset_ambient();
-		break;
+		if (ret) {
+		    break; /* ambient dropping failed */
+		}
 	    }
-	    if (ret) {
-		break; /* ambient dropping failed */
-	    }
-
 	    ret = cap_set_secbits(secbits);
 	    if (flavor != CAP_MODE_NOPRIV) {
 		break;

@@ -316,8 +316,20 @@ func SetAmbient(enable bool, val ...Value) error {
 	return nil
 }
 
-// ResetAmbient attempts to fully clear the Ambient set.
+// ResetAmbient attempts to ensure the Ambient set is fully
+// cleared. It works by first reading the set and if it finds any bits
+// raised it will attempt a reset. This is a workaround for situations
+// where the Ambient API is locked.
 func ResetAmbient() error {
-	_, err := prctlwcall6(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0, 0)
+	var v bool
+	var err error
+
+	for c := Value(0); !v; c++ {
+		if v, err = GetAmbient(c); err != nil {
+			// no non-zero values found.
+			return nil
+		}
+	}
+	_, err = prctlwcall6(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0, 0)
 	return err
 }
