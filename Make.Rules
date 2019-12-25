@@ -41,7 +41,7 @@ GOPKGDIR=$(prefix)/share/gocode/src
 # common defines for libcap
 LIBTITLE=libcap
 VERSION=2
-MINOR=28
+MINOR=29
 #
 
 # Compilation specifics
