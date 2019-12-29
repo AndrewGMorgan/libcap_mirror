@@ -86,12 +86,6 @@ ifeq ($(FAKEROOT),)
 endif
 	mkdir -p -m 0755 $(FAKEROOT)$(PKGCONFIGDIR)
 	install -m 0644 libcap.pc $(FAKEROOT)$(PKGCONFIGDIR)/libcap.pc
-ifeq ($(GOLANG),yes)
-	mkdir -p -m 0755 $(FAKEROOT)$(GOPKGDIR)/libcap/cap
-	install -m 0644 src/libcap/cap/* $(FAKEROOT)$(GOPKGDIR)/libcap/cap/
-	mkdir -p -m 0755 $(FAKEROOT)$(GOPKGDIR)/libcap/psx
-	install -m 0644 src/libcap/psx/* $(FAKEROOT)$(GOPKGDIR)/libcap/psx/
-endif
 
 clean:
 	$(LOCALCLEAN)
