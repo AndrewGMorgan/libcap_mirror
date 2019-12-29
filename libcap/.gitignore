@@ -6,3 +6,4 @@ libcap.so*
 libpsx.a
 _makenames
 libcap.pc
+libpsx.pc

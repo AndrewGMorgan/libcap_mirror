@@ -99,7 +99,7 @@ endif
 
 clean:
 	$(LOCALCLEAN)
-	rm -f $(CAPOBJS) $(LIBNAME)* $(STACAPLIBNAME) libcap.pc
+	rm -f $(CAPOBJS) $(LIBNAME)* $(STACAPLIBNAME) libcap.pc libpsx.pc
 	rm -f $(PSXOBJS) $(STAPSXLIBNAME)
 	rm -f cap_names.h cap_names.list.h _makenames $(GPERF_OUTPUT)
 	cd include/sys && $(LOCALCLEAN)
