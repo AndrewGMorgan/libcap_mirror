@@ -3,10 +3,9 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libcap
-Description: libcap - linux capabilities library
+Name: libpsx
+Description: libpsx - linux posix syscall API for pthreads
 Version: @VERSION@
-Libs: -L${libdir} -lcap
+Libs: -L${libdir} -lpsx -lpthread -Wl,-wrap,pthread_create
 Libs.private: @deps@
 Cflags: -I${includedir}
-Requires: libpsx

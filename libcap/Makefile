@@ -22,7 +22,7 @@ MAJLIBNAME=$(LIBNAME).$(VERSION)
 MINLIBNAME=$(MAJLIBNAME).$(MINOR)
 GPERF_OUTPUT = _caps_output.gperf
 
-all: $(MINLIBNAME) $(STACAPLIBNAME) libcap.pc $(STAPSXLIBNAME)
+all: $(MINLIBNAME) $(STACAPLIBNAME) libcap.pc libpsx.pc $(STAPSXLIBNAME)
 
 ifeq ($(BUILD_GPERF),yes)
 USE_GPERF_OUTPUT = $(GPERF_OUTPUT)
@@ -30,6 +30,15 @@ INCLUDE_GPERF_OUTPUT = -DINCLUDE_GPERF_OUTPUT='"$(GPERF_OUTPUT)"'
 endif
 
 libcap.pc: libcap.pc.in
+	sed -e 's,@prefix@,$(prefix),' \
+		-e 's,@exec_prefix@,$(exec_prefix),' \
+		-e 's,@libdir@,$(LIBDIR),' \
+		-e 's,@includedir@,$(inc_prefix)/include,' \
+		-e 's,@VERSION@,$(VERSION).$(MINOR),' \
+		-e 's,@deps@,$(DEPS),' \
+		$< >$@
+
+libpsx.pc: libpsx.pc.in
 	sed -e 's,@prefix@,$(prefix),' \
 		-e 's,@exec_prefix@,$(exec_prefix),' \
 		-e 's,@libdir@,$(LIBDIR),' \
@@ -86,6 +95,7 @@ ifeq ($(FAKEROOT),)
 endif
 	mkdir -p -m 0755 $(FAKEROOT)$(PKGCONFIGDIR)
 	install -m 0644 libcap.pc $(FAKEROOT)$(PKGCONFIGDIR)/libcap.pc
+	install -m 0644 libpsx.pc $(FAKEROOT)$(PKGCONFIGDIR)/libpsx.pc
 
 clean:
 	$(LOCALCLEAN)
