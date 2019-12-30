@@ -236,7 +236,7 @@ func SetGroups(gid int, suppl ...int) error {
 		return err
 	}
 	if len(suppl) == 0 {
-		if _, _, err := callWKernel(syscall.SYS_SETGROUPS, 0, 0, 0); err != 0 {
+		if _, _, err := callWKernel(sys_setgroups_variant, 0, 0, 0); err != 0 {
 			return err
 		}
 		return nil
@@ -247,7 +247,7 @@ func SetGroups(gid int, suppl ...int) error {
 	for i, g := range suppl {
 		gs[i] = uint32(g)
 	}
-	if _, _, err := callWKernel(syscall.SYS_SETGROUPS, uintptr(len(suppl)), uintptr(unsafe.Pointer(&gs[0])), 0); err != 0 {
+	if _, _, err := callWKernel(sys_setgroups_variant, uintptr(len(suppl)), uintptr(unsafe.Pointer(&gs[0])), 0); err != 0 {
 		return err
 	}
 	return nil

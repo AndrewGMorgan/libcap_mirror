@@ -477,6 +477,13 @@ int cap_setuid(uid_t uid)
     return ret;
 }
 
+#if defined(__arm__) || defined(__i386__) || \
+    defined(__i486__) || defined(__i586__) || defined(__i686__)
+#define sys_setgroups_variant  SYS_setgroups32
+#else
+#define sys_setgroups_variant  SYS_setgroups
+#endif
+
 /*
  * cap_setgroups combines setting the gid with changing the set of
  * supplemental groups for a user into one call that raises the needed
@@ -503,7 +510,7 @@ int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
 	    ret = _libcap_syscall(SYS_setgid, (long int) gid, 0, 0);
 	}
 	if (ret == 0) {
-	    ret = _libcap_syscall(SYS_setgroups, (long int) ngroups,
+	    ret = _libcap_syscall(sys_setgroups_variant, (long int) ngroups,
 				  (long int) groups, 0);
 	}
 	if (ret < 0) {
