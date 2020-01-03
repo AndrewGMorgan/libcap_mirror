@@ -21,7 +21,7 @@ int cap_get_flag(cap_t cap_d, cap_value_t value, cap_flag_t set,
      * Is it a known capability?
      */
 
-    if (raised && good_cap_t(cap_d) && value >= 0 && value < __CAP_BITS
+    if (raised && good_cap_t(cap_d) && value >= 0 && value < __CAP_MAXBITS
 	&& set >= 0 && set < NUMBER_OF_CAP_SETS) {
 	*raised = isset_cap(cap_d,value,set) ? CAP_SET:CAP_CLEAR;
 	return 0;
@@ -45,12 +45,12 @@ int cap_set_flag(cap_t cap_d, cap_flag_t set,
      * Is it a known capability?
      */
 
-    if (good_cap_t(cap_d) && no_values > 0 && no_values <= __CAP_BITS
+    if (good_cap_t(cap_d) && no_values > 0 && no_values < __CAP_MAXBITS
 	&& (set >= 0) && (set < NUMBER_OF_CAP_SETS)
 	&& (raise == CAP_SET || raise == CAP_CLEAR) ) {
 	int i;
 	for (i=0; i<no_values; ++i) {
-	    if (array_values[i] < 0 || array_values[i] >= __CAP_BITS) {
+	    if (array_values[i] < 0 || array_values[i] >= __CAP_MAXBITS) {
 		_cap_debug("weird capability (%d) - skipped", array_values[i]);
 	    } else {
 		int value = array_values[i];

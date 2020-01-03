@@ -80,6 +80,12 @@ $(MINLIBNAME): $(CAPOBJS)
 cap_text.o: cap_text.c $(USE_GPERF_OUTPUT) $(INCLS)
 	$(CC) $(CFLAGS) $(IPATH) $(INCLUDE_GPERF_OUTPUT) -c $< -o $@
 
+cap_test: cap_test.c libcap.h
+	$(CC) $(CFLAGS) $(IPATH) $< -o $@
+
+test: cap_test
+	./cap_test
+
 install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(INCDIR)/sys
 	install -m 0644 include/sys/capability.h $(FAKEROOT)$(INCDIR)/sys
@@ -101,5 +107,5 @@ clean:
 	$(LOCALCLEAN)
 	rm -f $(CAPOBJS) $(LIBNAME)* $(STACAPLIBNAME) libcap.pc libpsx.pc
 	rm -f $(PSXOBJS) $(STAPSXLIBNAME)
-	rm -f cap_names.h cap_names.list.h _makenames $(GPERF_OUTPUT)
+	rm -f cap_names.h cap_names.list.h _makenames $(GPERF_OUTPUT) cap_test
 	cd include/sys && $(LOCALCLEAN)

@@ -104,16 +104,17 @@ int psx_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 		       void *(*start_routine) (void *), void *arg);
 
 /*
- * This function is weakly defined as a no-op in libpsx. If code
- * linking to it provides an alternative implementation, that one is
- * called instead. For example, libcap provides one of these functions
- * so psx can share its syscall functions with libcap at start up and
- * thus pthreads automagically become POSIX semantics compliant.
+ * This function should be used by systems to obtain pointers to the
+ * two syscall functions provided by the PSX library. A linkage trick
+ * is to define this function as weak in a library that can optionally
+ * use libpsx and then, should the caller link -lpsx, that library can
+ * implicitly use these POSIX semantics syscalls. See libcap for an
+ * example of this useage.
  */
-void share_psx_syscall(long int (*syscall_fn)(long int,
-					      long int, long int, long int),
-		       long int (*syscall6_fn)(long int,
-					       long int, long int, long int,
-					       long int, long int, long int));
+void psx_load_syscalls(long int (**syscall_fn)(long int,
+					       long int, long int, long int),
+		       long int (**syscall6_fn)(long int,
+						long int, long int, long int,
+						long int, long int, long int));
 
 #endif /* _SYS_PSX_SYSCALL_H */

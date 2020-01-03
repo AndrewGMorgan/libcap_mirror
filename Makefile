@@ -35,6 +35,7 @@ release: distclean
 	cd .. && ln -s libcap libcap-$(VERSION).$(MINOR) && tar cvf libcap-$(VERSION).$(MINOR).tar --exclude patches libcap-$(VERSION).$(MINOR)/* && rm libcap-$(VERSION).$(MINOR)
 
 test: all
+	make -C libcap $@
 	make -C tests $@
 ifneq ($(PAM_CAP),no)
 	$(MAKE) -C pam_cap $@

@@ -47,6 +47,13 @@ typedef struct _cap_struct *cap_t;
 typedef int cap_value_t;
 
 /*
+ * libcap initialized first unnamed capability of the running kernel.
+ * capsh includes a runtime test to flag when this is larger than
+ * what is known to libcap... Time for a new libcap release!
+ */
+extern cap_value_t cap_max_bits(void);
+
+/*
  * Set identifiers
  */
 typedef enum {

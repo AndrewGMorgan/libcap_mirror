@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 
 #include <sys/prctl.h>
+#include <sys/psx_syscall.h>
 #include <sys/securebits.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -41,38 +42,48 @@ static long int (*_libcap_syscall)(long int, long int, long int, long int)
 static long int (*_libcap_syscall6)(long int, long int, long int, long int,
     long int, long int, long int) = _cap_syscall6;
 
-static int _libcap_overrode_syscalls;
-
-void cap_set_syscall(long int (*new_syscall)(long int,
-					     long int, long int, long int),
-		     long int (*new_syscall6)(long int,
-					      long int, long int, long int,
-					      long int, long int, long int))
-{
-    _libcap_syscall = new_syscall;
-    _libcap_syscall6 = new_syscall6;
-    _libcap_overrode_syscalls = 1;
-}
+/*
+ * This gets reset to 0 if we are *not* linked with libpsx.
+ */
+static int _libcap_overrode_syscalls = 1;
 
 /*
- * libcap<->libpsx subtle linking trick. If -lpsx is linked, then this
- * function will get called when psx is initialized. In so doing,
- * libcap will opt to use POSIX compliant syscalls for all state
- * changing system calls - via psx_syscall().
+ * psx_load_syscalls() is weakly defined so we can have it overriden
+ * by libpsx if that library is linked. Specifically, when libcap
+ * calls psx_load_sycalls() it is prepared to override the default
+ * values for the syscalls that libcap uses to change security state.
+ * As can be seen here this present function is mostly a
+ * no-op. However, if libpsx is linked, the one present in that
+ * library (not being weak) will replace this one and the
+ * _libcap_overrode_syscalls value isn't forced to zero.
  */
-void share_psx_syscall(long int (*syscall_fn)(long int,
+__attribute__((weak))
+void psx_load_syscalls(long int (**syscall_fn)(long int,
 					      long int, long int, long int),
-		       long int (*syscall6_fn)(long int,
-					       long int, long int, long int,
-					       long int, long int, long int));
-
-void share_psx_syscall(long int (*syscall_fn)(long int,
-					      long int, long int, long int),
-		       long int (*syscall6_fn)(long int,
+		       long int (**syscall6_fn)(long int,
 					       long int, long int, long int,
 					       long int, long int, long int))
 {
-    cap_set_syscall(syscall_fn, syscall6_fn);
+    _libcap_overrode_syscalls = 0;
+}
+
+/*
+ * cap_set_syscall overrides the state setting syscalls that libcap does.
+ * Generally, you don't need to call this manually: libcap tries hard to
+ * set things up appropriately.
+ */
+void cap_set_syscall(long int (*new_syscall)(long int,
+					     long int, long int, long int),
+			    long int (*new_syscall6)(long int, long int,
+						     long int, long int,
+						     long int, long int,
+						     long int)) {
+    if (new_syscall == NULL) {
+	psx_load_syscalls(&_libcap_syscall, &_libcap_syscall6);
+    } else {
+	_libcap_syscall = new_syscall;
+	_libcap_syscall6 = new_syscall6;
+    }
 }
 
 static int _libcap_capset(cap_user_header_t header, const cap_user_data_t data)
@@ -91,6 +102,9 @@ static int _libcap_prctl6(long int pr_cmd, long int arg1, long int arg2,
     return _libcap_syscall6(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
 }
 
+/*
+ * cap_get_proc obtains the capability set for the current process.
+ */
 cap_t cap_get_proc(void)
 {
     cap_t result;

@@ -20,8 +20,8 @@
 #include INCLUDE_GPERF_OUTPUT
 #endif
 
-/* Maximum output text length (16 per cap) */
-#define CAP_TEXT_SIZE    (16*__CAP_MAXBITS)
+/* Maximum output text length */
+#define CAP_TEXT_SIZE    (__CAP_NAME_SIZE * __CAP_MAXBITS)
 
 /*
  * Parse a textual representation of capabilities, returning an internal
@@ -63,13 +63,14 @@ static char const *namcmp(char const *str, char const *nam)
 static void forceall(__u32 *flat, __u32 value, unsigned blks)
 {
     unsigned n;
+    cap_value_t cmb = cap_max_bits();
     for (n = blks; n--; ) {
 	unsigned base = 32*n;
 	__u32 mask = 0;
-	if (__CAP_BITS >= base + 32) {
+	if (cmb >= base + 32) {
 	    mask = ~0;
-	} else if (__CAP_BITS > base) {
-	    mask = (unsigned) ((1ULL << (__CAP_BITS % 32)) - 1);
+	} else if (cmb > base) {
+	    mask = (unsigned) ((1ULL << (cmb % 32)) - 1);
 	}
 	flat[n] = value & mask;
     }
@@ -113,7 +114,7 @@ static int lookupname(char const **strp)
 	char const *s;
 	unsigned n;
 
-	for (n = __CAP_BITS; n--; )
+	for (n = cap_max_bits(); n--; )
 	    if (_cap_names[n] && (s = namcmp(str.constp, _cap_names[n]))) {
 		*strp = s;
 		return n;
@@ -347,30 +348,12 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
     int histo[8];
     int m, t;
     unsigned n;
-    unsigned cap_maxbits, cap_blks;
 
     /* Check arguments */
     if (!good_cap_t(caps)) {
 	errno = EINVAL;
 	return NULL;
     }
-
-    switch (caps->head.version) {
-    case _LINUX_CAPABILITY_VERSION_1:
-	cap_blks = _LINUX_CAPABILITY_U32S_1;
-	break;
-    case _LINUX_CAPABILITY_VERSION_2:
-	cap_blks = _LINUX_CAPABILITY_U32S_2;
-	break;
-    case _LINUX_CAPABILITY_VERSION_3:
-	cap_blks = _LINUX_CAPABILITY_U32S_3;
-	break;
-    default:
-	errno = EINVAL;
-	return NULL;
-    }
-
-    cap_maxbits = 32 * cap_blks;
 
     _cap_debugcap("e = ", *caps, CAP_EFFECTIVE);
     _cap_debugcap("i = ", *caps, CAP_INHERITABLE);
@@ -379,7 +362,8 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
     memset(histo, 0, sizeof(histo));
 
     /* default prevailing state to the named bits */
-    for (n = 0; n < __CAP_BITS; n++)
+    cap_value_t cmb = cap_max_bits();
+    for (n = 0; n < cmb; n++)
 	histo[getstateflags(caps, n)]++;
 
     /* find which combination of capability sets shares the most bits
@@ -401,7 +385,7 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    continue;
 	}
 	*p++ = ' ';
-	for (n = 0; n < cap_maxbits; n++) {
+	for (n = 0; n < cmb; n++) {
 	    if (getstateflags(caps, n) == t) {
 	        char *this_cap_name = cap_to_name(n);
 	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
@@ -436,7 +420,7 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 
     /* capture remaining unnamed bits - which must all be +. */
     memset(histo, 0, sizeof(histo));
-    for (n = cap_maxbits-1; n >= __CAP_BITS; n--)
+    for (n = cmb; n < __CAP_MAXBITS; n++)
 	histo[getstateflags(caps, n)]++;
 
     for (t = 8; t-- > 1; ) {
@@ -444,7 +428,7 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    continue;
 	}
 	*p++ = ' ';
-	for (n = __CAP_BITS; n < cap_maxbits; n++) {
+	for (n = cmb; n < __CAP_MAXBITS; n++) {
 	    if (getstateflags(caps, n) == t) {
 		char *this_cap_name = cap_to_name(n);
 	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {

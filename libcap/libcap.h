@@ -206,4 +206,20 @@ extern int capsetp(pid_t pid, cap_t cap_d);
  */
 #define ssizeof(x) ((ssize_t) sizeof(x))
 
+/*
+ * Put this here as a macro so we can unit test it.
+ */
+#define _binary_search(val, fn, low, high, fallback) do {	\
+	cap_value_t min = low, max = high;			\
+	while (min <= max) {					\
+	    cap_value_t mid = (min+max) / 2;			\
+	    if (fn(mid) < 0) {					\
+		max = mid - 1;					\
+	    } else {						\
+		min = mid + 1;					\
+	    }							\
+	}							\
+	val = min ? min : fallback;				\
+    } while(0)
+
 #endif /* LIBCAP_H */

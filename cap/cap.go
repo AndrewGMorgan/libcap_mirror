@@ -189,6 +189,13 @@ func cInit() {
 	}
 }
 
+// MaxBits returns the number of kernel-named capabilities discovered
+// at runtime in the current system.
+func MaxBits() Value {
+	startUp.Do(cInit)
+	return Value(maxValues)
+}
+
 // NewSet returns an empty capability set.
 func NewSet() *Set {
 	startUp.Do(cInit)

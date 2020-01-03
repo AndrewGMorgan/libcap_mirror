@@ -318,6 +318,13 @@ int main(int argc, char *argv[], char *envp[])
 
     child = 0;
 
+    char *temp_name = cap_to_name(cap_max_bits() - 1);
+    if (temp_name[0] != 'c') {
+	printf("WARNING: libcap needs an update (cap=%d should have a name).\n",
+	       cap_max_bits() - 1);
+    }
+    cap_free(temp_name);
+
     for (i=1; i<argc; ++i) {
 	if (!strncmp("--drop=", argv[i], 7)) {
 	    arg_drop(argv[i]+7);

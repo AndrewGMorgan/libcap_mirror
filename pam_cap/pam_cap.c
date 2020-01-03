@@ -242,6 +242,10 @@ static int set_capabilities(struct pam_cap_s *cs)
 	while (cap_get_bound(max_caps) >= 0) {
 	    max_caps++;
 	}
+	if (max_caps != cap_max_bits()) {
+	    D(("this vintage of libcap cannot be trusted; give up"));
+	    goto cleanup_caps;
+	}
 	has_bound = (max_caps != 0);
 	if (has_bound) {
 	    bound = calloc(max_caps, sizeof(int));

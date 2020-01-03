@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/capability.h>
 
 /*
@@ -26,24 +27,29 @@ const char *pointers[8*sizeof(struct __user_cap_data_struct)];
 
 int main(void)
 {
-    int i, maxcaps=0;
+    int i, maxcaps=0, maxlength=0;
 
     for ( i=0; list[i].index >= 0 && list[i].name; ++i ) {
 	if (maxcaps <= list[i].index) {
 	    maxcaps = list[i].index + 1;
 	}
 	pointers[list[i].index] = list[i].name;
+	int n = strlen(list[i].name);
+	if (n > maxlength) {
+	    maxlength = n;
+	}
     }
 
     printf("/*\n"
 	   " * DO NOT EDIT: this file is generated automatically from\n"
 	   " *\n"
-	   " *     <linux/capability.h>\n"
-	   " */\n"
-	   "#define __CAP_BITS   %d\n"
+	   " *     <uapi/linux/capability.h>\n"
+	   " */\n\n"
+	   "#define __CAP_BITS       %d\n"
+	   "#define __CAP_NAME_SIZE  %d\n"
 	   "\n"
 	   "#ifdef LIBCAP_PLEASE_INCLUDE_ARRAY\n"
-	   "  char const *_cap_names[__CAP_BITS] = {\n", maxcaps);
+	   "  char const *_cap_names[__CAP_BITS] = {\n", maxcaps, maxlength+1);
 
     for (i=0; i<maxcaps; ++i) {
 	if (pointers[i])

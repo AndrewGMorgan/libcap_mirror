@@ -110,8 +110,7 @@ func (c *Set) String() string {
 	uBins := make([]int, 8)
 	uPatterns := make([]uint, 32*words)
 	c.histo(0, uBins, uPatterns, Value(maxValues), 32*Value(words))
-	for i := uint(8); i > 1; {
-		i--
+	for i := uint(7); i > 0; i-- {
 		if uBins[i] == 0 {
 			continue
 		}

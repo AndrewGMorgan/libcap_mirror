@@ -23,18 +23,21 @@
 #include <sys/syscall.h>
 
 /*
- * share_psx_syscall() is invoked to advertize the two functions
- * psx_syscall3() and psx_syscall6(). The linkage is weak here so some
- * code external to this library can override it transparently during
- * the linkage process.
+ * psx_load_syscalls() is weakly defined so we can have it overriden
+ * by libpsx if it is linked. Specifically, when libcap calls
+ * psx_load_sycalls it will override their defaut values. As can be
+ * seen here this present function is a no-op. However, if libpsx is
+ * linked, the one present in that library (not being weak) will
+ * replace this one.
  */
-__attribute__((weak))
-void share_psx_syscall(long int (*syscall_fn)(long int,
+void psx_load_syscalls(long int (**syscall_fn)(long int,
 					      long int, long int, long int),
-		       long int (*syscall6_fn)(long int,
+		       long int (**syscall6_fn)(long int,
 					       long int, long int, long int,
 					       long int, long int, long int))
 {
+    *syscall_fn = psx_syscall3;
+    *syscall6_fn = psx_syscall6;
 }
 
 /*
@@ -145,7 +148,6 @@ static void psx_signal_start(void) {
 static void psx_syscall_start(void) {
     psx_tracker.initialized = 1;
     psx_signal_start();
-    share_psx_syscall(psx_syscall3, psx_syscall6);
 }
 
 static void psx_do_registration(pthread_t thread) {
