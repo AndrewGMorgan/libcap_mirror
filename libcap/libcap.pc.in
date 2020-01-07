@@ -9,4 +9,3 @@ Version: @VERSION@
 Libs: -L${libdir} -lcap
 Libs.private: @deps@
 Cflags: -I${includedir}
-Requires: libpsx
