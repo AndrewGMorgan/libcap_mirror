@@ -37,9 +37,9 @@ static long int _cap_syscall6(long int syscall_nr,
     return syscall(syscall_nr, arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
-static long int (*_libcap_syscall)(long int, long int, long int, long int)
+static long int (*_libcap_wsyscall3)(long int, long int, long int, long int)
     = _cap_syscall;
-static long int (*_libcap_syscall6)(long int, long int, long int, long int,
+static long int (*_libcap_wsyscall6)(long int, long int, long int, long int,
     long int, long int, long int) = _cap_syscall6;
 
 /*
@@ -79,27 +79,27 @@ void cap_set_syscall(long int (*new_syscall)(long int,
 						     long int, long int,
 						     long int)) {
     if (new_syscall == NULL) {
-	psx_load_syscalls(&_libcap_syscall, &_libcap_syscall6);
+	psx_load_syscalls(&_libcap_wsyscall3, &_libcap_wsyscall6);
     } else {
-	_libcap_syscall = new_syscall;
-	_libcap_syscall6 = new_syscall6;
+	_libcap_wsyscall3 = new_syscall;
+	_libcap_wsyscall6 = new_syscall6;
     }
 }
 
 static int _libcap_capset(cap_user_header_t header, const cap_user_data_t data)
 {
-    return _libcap_syscall(SYS_capset, (long int) header, (long int) data, 0);
+    return _libcap_wsyscall3(SYS_capset, (long int) header, (long int) data, 0);
 }
 
-static int _libcap_prctl(long int pr_cmd, long int arg1, long int arg2)
+static int _libcap_wprctl3(long int pr_cmd, long int arg1, long int arg2)
 {
-    return _libcap_syscall(SYS_prctl, pr_cmd, arg1, arg2);
+    return _libcap_wsyscall3(SYS_prctl, pr_cmd, arg1, arg2);
 }
 
-static int _libcap_prctl6(long int pr_cmd, long int arg1, long int arg2,
-			  long int arg3, long int arg4, long int arg5)
+static int _libcap_wprctl6(long int pr_cmd, long int arg1, long int arg2,
+			   long int arg3, long int arg4, long int arg5)
 {
-    return _libcap_syscall6(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
+    return _libcap_wsyscall6(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
 }
 
 /*
@@ -214,7 +214,7 @@ int cap_get_bound(cap_value_t cap)
 {
     int result;
 
-    result = _libcap_prctl(PR_CAPBSET_READ, pr_arg(cap), pr_arg(0));
+    result = prctl(PR_CAPBSET_READ, pr_arg(cap), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -228,7 +228,7 @@ int cap_drop_bound(cap_value_t cap)
 {
     int result;
 
-    result = _libcap_prctl(PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
+    result = _libcap_wprctl3(PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -266,8 +266,8 @@ int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
 	errno = EINVAL;
 	return -1;
     }
-    result = _libcap_prctl6(PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
-			    pr_arg(0), pr_arg(0), pr_arg(0));
+    result = _libcap_wprctl6(PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
+			     pr_arg(0), pr_arg(0), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -295,8 +295,8 @@ int cap_reset_ambient()
 	}
     }
 
-    result = _libcap_prctl6(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
-			    pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
+    result = _libcap_wprctl6(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
+			     pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -316,7 +316,7 @@ unsigned cap_get_secbits(void)
  */
 int cap_set_secbits(unsigned bits)
 {
-    return _libcap_prctl(PR_SET_SECUREBITS, bits, 0);
+    return _libcap_wprctl3(PR_SET_SECUREBITS, bits, 0);
 }
 
 /*
@@ -467,11 +467,11 @@ int cap_setuid(uid_t uid)
      * compliant way for the code below to work, so we are either
      * all-broken or not-broken and don't allow for "sort of working".
      */
-    (void) _libcap_prctl(PR_SET_KEEPCAPS, 1, 0);
+    (void) _libcap_wprctl3(PR_SET_KEEPCAPS, 1, 0);
     int ret = cap_set_proc(working);
     if (ret == 0) {
 	if (_libcap_overrode_syscalls) {
-	    ret = _libcap_syscall(SYS_setuid, (long int) uid, 0, 0);
+	    ret = _libcap_wsyscall3(SYS_setuid, (long int) uid, 0, 0);
 	    if (ret < 0) {
 		errno = -ret;
 		ret = -1;
@@ -481,7 +481,7 @@ int cap_setuid(uid_t uid)
 	}
     }
     int olderrno = errno;
-    (void) _libcap_prctl(PR_SET_KEEPCAPS, 0, 0);
+    (void) _libcap_wprctl3(PR_SET_KEEPCAPS, 0, 0);
 
     (void) cap_clear_flag(working, CAP_EFFECTIVE);
     (void) cap_set_proc(working);
@@ -521,10 +521,10 @@ int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
     int ret = cap_set_proc(working);
     if (_libcap_overrode_syscalls) {
 	if (ret == 0) {
-	    ret = _libcap_syscall(SYS_setgid, (long int) gid, 0, 0);
+	    ret = _libcap_wsyscall3(SYS_setgid, (long int) gid, 0, 0);
 	}
 	if (ret == 0) {
-	    ret = _libcap_syscall(sys_setgroups_variant, (long int) ngroups,
+	    ret = _libcap_wsyscall3(sys_setgroups_variant, (long int) ngroups,
 				  (long int) groups, 0);
 	}
 	if (ret < 0) {
