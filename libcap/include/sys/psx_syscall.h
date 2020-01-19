@@ -38,6 +38,10 @@
 #ifndef _SYS_PSX_SYSCALL_H
 #define _SYS_PSX_SYSCALL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <pthread.h>
 
 /*
@@ -116,5 +120,9 @@ void psx_load_syscalls(long int (**syscall_fn)(long int,
 		       long int (**syscall6_fn)(long int,
 						long int, long int, long int,
 						long int, long int, long int));
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SYS_PSX_SYSCALL_H */
