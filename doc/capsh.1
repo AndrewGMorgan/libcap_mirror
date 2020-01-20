@@ -107,6 +107,10 @@ prepations for setting the uid without dropping capabilities in the
 process. Following this command the prevailing effective capabilities
 will be lowered.
 .TP
+.BI --is-uid= <id>
+Exit with status 1 unless the current
+.IR uid " equals " <id> .
+.TP
 .BI --gid= <id>
 Force all
 .B gid
@@ -115,6 +119,10 @@ values to equal
 using the
 .BR setgid (2)
 system call.
+.TP
+.BI --is-gid= <id>
+Exit with status 1 unless the current
+.IR gid " equals " <id> .
 .TP
 .BI --groups= <gid-list>
 Set the supplementary groups to the numerical list provided. The
@@ -211,9 +219,23 @@ will cause capsh to promptly exit with a status of 1 when run on
 kernel 2.6.27.  However, when run on kernel 2.6.38 it will silently
 succeed.
 .TP
+.BI --has-p= xxx
+Exit with status 1 unless the
+.I permitted
+vector has capability
+.B xxx
+raised.
+.TP
 .B --has-ambient
 Performs a check to see if the running kernel supports ambient
 capabilities. If not, the capsh command exits with status 1.
+.TP
+.BI --has-a= xxx
+Exit with status 1 unless the
+.I ambient
+vector has capability
+.B xxx
+raised.
 .TP
 .BI --addamb= xxx
 Adds the specificed ambient capability to the running process.

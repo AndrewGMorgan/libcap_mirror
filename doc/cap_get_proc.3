@@ -117,6 +117,10 @@ successfully, the prevailing
 .I effective
 capability set must have a raised
 .BR CAP_SETPCAP .
+Further, to raise a specific ambient capability the
+.IR inheritable " and " permitted
+sets of the current process must contain the specified capability, and
+raised ambient bits will only be retained as long as this remains true.
 .PP
 .BR cap_reset_ambient ()
 resets all of the ambient capabilities for the current process to

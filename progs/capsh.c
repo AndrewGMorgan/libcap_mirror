@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-11,16,19 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 2008-11,16,19,2020 Andrew G. Morgan <morgan@kernel.org>
  *
  * This is a simple 'bash' wrapper program that can be used to
  * raise and lower both the bset and pI capabilities before invoking
@@ -761,6 +761,51 @@ int main(int argc, char *argv[], char *envp[])
 	    execve(argv[i], argv+i, envp);
 	    fprintf(stderr, "execve /bin/bash failed!\n");
 	    exit(1);
+	} else if (!strncmp("--has-p=", argv[i], 8)) {
+	    cap_value_t cap;
+	    cap_flag_value_t enabled;
+	    cap_t orig;
+
+	    if (cap_from_name(argv[i]+8, &cap) < 0) {
+		fprintf(stderr, "cap[%s] not recognized by libarary\n",
+			argv[i] + 8);
+		exit(1);
+	    }
+	    orig = cap_get_proc();
+	    if (cap_get_flag(orig, cap, CAP_PERMITTED, &enabled) || !enabled) {
+		fprintf(stderr, "cap[%s] not enabled\n", argv[i]+8);
+		exit(1);
+	    }
+	    cap_free(orig);
+	} else if (!strncmp("--has-a=", argv[i], 8)) {
+	    cap_value_t cap;
+	    if (cap_from_name(argv[i]+8, &cap) < 0) {
+		fprintf(stderr, "cap[%s] not recognized by libarary\n",
+			argv[i] + 8);
+		exit(1);
+	    }
+	    if (!cap_get_ambient(cap)) {
+		fprintf(stderr, "cap[%s] not in ambient vector\n", argv[i]+8);
+		exit(1);
+	    }
+	} else if (!strncmp("--is-uid=", argv[i], 9)) {
+	    unsigned value;
+	    uid_t uid;
+	    value = strtoul(argv[i]+9, NULL, 0);
+	    uid = getuid();
+	    if (uid != value) {
+		fprintf(stderr, "uid: got=%d, want=%d\n", uid, value);
+		exit(1);
+	    }
+	} else if (!strncmp("--is-gid=", argv[i], 9)) {
+	    unsigned value;
+	    gid_t gid;
+	    value = strtoul(argv[i]+9, NULL, 0);
+	    gid = getgid();
+	    if (gid != value) {
+		fprintf(stderr, "gid: got=%d, want=%d\n", gid, value);
+		exit(1);
+	    }
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
@@ -768,8 +813,10 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --print        display capability relevant state\n"
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
+		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"
 		   "  --drop=xxx     remove xxx,.. capabilities from bset\n"
-		   "  --has-ambient  fail immediately unless ambient supported\n"
+		   "  --has-ambient  exit 1 unless ambient vector supported\n"
+		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
 		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
 		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
 		   "  --noamb        reset (drop) all ambient capabilities\n"
@@ -779,7 +826,9 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --keep=<n>     set keep-capabability bit to <n>\n"
 		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
 		   "  --cap-uid=<n>  libcap cap_setuid() to change uid\n"
+		   "  --is-uid=<n>   exit 1 if uid != <n>\n"
 		   "  --gid=<n>      set gid to <n> (hint: id <username>)\n"
+		   "  --is-gid=<n>   exit 1 if gid != <n>\n"
 		   "  --groups=g,... set the supplemental groups\n"
                    "  --user=<name>  set uid,gid and groups to that of user\n"
 		   "  --chroot=path  chroot(2) to this path\n"
