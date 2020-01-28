@@ -328,6 +328,18 @@ int main(int argc, char *argv[], char *envp[])
     for (i=1; i<argc; ++i) {
 	if (!strncmp("--drop=", argv[i], 7)) {
 	    arg_drop(argv[i]+7);
+	} else if (!strncmp("--dropped=", argv[i], 10)) {
+	    cap_value_t cap;
+	    if (cap_from_name(argv[i]+10, &cap) < 0) {
+		fprintf(stderr, "cap[%s] not recognized by library\n",
+			argv[i] + 10);
+		exit(1);
+	    }
+	    if (cap_get_bound(cap) > 0) {
+		fprintf(stderr, "cap[%s] raised in bounding vector\n",
+			argv[i]+10);
+		exit(1);
+	    }
 	} else if (!strcmp("--has-ambient", argv[i])) {
 	    if (!CAP_AMBIENT_SUPPORTED()) {
 		fprintf(stderr, "ambient set not supported\n");
@@ -767,20 +779,37 @@ int main(int argc, char *argv[], char *envp[])
 	    cap_t orig;
 
 	    if (cap_from_name(argv[i]+8, &cap) < 0) {
-		fprintf(stderr, "cap[%s] not recognized by libarary\n",
+		fprintf(stderr, "cap[%s] not recognized by library\n",
 			argv[i] + 8);
 		exit(1);
 	    }
 	    orig = cap_get_proc();
 	    if (cap_get_flag(orig, cap, CAP_PERMITTED, &enabled) || !enabled) {
-		fprintf(stderr, "cap[%s] not enabled\n", argv[i]+8);
+		fprintf(stderr, "cap[%s] not permitted\n", argv[i]+8);
+		exit(1);
+	    }
+	    cap_free(orig);
+	} else if (!strncmp("--has-i=", argv[i], 8)) {
+	    cap_value_t cap;
+	    cap_flag_value_t enabled;
+	    cap_t orig;
+
+	    if (cap_from_name(argv[i]+8, &cap) < 0) {
+		fprintf(stderr, "cap[%s] not recognized by library\n",
+			argv[i] + 8);
+		exit(1);
+	    }
+	    orig = cap_get_proc();
+	    if (cap_get_flag(orig, cap, CAP_INHERITABLE, &enabled)
+		|| !enabled) {
+		fprintf(stderr, "cap[%s] not inheritable\n", argv[i]+8);
 		exit(1);
 	    }
 	    cap_free(orig);
 	} else if (!strncmp("--has-a=", argv[i], 8)) {
 	    cap_value_t cap;
 	    if (cap_from_name(argv[i]+8, &cap) < 0) {
-		fprintf(stderr, "cap[%s] not recognized by libarary\n",
+		fprintf(stderr, "cap[%s] not recognized by library\n",
 			argv[i] + 8);
 		exit(1);
 	    }
@@ -814,7 +843,9 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
 		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"
+		   "  --has-i=xxx    exit 1 if capability xxx not inheritable\n"
 		   "  --drop=xxx     remove xxx,.. capabilities from bset\n"
+		   "  --dropped=xxx  exit 1 unless bounding cap xxx dropped\n"
 		   "  --has-ambient  exit 1 unless ambient vector supported\n"
 		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
 		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
