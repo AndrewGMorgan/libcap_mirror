@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8,2007,2011,2019 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2007,11,19,20 Andrew G Morgan <morgan@kernel.org>
  *
  * This file deals with getting and setting capabilities on processes.
  */
@@ -88,18 +88,29 @@ void cap_set_syscall(long int (*new_syscall)(long int,
 
 static int _libcap_capset(cap_user_header_t header, const cap_user_data_t data)
 {
-    return _libcap_wsyscall3(SYS_capset, (long int) header, (long int) data, 0);
+    if (_libcap_overrode_syscalls) {
+	return _libcap_wsyscall3(SYS_capset,
+				 (long int) header, (long int) data, 0);
+    }
+    return capset(header, data);
 }
 
 static int _libcap_wprctl3(long int pr_cmd, long int arg1, long int arg2)
 {
-    return _libcap_wsyscall3(SYS_prctl, pr_cmd, arg1, arg2);
+    if (_libcap_overrode_syscalls) {
+	return _libcap_wsyscall3(SYS_prctl, pr_cmd, arg1, arg2);
+    }
+    return prctl(pr_cmd, arg1, arg2, 0, 0, 0);
 }
 
 static int _libcap_wprctl6(long int pr_cmd, long int arg1, long int arg2,
 			   long int arg3, long int arg4, long int arg5)
 {
-    return _libcap_wsyscall6(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
+    if (_libcap_overrode_syscalls) {
+	return _libcap_wsyscall6(SYS_prctl, pr_cmd, arg1, arg2,
+				 arg3, arg4, arg5);
+    }
+    return prctl(pr_cmd, arg1, arg2, arg3, arg4, arg5);
 }
 
 /*
