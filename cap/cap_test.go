@@ -140,3 +140,71 @@ func TestImportExport(t *testing.T) {
 		}
 	}
 }
+
+func TestIAB(t *testing.T) {
+	vs := []struct {
+		text string
+		bad  bool
+	}{
+		{text: "cup_full", bad: true},
+		{text: ""},
+		{text: "!%cap_chown"},
+		{text: "!cap_chown,^cap_setuid"},
+		{text: "cap_chown,cap_setuid"},
+		{text: "^cap_chown,cap_setuid"},
+		{text: "^cap_chown,!cap_setuid"},
+	}
+	for i, v := range vs {
+		want := v.text
+		iab, err := IABFromText(want)
+		if err != nil {
+			if v.bad {
+				continue
+			}
+			t.Errorf("[%d] want=%q, got=%q", i, want, iab)
+			continue
+		}
+		if got := iab.String(); got != want {
+			t.Errorf("[%d] got=%q want=%q", i, got, want)
+		}
+	}
+
+	one, err := GetPID(1)
+	if err != nil {
+		t.Fatalf("failed to get init's capabilities: %v", err)
+	}
+	iab := IABInit()
+	iab.Fill(Amb, one, Permitted)
+	for i := 0; i < words; i++ {
+		if iab.i[i] != iab.a[i] {
+			t.Errorf("[%d] i=0x%08x != a=0x%08x", i, iab.i[i], iab.a[i])
+		}
+	}
+	one.ClearFlag(Inheritable)
+	iab.Fill(Inh, one, Inheritable)
+	for i := 0; i < words; i++ {
+		if iab.i[i] != iab.a[i] {
+			t.Errorf("[%d] i=0x%08x != a=0x%08x", i, iab.i[i], iab.a[i])
+		}
+	}
+
+	for n := uint(0); n < 1000; n += 13 {
+		enabled := ((n % 5) & 2) != 0
+		vec := Vector(n % 3)
+		c := Value(n % maxValues)
+		if err := iab.SetVector(vec, enabled, c); err != nil {
+			t.Errorf("[%d] failed to set vec=%v enabled=%v %q in %q", n, vec, enabled, c, iab)
+			continue
+		}
+		replay, err := IABFromText(iab.String())
+		if err != nil {
+			t.Errorf("failed to replay: %v", err)
+			continue
+		}
+		for i := 0; i < words; i++ {
+			if replay.i[i] != iab.i[i] || replay.a[i] != iab.a[i] || replay.nb[i] != iab.nb[i] {
+				t.Errorf("[%d,%d] got=%q want=%q", n, i, replay, iab)
+			}
+		}
+	}
+}

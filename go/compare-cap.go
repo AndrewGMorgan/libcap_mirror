@@ -281,6 +281,45 @@ func main() {
 		log.Fatalf("all decode failed in Go: got=%q, want=%q", got, want)
 	}
 
+	iab, err := cap.IABFromText("cap_chown,!cap_setuid,^cap_setgid")
+	if err != nil {
+		log.Fatalf("failed to initialize iab from text: %v", err)
+	}
+	cIAB := C.cap_iab_init()
+	defer C.cap_free(unsafe.Pointer(cIAB))
+	for c := cap.MaxBits(); c > 0; {
+		c--
+		if en, err := iab.GetVector(cap.Inh, c); err != nil {
+			log.Fatalf("failed to read iab.i[%v]", c)
+		} else if en {
+			if C.cap_iab_set_vector(cIAB, C.CAP_IAB_INH, C.cap_value_t(int(c)), C.CAP_SET) != 0 {
+				log.Fatalf("failed to set C's AIB.I %v: %v", c)
+			}
+		}
+		if en, err := iab.GetVector(cap.Amb, c); err != nil {
+			log.Fatalf("failed to read iab.a[%v]", c)
+		} else if en {
+			if C.cap_iab_set_vector(cIAB, C.CAP_IAB_AMB, C.cap_value_t(int(c)), C.CAP_SET) != 0 {
+				log.Fatalf("failed to set C's AIB.A %v: %v", c)
+			}
+		}
+		if en, err := iab.GetVector(cap.Bound, c); err != nil {
+			log.Fatalf("failed to read iab.b[%v]", c)
+		} else if en {
+			if C.cap_iab_set_vector(cIAB, C.CAP_IAB_BOUND, C.cap_value_t(int(c)), C.CAP_SET) != 0 {
+				log.Fatalf("failed to set C's AIB.B %v: %v", c)
+			}
+		}
+	}
+	iabC := C.cap_iab_to_text(cIAB)
+	if iabC == nil {
+		log.Fatalf("failed to get text from C for %q", iab)
+	}
+	defer C.cap_free(unsafe.Pointer(iabC))
+	if got, want := C.GoString(iabC), iab.String(); got != want {
+		log.Fatalf("IAB for Go and C differ: got=%q, want=%q", got, want)
+	}
+
 	// Next, we attempt to manipulate some file capabilities on
 	// the running program.  These are optional, based on whether
 	// the current program is capable enough and do not involve
