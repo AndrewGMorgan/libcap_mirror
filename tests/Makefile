@@ -35,4 +35,4 @@ libcap_psx_test: libcap_psx_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LIBCAPLIB) $(LIBPSXLIB) -Wl,-wrap,pthread_create --static
 
 clean:
-	rm -f psx_test psx_test_wrap libcap_psx_test
+	rm -f psx_test psx_test_wrap libcap_psx_test core

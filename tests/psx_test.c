@@ -1,14 +1,21 @@
+#define _DEFAULT_SOURCE
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <sys/psx_syscall.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
 
 static void say_hello_expecting(const char *title, int n, int kept) {
     int keeper = prctl(PR_GET_KEEPCAPS);
-    printf("hello, %s<%d> %lx (keepcaps=%d vs. want=%d)\n",
-	   title, n, pthread_self(), keeper, kept);
+    printf("hello [%d], %s<%d> %lx (keepcaps=%d vs. want=%d)\n",
+	   getpid(), title, n, pthread_self(), keeper, kept);
     if (keeper != kept) {
 	printf("--> FAILURE %s thread=%lx has wrong keepcaps: got=%d want=%d\n",
 	       title, pthread_self(), keeper, kept);
@@ -53,8 +60,17 @@ static void *say_hello(void *args) {
 int main(int argc, char **argv) {
     pthread_t tid[3];
     int i;
+    pid_t child = 0;
+    char * const stop_argv[3] = { argv[0], strdup("stop"), NULL };
+
+    if (argc != 1) {
+	usleep(2000);
+	printf("child %d exiting\n", getpid());
+	exit(0);
+    }
+
     for (i = 0; i<10; i++) {
-	printf("iteration: %d\n", i);
+	printf("iteration [%d]: %d\n", getpid(), i);
 
 	pthread_mutex_lock(&mu);
 	global_kept = !global_kept;
@@ -75,6 +91,17 @@ int main(int argc, char **argv) {
 	pthread_mutex_unlock(&mu);
 
 	if (i < 3) {
+	    if (!child) {
+		child = fork();
+		if (!child) {
+		    usleep(2000);
+		    execve(argv[0], stop_argv, NULL);
+		    perror("failed to exec");
+		    exit(1);
+		} else {
+		    printf("pid=%d forked -> %d\n", getpid(), child);
+		}
+	    }
 	    launched++;
 	    if (i == 1) {
 		/* Confirm this works whether or not we are WRAPPING. */
@@ -89,8 +116,10 @@ int main(int argc, char **argv) {
 	    /* Confirm that the thread is started. */
 	    pthread_mutex_lock(&mu);
 	    while (started < launched) {
+		printf("[%d] started=%d vs %d\n", getpid(), started, launched);
 		pthread_cond_wait(&cond, &mu);
 	    }
+	    pthread_cond_broadcast(&cond);
 	    pthread_mutex_unlock(&mu);
 	} else if (i < 6) {
 	    /* Confirm one thread has finished. */
@@ -99,6 +128,14 @@ int main(int argc, char **argv) {
 	}
     }
 
+    if (child) {
+	int status;
+	waitpid(child, &status, 0);
+	if (status) {
+	    printf("child %d FAILED: %d\n", child, status);
+	    exit(1);
+	}
+    }
     printf("%s PASSED\n", argv[0]);
     exit(0);
 }

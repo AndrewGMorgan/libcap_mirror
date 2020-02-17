@@ -85,10 +85,12 @@ long int psx_syscall6(long int syscall_nr,
 		      long int arg4, long int arg5, long int arg6);
 
 /*
- * psx_register registers a pthread with the psx abstraction of system
- * calls.
+ * psx_register registers the current pthread with the psx abstraction
+ * of system calls. Typically, there is never any need to call this
+ * explicitly because the way the library is linked it is implicitly
+ * called when pthread_create() is called.
  */
-void psx_register(pthread_t thread);
+void psx_register(void);
 
 /*
  * psx_pthread_create() wraps the -lpthread pthread_create() function
