@@ -476,3 +476,108 @@ const char *cap_mode_name(cap_mode_t flavor) {
 	return "UNKNOWN";
     }
 }
+
+/*
+ * cap_iab_to_text serializes an iab into a canonical text
+ * representation.
+ */
+char *cap_iab_to_text(cap_iab_t iab)
+{
+    char buf[CAP_TEXT_SIZE+CAP_TEXT_BUFFER_ZONE];
+    char *p = buf;
+    cap_value_t c, cmb = cap_max_bits();
+    int first = 1;
+
+    if (good_cap_iab_t(iab)) {
+	for (c = 0; c < cmb; c++) {
+	    int keep = 0;
+	    int o = c >> 5;
+	    __u32 bit = 1U << (c & 31);
+	    __u32 ib = iab->i[o] & bit;
+	    __u32 ab = iab->a[o] & bit;
+	    __u32 nbb = iab->nb[o] & bit;
+	    if (!(nbb | ab | ib)) {
+		continue;
+	    }
+	    if (!first) {
+		*p++ = ',';
+	    }
+	    if (nbb) {
+		*p++ = '!';
+		keep = 1;
+	    }
+	    if (ab) {
+		*p++ = '^';
+		keep = 1;
+	    } else if (nbb && ib) {
+		*p++ = '%';
+	    }
+	    if (keep || ib) {
+		strcpy(p, _cap_names[c]);
+		p += strlen(p);
+		first = 0;
+	    }
+	}
+    }
+    *p = '\0';
+    return _libcap_strdup(buf);
+}
+
+cap_iab_t cap_iab_from_text(const char *text)
+{
+    cap_iab_t iab = cap_iab_init();
+    if (text != NULL) {
+	unsigned flags;
+	for (flags = 0; *text; text++) {
+	    /* consume prefixes */
+	    switch (*text) {
+	    case '!':
+		flags |= LIBCAP_IAB_NB_FLAG;
+		continue;
+	    case '^':
+		flags |= LIBCAP_IAB_IA_FLAG;
+		continue;
+	    case '%':
+		flags |= LIBCAP_IAB_I_FLAG;
+		continue;
+	    default:
+		break;
+	    }
+	    if (!flags) {
+		flags = LIBCAP_IAB_I_FLAG;
+	    }
+
+	    /* consume cap name */
+	    cap_value_t c = lookupname(&text);
+	    if (c == -1) {
+		goto cleanup;
+	    }
+	    unsigned o = c >> 5;
+	    __u32 mask = 1U << (c & 31);
+	    if (flags & LIBCAP_IAB_I_FLAG) {
+		iab->i[o] |= mask;
+	    }
+	    if (flags & LIBCAP_IAB_A_FLAG) {
+		iab->a[o] |= mask;
+	    }
+	    if (flags & LIBCAP_IAB_NB_FLAG) {
+		iab->nb[o] |= mask;
+	    }
+
+	    /* rest should be end or comma */
+	    if (*text == '\0') {
+		break;
+	    }
+	    if (*text != ',') {
+		goto cleanup;
+	    }
+	    flags = 0;
+	}
+    }
+    return iab;
+
+cleanup:
+    cap_free(iab);
+    errno = EINVAL;
+    return NULL;
+}

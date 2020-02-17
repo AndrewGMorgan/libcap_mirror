@@ -2,7 +2,7 @@
  * <sys/capability.h>
  *
  * Copyright (C) 1997   Aleph One
- * Copyright (C) 1997-8,2008,2019 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (C) 1997,8, 2008,19,20 Andrew G. Morgan <morgan@kernel.org>
  *
  * defunct POSIX.1e Standard: 25.2 Capabilities           <sys/capability.h>
  */
@@ -57,10 +57,34 @@ extern cap_value_t cap_max_bits(void);
  * Set identifiers
  */
 typedef enum {
-    CAP_EFFECTIVE=0,                        /* Specifies the effective flag */
-    CAP_PERMITTED=1,                        /* Specifies the permitted flag */
-    CAP_INHERITABLE=2                     /* Specifies the inheritable flag */
+    CAP_EFFECTIVE = 0,                 /* Specifies the effective flag */
+    CAP_PERMITTED = 1,                 /* Specifies the permitted flag */
+    CAP_INHERITABLE = 2                /* Specifies the inheritable flag */
 } cap_flag_t;
+
+typedef enum {
+    CAP_IAB_INH = 2,
+    CAP_IAB_AMB = 3,
+    CAP_IAB_BOUND = 4
+} cap_iab_vector_t;
+
+/*
+ * An opaque generalization of the inheritable bits that includes both
+ * what ambient bits to raise and what bounding bits to *lower* (aka
+ * drop).  None of these bits once set, using cap_iab_set(), affect
+ * the running process but are consulted, through the execve() system
+ * call, by the kernel. Note, the ambient bits ('A') of the running
+ * process are fragile with respect to other aspects of the "posix"
+ * (cap_t) operations: most importantly, 'A' cannot ever hold bits not
+ * present in the intersection of 'pI' and 'pP'. The kernel
+ * immediately drops all ambient caps whenever such a situation
+ * arises. Typically, the ambient bits are used to support a naive
+ * capability inheritance model - at odds with the POSIX (sic) model
+ * of inheritance where inherited (pI) capabilities need to also be
+ * wanted by the executed binary (fI) in order to become raised
+ * through exec.
+ */
+typedef struct cap_iab_s *cap_iab_t;
 
 /*
  * These are the states available to each capability
@@ -73,7 +97,6 @@ typedef enum {
 /*
  * User-space capability manipulation routines
  */
-
 typedef unsigned cap_mode_t;
 #define CAP_MODE_UNCERTAIN    ((cap_mode_t) 0)
 #define CAP_MODE_NOPRIV       ((cap_mode_t) 1)
@@ -81,9 +104,10 @@ typedef unsigned cap_mode_t;
 #define CAP_MODE_PURE1E       ((cap_mode_t) 3)
 
 /* libcap/cap_alloc.c */
-extern cap_t   cap_dup(cap_t);
-extern int     cap_free(void *);
-extern cap_t   cap_init(void);
+extern cap_t      cap_dup(cap_t);
+extern int        cap_free(void *);
+extern cap_t      cap_init(void);
+extern cap_iab_t  cap_iab_init(void);
 
 /* libcap/cap_flag.c */
 extern int     cap_get_flag(cap_t, cap_value_t, cap_flag_t, cap_flag_value_t *);
@@ -91,6 +115,12 @@ extern int     cap_set_flag(cap_t, cap_flag_t, int, const cap_value_t *,
 			    cap_flag_value_t);
 extern int     cap_clear(cap_t);
 extern int     cap_clear_flag(cap_t, cap_flag_t);
+
+extern cap_flag_value_t cap_iab_get_vector(cap_iab_t, cap_iab_vector_t,
+					 cap_value_t);
+extern int     cap_iab_set_vector(cap_iab_t, cap_iab_vector_t, cap_value_t,
+				cap_flag_value_t);
+extern int     cap_iab_fill(cap_iab_t, cap_iab_vector_t, cap_t, cap_flag_t);
 
 /* libcap/cap_file.c */
 extern cap_t   cap_get_fd(int);
@@ -125,6 +155,9 @@ extern char *  cap_to_text(cap_t, ssize_t *);
 extern int     cap_from_name(const char *, cap_value_t *);
 extern char *  cap_to_name(cap_value_t);
 
+extern char *     cap_iab_to_text(cap_iab_t bits);
+extern cap_iab_t  cap_iab_from_text(const char *summary);
+
 #define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
 extern int     cap_compare(cap_t, cap_t);
 
@@ -144,6 +177,9 @@ extern int cap_set_secbits(unsigned bits);
 
 extern int cap_setuid(uid_t uid);
 extern int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[]);
+
+extern cap_iab_t cap_iab_get_proc(void);
+extern int cap_iab_set_proc(cap_iab_t iab);
 
 /*
  * system calls - look to libc for function to system call

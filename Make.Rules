@@ -49,7 +49,7 @@ MINOR=32
 KERNEL_HEADERS := $(topdir)/libcap/include/uapi
 IPATH += -fPIC -I$(KERNEL_HEADERS) -I$(topdir)/libcap/include
 
-CC := gcc
+CC := gcc # -std=c99
 CFLAGS := -O2 -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 BUILD_CC := $(CC)
 BUILD_CFLAGS := $(CFLAGS) $(IPATH)

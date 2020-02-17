@@ -24,8 +24,8 @@
  * using pthreads.
  */
 
-static long int _cap_syscall(long int syscall_nr,
-			     long int arg1, long int arg2, long int arg3)
+static long int _cap_syscall3(long int syscall_nr,
+			      long int arg1, long int arg2, long int arg3)
 {
     return syscall(syscall_nr, arg1, arg2, arg3);
 }
@@ -37,10 +37,26 @@ static long int _cap_syscall6(long int syscall_nr,
     return syscall(syscall_nr, arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
-static long int (*_libcap_wsyscall3)(long int, long int, long int, long int)
-    = _cap_syscall;
-static long int (*_libcap_wsyscall6)(long int, long int, long int, long int,
-    long int, long int, long int) = _cap_syscall6;
+/*
+ * to keep the structure of the code conceptually similar in C and Go
+ * implementations, we introduce this abstraction for invoking state
+ * writing system calls. In psx+pthreaded code, the fork
+ * implementation provided by nptl ensures that we can consistently
+ * use the multithreaded syscalls even in the child after a fork().
+ */
+struct syscaller_s {
+    long int (*three)(long int syscall_nr,
+		      long int arg1, long int arg2, long int arg3);
+    long int (*six)(long int syscall_nr,
+		    long int arg1, long int arg2, long int arg3,
+		    long int arg4, long int arg5, long int arg6);
+};
+
+/* use this syscaller for multithreaded code */
+static struct syscaller_s multithread = {
+    .three = _cap_syscall3,
+    .six = _cap_syscall6
+};
 
 /*
  * This gets reset to 0 if we are *not* linked with libpsx.
@@ -79,36 +95,37 @@ void cap_set_syscall(long int (*new_syscall)(long int,
 						     long int, long int,
 						     long int)) {
     if (new_syscall == NULL) {
-	psx_load_syscalls(&_libcap_wsyscall3, &_libcap_wsyscall6);
+	psx_load_syscalls(&multithread.three, &multithread.six);
     } else {
-	_libcap_wsyscall3 = new_syscall;
-	_libcap_wsyscall6 = new_syscall6;
+	multithread.three = new_syscall;
+	multithread.six = new_syscall6;
     }
 }
 
-static int _libcap_capset(cap_user_header_t header, const cap_user_data_t data)
+static int _libcap_capset(struct syscaller_s *sc,
+			  cap_user_header_t header, const cap_user_data_t data)
 {
     if (_libcap_overrode_syscalls) {
-	return _libcap_wsyscall3(SYS_capset,
-				 (long int) header, (long int) data, 0);
+	return sc->three(SYS_capset, (long int) header, (long int) data, 0);
     }
     return capset(header, data);
 }
 
-static int _libcap_wprctl3(long int pr_cmd, long int arg1, long int arg2)
+static int _libcap_wprctl3(struct syscaller_s *sc,
+			   long int pr_cmd, long int arg1, long int arg2)
 {
     if (_libcap_overrode_syscalls) {
-	return _libcap_wsyscall3(SYS_prctl, pr_cmd, arg1, arg2);
+	return sc->three(SYS_prctl, pr_cmd, arg1, arg2);
     }
     return prctl(pr_cmd, arg1, arg2, 0, 0, 0);
 }
 
-static int _libcap_wprctl6(long int pr_cmd, long int arg1, long int arg2,
+static int _libcap_wprctl6(struct syscaller_s *sc,
+			   long int pr_cmd, long int arg1, long int arg2,
 			   long int arg3, long int arg4, long int arg5)
 {
     if (_libcap_overrode_syscalls) {
-	return _libcap_wsyscall6(SYS_prctl, pr_cmd, arg1, arg2,
-				 arg3, arg4, arg5);
+	return sc->six(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
     }
     return prctl(pr_cmd, arg1, arg2, arg3, arg4, arg5);
 }
@@ -135,8 +152,7 @@ cap_t cap_get_proc(void)
     return result;
 }
 
-int cap_set_proc(cap_t cap_d)
-{
+static int _cap_set_proc(struct syscaller_s *sc, cap_t cap_d) {
     int retval;
 
     if (!good_cap_t(cap_d)) {
@@ -145,9 +161,14 @@ int cap_set_proc(cap_t cap_d)
     }
 
     _cap_debug("setting process capabilities");
-    retval = _libcap_capset(&cap_d->head, &cap_d->u[0].set);
+    retval = _libcap_capset(sc, &cap_d->head, &cap_d->u[0].set);
 
     return retval;
+}
+
+int cap_set_proc(cap_t cap_d)
+{
+    return _cap_set_proc(&multithread, cap_d);
 }
 
 /* the following two functions are not required by POSIX */
@@ -195,7 +216,8 @@ cap_t cap_get_pid(pid_t pid)
 
 /*
  * set the caps on a specific process/pg etc.. The kernel has long
- * since deprecated this asynchronus interface.
+ * since deprecated this asynchronus interface. DON'T EXPECT THIS TO
+ * EVER WORK AGAIN.
  */
 
 int capsetp(pid_t pid, cap_t cap_d)
@@ -233,18 +255,22 @@ int cap_get_bound(cap_value_t cap)
     return result;
 }
 
-/* drop a capability from the bounding set */
-
-int cap_drop_bound(cap_value_t cap)
+static int _cap_drop_bound(struct syscaller_s *sc, cap_value_t cap)
 {
     int result;
 
-    result = _libcap_wprctl3(PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
+    result = _libcap_wprctl3(sc, PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
     }
     return result;
+}
+
+/* drop a capability from the bounding set */
+
+int cap_drop_bound(cap_value_t cap) {
+    return _cap_drop_bound(&multithread, cap);
 }
 
 /* get a capability from the ambient set */
@@ -261,9 +287,8 @@ int cap_get_ambient(cap_value_t cap)
     return result;
 }
 
-/* modify a single ambient capability value */
-
-int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
+static int _cap_set_ambient(struct syscaller_s *sc,
+			    cap_value_t cap, cap_flag_value_t set)
 {
     int result, val;
     switch (set) {
@@ -277,8 +302,40 @@ int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
 	errno = EINVAL;
 	return -1;
     }
-    result = _libcap_wprctl6(PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
+    result = _libcap_wprctl6(sc, PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
 			     pr_arg(0), pr_arg(0), pr_arg(0));
+    if (result < 0) {
+	errno = -result;
+	return -1;
+    }
+    return result;
+}
+
+/*
+ * cap_set_ambient modifies a single ambient capability value.
+ */
+int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
+{
+    return _cap_set_ambient(&multithread, cap, set);
+}
+
+static int _cap_reset_ambient(struct syscaller_s *sc)
+{
+    int olderrno = errno;
+    cap_value_t c;
+    int result = 0;
+
+    for (c = 0; !result; c++) {
+	result = cap_get_ambient(c);
+	if (result == -1) {
+	    errno = olderrno;
+	    return 0;
+	}
+    }
+
+    result = _libcap_wprctl6(sc, PR_CAP_AMBIENT,
+			     pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
+			     pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
     if (result < 0) {
 	errno = -result;
 	return -1;
@@ -294,25 +351,7 @@ int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
  */
 int cap_reset_ambient()
 {
-    int olderrno = errno;
-    cap_value_t c;
-    int result = 0;
-
-    for (c = 0; !result; c++) {
-	result = cap_get_ambient(c);
-	if (result == -1) {
-	    errno = olderrno;
-	    return 0;
-	}
-    }
-
-    result = _libcap_wprctl6(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
-			     pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
-    if (result < 0) {
-	errno = -result;
-	return -1;
-    }
-    return result;
+    return _cap_reset_ambient(&multithread);
 }
 
 /*
@@ -322,16 +361,22 @@ unsigned cap_get_secbits(void)
 {
     return (unsigned) prctl(PR_GET_SECUREBITS, pr_arg(0), pr_arg(0));
 }
+
+static int _cap_set_secbits(struct syscaller_s *sc, unsigned bits)
+{
+    return _libcap_wprctl3(sc, PR_SET_SECUREBITS, bits, 0);
+}
+
 /*
  * Set the security mode of the current process.
  */
 int cap_set_secbits(unsigned bits)
 {
-    return _libcap_wprctl3(PR_SET_SECUREBITS, bits, 0);
+    return _cap_set_secbits(&multithread, bits);
 }
 
 /*
- * Some predefined
+ * Some predefined constants
  */
 #define CAP_SECURED_BITS_BASIC                                 \
     (SECBIT_NOROOT | SECBIT_NOROOT_LOCKED |                    \
@@ -341,23 +386,16 @@ int cap_set_secbits(unsigned bits)
 #define CAP_SECURED_BITS_AMBIENT  (CAP_SECURED_BITS_BASIC |    \
      SECBIT_NO_CAP_AMBIENT_RAISE | SECBIT_NO_CAP_AMBIENT_RAISE_LOCKED)
 
-/*
- * cap_set_mode locks the overarching capability framework of the
- * present process and thus its children to a predefined flavor. Once
- * set, these modes cannot be undone by the affected process tree and
- * can only be done by "cap_setpcap" permitted processes. Note, a side
- * effect of this function, whether it succeeds or fails, is to clear
- * atleast the CAP_EFFECTIVE flags for the current process.
- */
-int cap_set_mode(cap_mode_t flavor)
+static cap_value_t raise_cap_setpcap[] = {CAP_SETPCAP};
+
+static int _cap_set_mode(struct syscaller_s *sc, cap_mode_t flavor)
 {
-    const cap_value_t raise_cap_setpcap[] = {CAP_SETPCAP};
     cap_t working = cap_get_proc();
     unsigned secbits = CAP_SECURED_BITS_AMBIENT;
 
     int ret = cap_set_flag(working, CAP_EFFECTIVE,
 			   1, raise_cap_setpcap, CAP_SET);
-    ret = ret | cap_set_proc(working);
+    ret = ret | _cap_set_proc(sc, working);
 
     if (ret == 0) {
 	cap_flag_t c;
@@ -372,12 +410,12 @@ int cap_set_mode(cap_mode_t flavor)
 	    if (!CAP_AMBIENT_SUPPORTED()) {
 		secbits = CAP_SECURED_BITS_BASIC;
 	    } else {
-		ret = cap_reset_ambient();
+		ret = _cap_reset_ambient(sc);
 		if (ret) {
 		    break; /* ambient dropping failed */
 		}
 	    }
-	    ret = cap_set_secbits(secbits);
+	    ret = _cap_set_secbits(sc, secbits);
 	    if (flavor != CAP_MODE_NOPRIV) {
 		break;
 	    }
@@ -385,7 +423,7 @@ int cap_set_mode(cap_mode_t flavor)
 	    /* just for "case CAP_MODE_NOPRIV:" */
 
 	    for (c = 0; cap_get_bound(c) >= 0; c++) {
-		(void) cap_drop_bound(c);
+		(void) _cap_drop_bound(sc, c);
 	    }
 	    (void) cap_clear_flag(working, CAP_PERMITTED);
 	    break;
@@ -397,9 +435,22 @@ int cap_set_mode(cap_mode_t flavor)
     }
 
     (void) cap_clear_flag(working, CAP_EFFECTIVE);
-    ret = cap_set_proc(working) | ret;
+    ret = _cap_set_proc(sc, working) | ret;
     (void) cap_free(working);
     return ret;
+}
+
+/*
+ * cap_set_mode locks the overarching capability framework of the
+ * present process and thus its children to a predefined flavor. Once
+ * set, these modes cannot be undone by the affected process tree and
+ * can only be done by "cap_setpcap" permitted processes. Note, a side
+ * effect of this function, whether it succeeds or fails, is to clear
+ * atleast the CAP_EFFECTIVE flags for the current process.
+ */
+int cap_set_mode(cap_mode_t flavor)
+{
+    return _cap_set_mode(&multithread, flavor);
 }
 
 /*
@@ -459,13 +510,7 @@ cap_mode_t cap_get_mode(void)
     return CAP_MODE_NOPRIV;
 }
 
-/*
- * cap_setuid attempts to set the uid of the process without dropping
- * any permitted capabilities in the process. A side effect of a call
- * to this function is that the effective set will be cleared by the
- * time the function returns.
- */
-int cap_setuid(uid_t uid)
+static int _cap_setuid(struct syscaller_s *sc, uid_t uid)
 {
     const cap_value_t raise_cap_setuid[] = {CAP_SETUID};
     cap_t working = cap_get_proc();
@@ -478,11 +523,11 @@ int cap_setuid(uid_t uid)
      * compliant way for the code below to work, so we are either
      * all-broken or not-broken and don't allow for "sort of working".
      */
-    (void) _libcap_wprctl3(PR_SET_KEEPCAPS, 1, 0);
-    int ret = cap_set_proc(working);
+    (void) _libcap_wprctl3(sc, PR_SET_KEEPCAPS, 1, 0);
+    int ret = _cap_set_proc(sc, working);
     if (ret == 0) {
 	if (_libcap_overrode_syscalls) {
-	    ret = _libcap_wsyscall3(SYS_setuid, (long int) uid, 0, 0);
+	    ret = sc->three(SYS_setuid, (long int) uid, 0, 0);
 	    if (ret < 0) {
 		errno = -ret;
 		ret = -1;
@@ -492,14 +537,24 @@ int cap_setuid(uid_t uid)
 	}
     }
     int olderrno = errno;
-    (void) _libcap_wprctl3(PR_SET_KEEPCAPS, 0, 0);
-
+    (void) _libcap_wprctl3(sc, PR_SET_KEEPCAPS, 0, 0);
     (void) cap_clear_flag(working, CAP_EFFECTIVE);
-    (void) cap_set_proc(working);
+    (void) _cap_set_proc(sc, working);
     (void) cap_free(working);
 
     errno = olderrno;
     return ret;
+}
+
+/*
+ * cap_setuid attempts to set the uid of the process without dropping
+ * any permitted capabilities in the process. A side effect of a call
+ * to this function is that the effective set will be cleared by the
+ * time the function returns.
+ */
+int cap_setuid(uid_t uid)
+{
+    return _cap_setuid(&multithread, uid);
 }
 
 #if defined(__arm__) || defined(__i386__) || \
@@ -509,14 +564,8 @@ int cap_setuid(uid_t uid)
 #define sys_setgroups_variant  SYS_setgroups
 #endif
 
-/*
- * cap_setgroups combines setting the gid with changing the set of
- * supplemental groups for a user into one call that raises the needed
- * capabilities to do it for the duration of the call. A side effect
- * of a call to this function is that the effective set will be
- * cleared by the time the function returns.
- */
-int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
+static int _cap_setgroups(struct syscaller_s *sc,
+			  gid_t gid, size_t ngroups, const gid_t groups[])
 {
     const cap_value_t raise_cap_setgid[] = {CAP_SETGID};
     cap_t working = cap_get_proc();
@@ -529,14 +578,14 @@ int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
      * compliant way for the other functions of this file so we are
      * all-broken or not-broken and don't allow for "sort of working".
      */
-    int ret = cap_set_proc(working);
+    int ret = _cap_set_proc(sc, working);
     if (_libcap_overrode_syscalls) {
 	if (ret == 0) {
-	    ret = _libcap_wsyscall3(SYS_setgid, (long int) gid, 0, 0);
+	    ret = sc->three(SYS_setgid, (long int) gid, 0, 0);
 	}
 	if (ret == 0) {
-	    ret = _libcap_wsyscall3(sys_setgroups_variant, (long int) ngroups,
-				  (long int) groups, 0);
+	    ret = sc->three(sys_setgroups_variant, (long int) ngroups,
+			    (long int) groups, 0);
 	}
 	if (ret < 0) {
 	    errno = -ret;
@@ -553,9 +602,116 @@ int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
     int olderrno = errno;
 
     (void) cap_clear_flag(working, CAP_EFFECTIVE);
-    (void) cap_set_proc(working);
+    (void) _cap_set_proc(sc, working);
     (void) cap_free(working);
 
     errno = olderrno;
     return ret;
+}
+
+/*
+ * cap_setgroups combines setting the gid with changing the set of
+ * supplemental groups for a user into one call that raises the needed
+ * capabilities to do it for the duration of the call. A side effect
+ * of a call to this function is that the effective set will be
+ * cleared by the time the function returns.
+ */
+int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
+{
+    return _cap_setgroups(&multithread, gid, ngroups, groups);
+}
+
+/*
+ * cap_iab_get_proc returns a cap_iab_t value initialized by the
+ * current process state related to these iab bits.
+ */
+cap_iab_t cap_iab_get_proc(void)
+{
+    cap_iab_t iab = cap_iab_init();
+    cap_t current = cap_get_proc();
+    cap_iab_fill(iab, CAP_IAB_INH, current, CAP_INHERITABLE);
+    cap_value_t c;
+    for (c = cap_max_bits(); c; ) {
+	--c;
+	int o = c >> 5;
+	__u32 mask = 1U << (c & 31);
+	if (cap_get_bound(c) == 0) {
+	    iab->nb[o] |= mask;
+	}
+	if (cap_get_ambient(c) == 1) {
+	    iab->a[o] |= mask;
+	}
+    }
+    return iab;
+}
+
+/*
+ * _cap_iab_set_proc sets the iab collection using the requested syscaller.
+ */
+static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
+{
+    int ret, i;
+    cap_t working, temp = cap_get_proc();
+    cap_value_t c;
+    int raising = 0;
+
+    for (i = 0; i < _LIBCAP_CAPABILITY_U32S; i++) {
+	__u32 newI = iab->i[i];
+	__u32 oldIP = temp->u[i].flat[CAP_INHERITABLE] |
+	    temp->u[i].flat[CAP_PERMITTED];
+	raising |= (newI & ~oldIP) | iab->a[i] | iab->nb[i];
+	temp->u[i].flat[CAP_INHERITABLE] = newI;
+
+    }
+
+    working = cap_dup(temp);
+    if (raising) {
+	ret = cap_set_flag(working, CAP_EFFECTIVE,
+			   1, raise_cap_setpcap, CAP_SET);
+	if (ret) {
+	    goto defer;
+	}
+    }
+    if ((ret = _cap_set_proc(sc, working))) {
+	goto defer;
+    }
+    if ((ret = _cap_reset_ambient(sc))) {
+	goto done;
+    }
+
+    for (c = cap_max_bits(); c-- != 0; ) {
+	unsigned offset = c >> 5;
+	__u32 mask = 1U << (c & 31);
+	if (iab->a[offset] & mask) {
+	    ret = _cap_set_ambient(sc, c, CAP_SET);
+	    if (ret) {
+		goto done;
+	    }
+	}
+	if (iab->nb[offset] & mask) {
+	    /* drop the bounding bit */
+	    ret = _cap_drop_bound(sc, c);
+	    if (ret) {
+		goto done;
+	    }
+	}
+    }
+
+done:
+    (void) cap_set_proc(temp);
+
+defer:
+    cap_free(working);
+    cap_free(temp);
+
+    return ret;
+}
+
+/*
+ * cap_iab_set_proc sets the iab capability vectors of the current
+ * process.
+ */
+int cap_iab_set_proc(cap_iab_t iab)
+{
+    return _cap_iab_set_proc(&multithread, iab);
 }

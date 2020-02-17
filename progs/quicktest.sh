@@ -70,6 +70,9 @@ pass_capsh --mode=PURE1E --print --mode=NOPRIV --inmode=NOPRIV
 fail_capsh --mode=NOPRIV --print --mode=PURE1E
 fail_capsh --user=nobody --mode=NOPRIV --print -- ./privileged
 
+# simple IAB setting (no ambient) in pure1e mode.
+pass_capsh --mode=PURE1E --iab='!%cap_chown,cap_sys_admin'
+
 # Explore keep_caps support
 pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 
@@ -201,6 +204,10 @@ EOF
     # finally remove the capability from the privileged binary and try again.
     ./setcap -r ./privileged
     pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=500"
+
+    # validate IAB setting with an ambient capability
+    pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_sys_admin'
+    fail_capsh --mode=PURE1E --iab='!%cap_chown,^cap_sys_admin'
 fi
 /bin/rm -f ./privileged
 

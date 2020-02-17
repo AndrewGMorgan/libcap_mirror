@@ -82,6 +82,7 @@ static void arg_print(void)
     gid_t groups[MAX_GROUPS], gid;
     uid_t uid, euid;
     struct passwd *u, *eu;
+    cap_iab_t iab;
 
     all = cap_get_proc();
     text = cap_to_text(all, NULL);
@@ -91,6 +92,12 @@ static void arg_print(void)
 
     display_prctl_set("Bounding", cap_get_bound);
     display_prctl_set("Ambient", cap_get_ambient);
+    iab = cap_iab_get_proc();
+    text = cap_iab_to_text(iab);
+    printf("Current IAB: %s\n", text);
+    cap_free(text);
+    cap_free(iab);
+
     set = cap_get_secbits();
     if (set >= 0) {
 	const char *b = binary(set);  /* verilog convention for binary string */
@@ -835,6 +842,17 @@ int main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "gid: got=%d, want=%d\n", gid, value);
 		exit(1);
 	    }
+	} else if (!strncmp("--iab=", argv[i], 6)) {
+	    cap_iab_t iab = cap_iab_from_text(argv[i]+6);
+	    if (iab == NULL) {
+		fprintf(stderr, "iab: '%s' malformed\n", argv[i]+6);
+		exit(1);
+	    }
+	    if (cap_iab_set_proc(iab)) {
+		perror("unable to set IAP vectors");
+		exit(1);
+	    }
+	    cap_free(iab);
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
@@ -854,6 +872,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --caps=xxx     set caps as per cap_from_text()\n"
 		   "  --inh=xxx      set xxx,.. inheritiable set\n"
 		   "  --secbits=<n>  write a new value for securebits\n"
+		   "  --iab=...      use cap_iab_from_text() to set iab\n"
 		   "  --keep=<n>     set keep-capabability bit to <n>\n"
 		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
 		   "  --cap-uid=<n>  libcap cap_setuid() to change uid\n"

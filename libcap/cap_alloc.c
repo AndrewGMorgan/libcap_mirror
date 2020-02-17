@@ -121,6 +121,11 @@ cap_t cap_dup(cap_t cap_d)
     return result;
 }
 
+cap_iab_t cap_iab_init(void) {
+    __u32 *base = calloc(1, sizeof(__u32) + sizeof(struct cap_iab_s));
+    *(base++) = CAP_IAB_MAGIC;
+    return (cap_iab_t) base;
+}
 
 /*
  * Scrub and then liberate an internal capability set.
@@ -128,10 +133,10 @@ cap_t cap_dup(cap_t cap_d)
 
 int cap_free(void *data_p)
 {
-    if ( !data_p )
+    if (!data_p)
 	return 0;
 
-    if ( good_cap_t(data_p) ) {
+    if (good_cap_t(data_p)) {
 	data_p = -1 + (__u32 *) data_p;
 	memset(data_p, 0, sizeof(__u32) + sizeof(struct _cap_struct));
 	free(data_p);
@@ -139,13 +144,22 @@ int cap_free(void *data_p)
 	return 0;
     }
 
-    if ( good_cap_string(data_p) ) {
+    if (good_cap_string(data_p)) {
 	size_t length = strlen(data_p) + sizeof(__u32);
      	data_p = -1 + (__u32 *) data_p;
      	memset(data_p, 0, length);
      	free(data_p);
      	data_p = NULL;
      	return 0;
+    }
+
+    if (good_cap_iab_t(data_p)) {
+	size_t length = sizeof(struct cap_iab_s) + sizeof(__u32);
+	data_p = -1 + (__u32 *) data_p;
+	memset(data_p, 0, length);
+	free(data_p);
+	data_p = NULL;
+	return 0;
     }
 
     _cap_debug("don't recognize what we're supposed to liberate");

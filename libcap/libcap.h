@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997,2020 Andrew G Morgan <morgan@kernel.org>
  *
  * This file contains internal definitions for the various functions in
  * this small capability library.
@@ -28,7 +28,7 @@
 
 #ifndef _LINUX_CAPABILITY_U32S_1
 # define _LINUX_CAPABILITY_U32S_1          1
-#endif /* ndef _LINUX_CAPABILITY_U32S */
+#endif /* ndef _LINUX_CAPABILITY_U32S_1 */
 
 /*
  * Do we match the local kernel?
@@ -127,6 +127,9 @@ struct _cap_struct {
 /* string magic for cap_free */
 #define CAP_S_MAGIC 0xCA95D0
 
+/* iab set magic for cap_free */
+#define CAP_IAB_MAGIC 0xCA9AB
+
 /*
  * kernel API cap set abstraction
  */
@@ -142,6 +145,7 @@ struct _cap_struct {
 #define __libcap_check_magic(c,magic) ((c) && *(-1+(__u32 *)(c)) == (magic))
 #define good_cap_t(c)        __libcap_check_magic(c, CAP_T_MAGIC)
 #define good_cap_string(c)   __libcap_check_magic(c, CAP_S_MAGIC)
+#define good_cap_iab_t(c)    __libcap_check_magic(c, CAP_IAB_MAGIC)
 
 /*
  * These match CAP_DIFFERS() expectations
@@ -221,5 +225,23 @@ extern int capsetp(pid_t pid, cap_t cap_d);
 	}							\
 	val = min ? min : fallback;				\
     } while(0)
+
+/*
+ * cap_iab_s holds a collection of inheritable capability bits. The i
+ * bits are inheritable (these are the same as those in cap_t), the a
+ * bits are ambient bits (which cannot be a superset of i&p), and nb
+ * are the bits that will be dropped from the bounding set when
+ * applied.
+ */
+struct cap_iab_s {
+    __u32 i[_LIBCAP_CAPABILITY_U32S];
+    __u32 a[_LIBCAP_CAPABILITY_U32S];
+    __u32 nb[_LIBCAP_CAPABILITY_U32S];
+};
+
+#define LIBCAP_IAB_I_FLAG (1U << CAP_IAB_INH)
+#define LIBCAP_IAB_A_FLAG (1U << CAP_IAB_AMB)
+#define LIBCAP_IAB_IA_FLAG (LIBCAP_IAB_I_FLAG | LIBCAP_IAB_A_FLAG)
+#define LIBCAP_IAB_NB_FLAG (1U << CAP_IAB_BOUND)
 
 #endif /* LIBCAP_H */

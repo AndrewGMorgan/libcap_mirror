@@ -1,3 +1,5 @@
+#define _DEFAULT_SOURCE
+
 #include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
