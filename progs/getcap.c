@@ -49,7 +49,7 @@ static int do_getcap(const char *fname, const struct stat *stbuf,
     cap_d = cap_get_file(fname);
     if (cap_d == NULL) {
 	if (errno != ENODATA) {
-	    fprintf(stderr, "Failed to get capabilities of file `%s' (%s)\n",
+	    fprintf(stderr, "Failed to get capabilities of file '%s' (%s)\n",
 		    fname, strerror(errno));
 	} else if (verbose) {
 	    printf("%s\n", fname);
@@ -60,7 +60,7 @@ static int do_getcap(const char *fname, const struct stat *stbuf,
     result = cap_to_text(cap_d, NULL);
     if (!result) {
 	fprintf(stderr,
-		"Failed to get capabilities of human readable format at `%s' (%s)\n",
+		"Failed to get capabilities of human readable format at '%s' (%s)\n",
 		fname, strerror(errno));
 	cap_free(cap_d);
 	return 0;
