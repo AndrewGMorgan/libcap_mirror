@@ -33,7 +33,7 @@ const (
 
 // IABInit() returns an empty IAB.
 func IABInit() *IAB {
-	startUp.Do(cInit)
+	startUp.Do(multisc.cInit)
 	return &IAB{
 		i:  make([]uint32, words),
 		a:  make([]uint32, words),
@@ -126,9 +126,8 @@ func (iab *IAB) String() string {
 	return strings.Join(vs, ",")
 }
 
-// SetProc attempts to change the Inheritable, Ambient and Bounding
-// capabilty vectors of the current process.
-func (iab *IAB) SetProc() (err error) {
+//go:nosplit
+func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 	temp := GetProc()
 	var raising uint32
 	for i := 0; i < words; i++ {
@@ -146,32 +145,40 @@ func (iab *IAB) SetProc() (err error) {
 		if err = working.SetFlag(Effective, true, SETPCAP); err != nil {
 			return
 		}
-		if err = working.SetProc(); err != nil {
+		if err = sc.setProc(working); err != nil {
 			return
 		}
 	}
 	defer func() {
-		if err2 := temp.SetProc(); err == nil {
+		if err2 := sc.setProc(temp); err == nil {
 			err = err2
 		}
 	}()
-	if err = ResetAmbient(); err != nil {
+	if err = sc.resetAmbient(); err != nil {
 		return
 	}
 	for c := Value(maxValues); c > 0; {
 		c--
 		offset, mask := omask(c)
 		if iab.a[offset]&mask != 0 {
-			err = SetAmbient(true, c)
+			err = sc.setAmbient(true, c)
 		}
 		if err == nil && iab.nb[offset]&mask != 0 {
-			err = DropBound(c)
+			err = sc.dropBound(c)
 		}
 		if err != nil {
 			return
 		}
 	}
 	return
+}
+
+// SetProc attempts to change the Inheritable, Ambient and Bounding
+// capabilty vectors of the current process.
+func (iab *IAB) SetProc() error {
+	scwMu.Lock()
+	defer scwMu.Unlock()
+	return multisc.iabSetProc(iab)
 }
 
 // GetVector returns the raised state of the specific capability bit

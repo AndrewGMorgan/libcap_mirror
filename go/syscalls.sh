@@ -20,12 +20,24 @@ import (
 	"syscall"
 )
 
-// callKernel variables overridable for testing purposes.
+// multisc provides syscalls overridable for testing purposes that
+// support a single kernel security state for all OS threads.
 // (Go build tree has no syscall.PerOSThreadSyscall support.)
-var callWKernel  = psx.Syscall3
-var callWKernel6 = psx.Syscall6
-var callRKernel  = syscall.RawSyscall
-var callRKernel6 = syscall.RawSyscall6
+var multisc = &syscaller{
+	w3: psx.Syscall3,
+	w6: psx.Syscall6,
+	r3: syscall.RawSyscall,
+	r6: syscall.RawSyscall6,
+}
+
+// singlesc provides a single threaded implementation. Users should
+// take care to ensure the thread is OS locked.
+var singlesc = &syscaller{
+	w3: syscall.RawSyscall,
+	w6: syscall.RawSyscall6,
+	r3: syscall.RawSyscall,
+	r6: syscall.RawSyscall6,
+}
 EOF
 
     exit 0
@@ -39,12 +51,23 @@ package cap
 
 import "syscall"
 
-// callKernel variables overridable for testing purposes.
-// (Go build tree contains syscall.PerOSThreadSyscall support.)
-var callWKernel  = syscall.PerOSThreadSyscall
-var callWKernel6 = syscall.PerOSThreadSyscall6
-var callRKernel  = syscall.RawSyscall
-var callRKernel6 = syscall.RawSyscall6
+// multisc provides syscalls overridable for testing purposes that
+// support a single kernel security state for all OS threads.
+var multisc = &syscaller{
+	w3: syscall.PerOSThreadSyscall,
+	w6: syscall.PerOSThreadSyscall6,
+	r3: syscall.RawSyscall,
+	r6: syscall.RawSyscall6,
+}
+
+// singlesc provides a single threaded implementation. Users should
+// take care to ensure the thread is locked and marked nogc.
+var singlesc = &syscaller{
+	w3: syscall.RawSyscall,
+	w6: syscall.RawSyscall6,
+	r3: syscall.RawSyscall,
+	r6: syscall.RawSyscall6,
+}
 EOF
 
 cat > "${dir}/syscalls_cgo.go" <<EOF
@@ -57,11 +80,23 @@ import (
 	"syscall"
 )
 
-// callKernel variables overridable for testing purposes.
+// multisc provides syscalls overridable for testing purposes that
+// support a single kernel security state for all OS threads.
 // We use this version when we are cgo compiling because
 // we need to manage the native C pthreads too.
-var callWKernel  = psx.Syscall3
-var callWKernel6 = psx.Syscall6
-var callRKernel  = syscall.RawSyscall
-var callRKernel6 = syscall.RawSyscall6
+var multisc = &syscaller{
+	w3: psx.Syscall3,
+	w6: psx.Syscall6,
+	r3: syscall.RawSyscall,
+	r6: syscall.RawSyscall6,
+}
+
+// singlesc provides a single threaded implementation. Users should
+// take care to ensure the thread is locked and marked nogc.
+var singlesc = &syscaller{
+	w3: syscall.RawSyscall,
+	w6: syscall.RawSyscall6,
+	r3: syscall.RawSyscall,
+	r6: syscall.RawSyscall6,
+}
 EOF

@@ -21,7 +21,7 @@ func (v Value) String() string {
 // FromName converts a named capability Value to its binary
 // representation.
 func FromName(name string) (Value, error) {
-	startUp.Do(cInit)
+	startUp.Do(multisc.cInit)
 	v, ok := bits[name]
 	if ok {
 		if v >= Value(words*32) {

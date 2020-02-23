@@ -122,7 +122,7 @@ func digestFileCap(d []byte, sz int, err error) (*Set, error) {
 func GetFd(file *os.File) (*Set, error) {
 	var raw3 vfs_caps_3
 	d := make([]byte, binary.Size(raw3))
-	sz, _, oErr := callRKernel6(syscall.SYS_FGETXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0)
+	sz, _, oErr := multisc.r6(syscall.SYS_FGETXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0)
 	var err error
 	if oErr != 0 {
 		err = oErr
@@ -138,7 +138,7 @@ func GetFile(path string) (*Set, error) {
 	}
 	var raw3 vfs_caps_3
 	d := make([]byte, binary.Size(raw3))
-	sz, _, oErr := callRKernel6(syscall.SYS_GETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0)
+	sz, _, oErr := multisc.r6(syscall.SYS_GETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0)
 	if oErr != 0 {
 		err = oErr
 	}
@@ -210,7 +210,7 @@ func (c *Set) packFileCap() ([]byte, error) {
 // capabilities, by calling with c = nil.
 func (c *Set) SetFd(file *os.File) error {
 	if c == nil {
-		if _, _, err := callRKernel6(syscall.SYS_FREMOVEXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), 0, 0, 0, 0); err != 0 {
+		if _, _, err := multisc.r6(syscall.SYS_FREMOVEXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), 0, 0, 0, 0); err != 0 {
 			return err
 		}
 		return nil
@@ -221,7 +221,7 @@ func (c *Set) SetFd(file *os.File) error {
 	if err != nil {
 		return err
 	}
-	if _, _, err := callRKernel6(syscall.SYS_FSETXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0); err != 0 {
+	if _, _, err := multisc.r6(syscall.SYS_FSETXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0); err != 0 {
 		return err
 	}
 	return nil
@@ -249,7 +249,7 @@ func (c *Set) SetFile(path string) error {
 		return err
 	}
 	if c == nil {
-		if _, _, err := callRKernel6(syscall.SYS_REMOVEXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), 0, 0, 0, 0); err != 0 {
+		if _, _, err := multisc.r6(syscall.SYS_REMOVEXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), 0, 0, 0, 0); err != 0 {
 			return err
 		}
 		return nil
@@ -260,7 +260,7 @@ func (c *Set) SetFile(path string) error {
 	if err != nil {
 		return err
 	}
-	if _, _, err := callRKernel6(syscall.SYS_SETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0); err != 0 {
+	if _, _, err := multisc.r6(syscall.SYS_SETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0); err != 0 {
 		return err
 	}
 	return nil

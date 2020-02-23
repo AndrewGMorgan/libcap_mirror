@@ -33,19 +33,25 @@ const (
 
 // GetSecbits returns the current setting of the process' Secbits.
 func GetSecbits() Secbits {
-	v, err := prctlrcall(PR_GET_SECUREBITS, 0, 0)
+	v, err := multisc.prctlrcall(PR_GET_SECUREBITS, 0, 0)
 	if err != nil {
 		panic(err)
 	}
 	return Secbits(v)
 }
 
+func (sc *syscaller) setSecbits(s Secbits) error {
+	_, err := sc.prctlwcall(PR_SET_SECUREBITS, uintptr(s), 0)
+	return err
+}
+
 // Set attempts to force the process Secbits to a value. This function
 // will raise cap.SETPCAP in order to achieve this operation, and will
 // completely lower the Effective  vector of the process returning.
 func (s Secbits) Set() error {
-	_, err := prctlwcall(PR_SET_SECUREBITS, uintptr(s), 0)
-	return err
+	scwMu.Lock()
+	defer scwMu.Unlock()
+	return multisc.setSecbits(s)
 }
 
 // Mode summarizes a complicated secure-bits and capability mode in a
@@ -116,25 +122,17 @@ func GetMode() Mode {
 
 var ErrBadMode = errors.New("unsupported mode")
 
-// Set attempts to enter the specified mode. An attempt is made to
-// enter the mode, so if you prefer this operation to be a no-op if
-// entering the same mode, call only if CurrentMode() disagrees with
-// the desired mode.
-//
-// This function will raise cap.SETPCAP in order to achieve this
-// operation, and will completely lower the Effective vector of the
-// process before returning.
-func (m Mode) Set() error {
+func (sc *syscaller) setMode(m Mode) error {
 	w := GetProc()
 	defer func() {
 		w.ClearFlag(Effective)
-		w.SetProc()
+		sc.setProc(w)
 	}()
 
 	if err := w.SetFlag(Effective, true, SETPCAP); err != nil {
 		return err
 	}
-	if err := w.SetProc(); err != nil {
+	if err := sc.setProc(w); err != nil {
 		return err
 	}
 
@@ -147,11 +145,11 @@ func (m Mode) Set() error {
 	sb := securedAmbientBits
 	if _, err := GetAmbient(0); err != nil {
 		sb = securedBasicBits
-	} else if err := ResetAmbient(); err != nil {
+	} else if err := sc.resetAmbient(); err != nil {
 		return err
 	}
 
-	if err := sb.Set(); err != nil {
+	if err := sc.setSecbits(sb); err != nil {
 		return err
 	}
 
@@ -159,11 +157,25 @@ func (m Mode) Set() error {
 		return nil
 	}
 
-	for c := Value(0); DropBound(c) == nil; c++ {
+	for c := Value(0); sc.dropBound(c) == nil; c++ {
 	}
 	w.ClearFlag(Permitted)
 
 	return nil
+}
+
+// Set attempts to enter the specified mode. An attempt is made to
+// enter the mode, so if you prefer this operation to be a no-op if
+// entering the same mode, call only if CurrentMode() disagrees with
+// the desired mode.
+//
+// This function will raise cap.SETPCAP in order to achieve this
+// operation, and will completely lower the Effective vector of the
+// process before returning.
+func (m Mode) Set() error {
+	scwMu.Lock()
+	defer scwMu.Unlock()
+	return multisc.setMode(m)
 }
 
 // String returns the libcap conventional string for this mode.
@@ -182,16 +194,11 @@ func (m Mode) String() string {
 	}
 }
 
-// SetUID is a convenience function for robustly setting the UID and
-// all other variants of UID (EUID etc) to the specified value without
-// dropping the privilege of the current process. This function will
-// raise cap.SETUID in order to achieve this operation, and will
-// completely lower the Effective vector of the process before returning.
-func SetUID(uid int) error {
+func (sc *syscaller) setUID(uid int) error {
 	w := GetProc()
 	defer func() {
 		w.ClearFlag(Effective)
-		w.SetProc()
+		sc.setProc(w)
 	}()
 
 	if err := w.SetFlag(Effective, true, SETUID); err != nil {
@@ -200,14 +207,60 @@ func SetUID(uid int) error {
 
 	// these may or may not work depending on whether or not they
 	// are locked. We try them just in case.
-	prctlwcall(PR_SET_KEEPCAPS, 1, 0)
-	defer prctlwcall(PR_SET_KEEPCAPS, 0, 0)
+	sc.prctlwcall(PR_SET_KEEPCAPS, 1, 0)
+	defer sc.prctlwcall(PR_SET_KEEPCAPS, 0, 0)
 
-	if err := w.SetProc(); err != nil {
+	if err := sc.setProc(w); err != nil {
 		return err
 	}
 
-	if _, _, err := callWKernel(syscall.SYS_SETUID, uintptr(uid), 0, 0); err != 0 {
+	if _, _, err := sc.w3(syscall.SYS_SETUID, uintptr(uid), 0, 0); err != 0 {
+		return err
+	}
+	return nil
+}
+
+// SetUID is a convenience function for robustly setting the UID and
+// all other variants of UID (EUID etc) to the specified value without
+// dropping the privilege of the current process. This function will
+// raise cap.SETUID in order to achieve this operation, and will
+// completely lower the Effective vector of the process before returning.
+func SetUID(uid int) error {
+	scwMu.Lock()
+	defer scwMu.Unlock()
+	return multisc.setUID(uid)
+}
+
+func (sc *syscaller) setGroups(gid int, suppl []int) error {
+	w := GetProc()
+	defer func() {
+		w.ClearFlag(Effective)
+		sc.setProc(w)
+	}()
+
+	if err := w.SetFlag(Effective, true, SETGID); err != nil {
+		return err
+	}
+	if err := sc.setProc(w); err != nil {
+		return err
+	}
+
+	if _, _, err := sc.w3(syscall.SYS_SETGID, uintptr(gid), 0, 0); err != 0 {
+		return err
+	}
+	if len(suppl) == 0 {
+		if _, _, err := sc.w3(sys_setgroups_variant, 0, 0, 0); err != 0 {
+			return err
+		}
+		return nil
+	}
+
+	// On linux gid values are 32-bits.
+	gs := make([]uint32, len(suppl))
+	for i, g := range suppl {
+		gs[i] = uint32(g)
+	}
+	if _, _, err := sc.w3(sys_setgroups_variant, uintptr(len(suppl)), uintptr(unsafe.Pointer(&gs[0])), 0); err != 0 {
 		return err
 	}
 	return nil
@@ -219,36 +272,7 @@ func SetUID(uid int) error {
 // raise cap.SETGID in order to achieve this operation, and will
 // completely lower the Effective vector of the process before returning.
 func SetGroups(gid int, suppl ...int) error {
-	w := GetProc()
-	defer func() {
-		w.ClearFlag(Effective)
-		w.SetProc()
-	}()
-
-	if err := w.SetFlag(Effective, true, SETGID); err != nil {
-		return err
-	}
-	if err := w.SetProc(); err != nil {
-		return err
-	}
-
-	if _, _, err := callWKernel(syscall.SYS_SETGID, uintptr(gid), 0, 0); err != 0 {
-		return err
-	}
-	if len(suppl) == 0 {
-		if _, _, err := callWKernel(sys_setgroups_variant, 0, 0, 0); err != 0 {
-			return err
-		}
-		return nil
-	}
-
-	// On linux gid values are 32-bits.
-	gs := make([]uint32, len(suppl))
-	for i, g := range suppl {
-		gs[i] = uint32(g)
-	}
-	if _, _, err := callWKernel(sys_setgroups_variant, uintptr(len(suppl)), uintptr(unsafe.Pointer(&gs[0])), 0); err != 0 {
-		return err
-	}
-	return nil
+	scwMu.Lock()
+	defer scwMu.Unlock()
+	return multisc.setGroups(gid, suppl)
 }

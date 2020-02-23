@@ -128,10 +128,10 @@ func tryFileCaps() {
 	}
 }
 
-// tryProcCaps performs a set of convenience functions and compares the
-// results with those seen by libcap. At the end of this function, the
-// running process has no privileges at all. So exiting is the only
-// option.
+// tryProcCaps performs a set of convenience functions and compares
+// the results with those seen by libcap. At the end of this function,
+// the running process has no privileges at all. So exiting the
+// program is the only option.
 func tryProcCaps() {
 	c := cap.GetProc()
 	if v, err := c.GetFlag(cap.Permitted, cap.SETPCAP); err != nil {
@@ -173,7 +173,7 @@ func tryProcCaps() {
 
 	for i, mode := range []cap.Mode{cap.ModePure1E, cap.ModePure1EInit, cap.ModeNoPriv} {
 		if err := mode.Set(); err != nil {
-			log.Fatalf("[%d] failed to set mode to %d (%v): %v", i, mode, mode, err)
+			log.Fatalf("[%d] in mode=%v and failed to set mode to %d (%v): %v", i, cap.GetMode(), mode, mode, err)
 		}
 		if got := cap.GetMode(); got != mode {
 			log.Fatalf("[%d] unable to recognise mode %d (%v), got: %d (%v)", i, mode, mode, got, got)
@@ -325,8 +325,8 @@ func main() {
 	// the current program is capable enough and do not involve
 	// any cgo calls to libcap.
 	tryFileCaps()
-	tryProcCaps()
 
-	// Since we have no privilege, there is nothing left to do but exit.
+	// Nothing left to do but exit after this one.
+	tryProcCaps()
 	log.Printf("compare-cap success!")
 }

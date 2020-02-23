@@ -10,10 +10,13 @@ CAPGOPACKAGE=pkg/$(GOOSARCH)/libcap/cap.a
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
-all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap
+all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap try-launching
 
 $(DEPS):
 	make -C ../libcap all
+
+../progs/capsh:
+	make -C ../progs capsh
 
 src/libcap/psx:
 	mkdir -p src/libcap
@@ -52,12 +55,29 @@ ifeq ($(RAISE_GO_FILECAP),yes)
 	@echo "NOTE: RAISED cap_net_bind_service ON web binary"
 endif
 
-test: all
+ok: ok.go
+	CGO_ENABLED=0 GOPATH=$(GOPATH) go build $<
+
+try-launching: try-launching.go $(CAPGOPACKAGE) ok
+	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go build $<
+ifeq ($(CGO_REQUIRED),0)
+	CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go build -o $@-cgo $<
+endif
+
+test: all ../progs/capsh
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH="$(GOPATH)" go test libcap/psx
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) go test libcap/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
+	./try-launching
+ifeq ($(CGO_REQUIRED),0)
+	./try-launching-cgo
+endif
 
 sudotest: test
+	sudo ./try-launching
+ifeq ($(CGO_REQUIRED),0)
+	sudo ./try-launching-cgo
+endif
 
 install: all
 	mkdir -p $(FAKEROOT)$(GOPKGDIR)/libcap/psx
@@ -70,7 +90,8 @@ install: all
 clean:
 	GOPATH=$(GOPATH) go clean -x -i libcap/cap 2> /dev/null || exit 0
 	GOPATH=$(GOPATH) go clean -x -i libcap/psx 2> /dev/null || exit 0
-	rm -f *.o *.so mknames web compare-cap *~
+	rm -f *.o *.so *~ mknames web ok
+	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/cap/names.go $(topdir)/cap/syscalls*.go
 	rm -f $(topdir)/psx/*~
 	rm -fr pkg src
