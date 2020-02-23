@@ -128,6 +128,25 @@ cap_iab_t cap_iab_init(void) {
 }
 
 /*
+ * cap_new_launcher allocates some memory for a launcher and
+ * initializes it.  To actually launch a program with this launcher,
+ * use cap_launch(). By default, the launcher is a no-op from a
+ * security perspective and will act just as fork()/execve()
+ * would. Use cap_launcher_setuid() etc to override this.
+ */
+cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
+			      const char * const *envp)
+{
+    __u32 *data = calloc(1, sizeof(__u32) + sizeof(struct cap_launch_s));
+    *(data++) = CAP_LAUNCH_MAGIC;
+    struct cap_launch_s *attr = (struct cap_launch_s *) data;
+    attr->arg0 = arg0;
+    attr->argv = argv;
+    attr->envp = envp;
+    return attr;
+}
+
+/*
  * Scrub and then liberate an internal capability set.
  */
 
@@ -154,6 +173,22 @@ int cap_free(void *data_p)
     }
 
     if (good_cap_iab_t(data_p)) {
+	size_t length = sizeof(struct cap_iab_s) + sizeof(__u32);
+	data_p = -1 + (__u32 *) data_p;
+	memset(data_p, 0, length);
+	free(data_p);
+	data_p = NULL;
+	return 0;
+    }
+
+    if (good_cap_launch_t(data_p)) {
+	cap_launch_t launcher = data_p;
+	if (launcher->iab) {
+	    cap_free(launcher->iab);
+	}
+	if (launcher->chroot) {
+	    cap_free(launcher->chroot);
+	}
 	size_t length = sizeof(struct cap_iab_s) + sizeof(__u32);
 	data_p = -1 + (__u32 *) data_p;
 	memset(data_p, 0, length);

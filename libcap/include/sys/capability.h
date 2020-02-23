@@ -181,6 +181,20 @@ extern int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[]);
 extern cap_iab_t cap_iab_get_proc(void);
 extern int cap_iab_set_proc(cap_iab_t iab);
 
+typedef struct cap_launch_s *cap_launch_t;
+
+extern cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
+				     const char * const *envp);
+extern void cap_launcher_callback(cap_launch_t attr,
+				  int (callback_fn)(void *detail));
+extern void cap_launcher_setuid(cap_launch_t attr, uid_t uid);
+extern void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
+				   int ngroups, const gid_t *groups);
+extern void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor);
+extern cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab);
+extern void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot);
+extern pid_t cap_launch(cap_launch_t attr, void *detail);
+
 /*
  * system calls - look to libc for function to system call
  * mapping. Note, libcap does not use capset directly, but permits the

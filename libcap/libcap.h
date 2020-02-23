@@ -130,6 +130,9 @@ struct _cap_struct {
 /* iab set magic for cap_free */
 #define CAP_IAB_MAGIC 0xCA9AB
 
+/* launcher magic for cap_free */
+#define CAP_LAUNCH_MAGIC 0xCA91A
+
 /*
  * kernel API cap set abstraction
  */
@@ -146,6 +149,7 @@ struct _cap_struct {
 #define good_cap_t(c)        __libcap_check_magic(c, CAP_T_MAGIC)
 #define good_cap_string(c)   __libcap_check_magic(c, CAP_S_MAGIC)
 #define good_cap_iab_t(c)    __libcap_check_magic(c, CAP_IAB_MAGIC)
+#define good_cap_launch_t(c) __libcap_check_magic(c, CAP_LAUNCH_MAGIC)
 
 /*
  * These match CAP_DIFFERS() expectations
@@ -243,5 +247,53 @@ struct cap_iab_s {
 #define LIBCAP_IAB_A_FLAG (1U << CAP_IAB_AMB)
 #define LIBCAP_IAB_IA_FLAG (LIBCAP_IAB_I_FLAG | LIBCAP_IAB_A_FLAG)
 #define LIBCAP_IAB_NB_FLAG (1U << CAP_IAB_BOUND)
+
+/*
+ * The following support launching another process without destroying
+ * the state of the current process. This is especially useful for
+ * multithreaded applications.
+ */
+struct cap_launch_s {
+    /*
+     * Once forked but before active privilege is changed, this
+     * function (if non-NULL) is called.
+     */
+    int (*custom_setup_fn)(void *detail);
+
+    /*
+     * user and groups to be used by the forked child.
+     */
+    int change_uids;
+    uid_t uid;
+
+    int change_gids;
+    gid_t gid;
+    int ngroups;
+    const gid_t *groups;
+
+    /*
+     * mode holds the preferred capability mode. Any non-uncertain
+     * setting here will require an empty ambient set.
+     */
+    int change_mode;
+    cap_mode_t mode;
+
+    /*
+     * i,a,[n]b caps. These bitmaps hold all of the capability sets that
+     * cap_launch will affect. nb holds values to be lowered in the bounding
+     * set.
+     */
+    struct cap_iab_s *iab;
+
+    /* chroot holds a preferred chroot for the launched child. */
+    char *chroot;
+
+    /*
+     * execve style arguments
+     */
+    const char *arg0;
+    const char *const *argv;
+    const char *const *envp;
+};
 
 #endif /* LIBCAP_H */

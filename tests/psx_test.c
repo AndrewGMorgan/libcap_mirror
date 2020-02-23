@@ -37,21 +37,24 @@ static void *say_hello(void *args) {
 
     pthread_mutex_lock(&mu);
     started++;
-    pthread_cond_broadcast(&cond);
-
     int this_step = step+1;
+    pthread_cond_broadcast(&cond);
+    pthread_mutex_unlock(&mu);
+
+    pthread_mutex_lock(&mu);
     do {
 	while (this_step > step) {
 	    pthread_cond_wait(&cond, &mu);
 	}
-	this_step++;
-
 	say_hello_expecting("thread", count, global_kept);
 
 	replies++;
 	pthread_cond_broadcast(&cond);
-    } while (++count != 3);
+	pthread_mutex_unlock(&mu);
 
+	this_step++;
+	pthread_mutex_lock(&mu);
+    } while (++count != 3);
     pthread_mutex_unlock(&mu);
 
     return NULL;
@@ -79,8 +82,11 @@ int main(int argc, char **argv) {
 	pthread_mutex_unlock(&mu);
 
 	psx_syscall(SYS_prctl, PR_SET_KEEPCAPS, global_kept);
+
+	pthread_mutex_lock(&mu);
 	step++;
 	pthread_cond_broadcast(&cond);
+	pthread_mutex_unlock(&mu);
 
 	say_hello_expecting("main", i, global_kept);
 
@@ -119,6 +125,7 @@ int main(int argc, char **argv) {
 		printf("[%d] started=%d vs %d\n", getpid(), started, launched);
 		pthread_cond_wait(&cond, &mu);
 	    }
+	    printf("[%d] started=%d vs %d\n", getpid(), started, launched);
 	    pthread_cond_broadcast(&cond);
 	    pthread_mutex_unlock(&mu);
 	} else if (i < 6) {

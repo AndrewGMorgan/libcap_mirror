@@ -6,12 +6,16 @@
 
 #define _GNU_SOURCE
 
+#include <errno.h>
+#include <fcntl.h>              /* Obtain O_* constant definitions */
+#include <grp.h>
 #include <sys/prctl.h>
 #include <sys/psx_syscall.h>
 #include <sys/securebits.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <grp.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <linux/limits.h>
 
@@ -52,8 +56,14 @@ struct syscaller_s {
 		    long int arg4, long int arg5, long int arg6);
 };
 
-/* use this syscaller for multithreaded code */
+/* use this syscaller for multi-threaded code */
 static struct syscaller_s multithread = {
+    .three = _cap_syscall3,
+    .six = _cap_syscall6
+};
+
+/* use this syscaller for single-threaded code */
+static struct syscaller_s singlethread = {
     .three = _cap_syscall3,
     .six = _cap_syscall6
 };
@@ -714,4 +724,209 @@ defer:
 int cap_iab_set_proc(cap_iab_t iab)
 {
     return _cap_iab_set_proc(&multithread, iab);
+}
+
+/*
+ * cap_launcher_callback primes the launcher with a callback that will
+ * be invoked after the fork() but before any privilege has changed
+ * and before the execve(). This can be used to augment the state of
+ * the child process within the cap_launch() process. You can cancel
+ * any callback associated with a launcher by calling this function
+ * with a callback_fn value NULL.
+ *
+ * If the callback function returns anything other than 0, it is
+ * considered to have failed and the launch will be aborted - further,
+ * errno will be communicated to the parent.
+ */
+void cap_launcher_callback(cap_launch_t attr, int (callback_fn)(void *detail))
+{
+    attr->custom_setup_fn = callback_fn;
+}
+
+/*
+ * cap_launcher_setuid primes the launcher to attempt a change of uid.
+ */
+void cap_launcher_setuid(cap_launch_t attr, uid_t uid)
+{
+    attr->uid = uid;
+    attr->change_uids = 1;
+}
+
+/*
+ * cap_launcher_setgroups primes the launcher to attempt a change of
+ * gid and groups.
+ */
+void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
+			    int ngroups, const gid_t *groups)
+{
+    attr->gid = gid;
+    attr->ngroups = ngroups;
+    attr->groups = groups;
+    attr->change_gids = 1;
+}
+
+/*
+ * cap_launcher_set_mode primes the launcher to attempt a change of
+ * mode.
+ */
+void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
+{
+    attr->mode = flavor;
+    attr->change_mode = 1;
+}
+
+cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t bits)
+{
+    cap_iab_t old = attr->iab;
+    attr->iab = bits;
+    return old;
+}
+
+/*
+ * cap_launcher_set_chroot sets the intended chroot for the launched
+ * child.
+ */
+void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot)
+{
+    attr->chroot = _libcap_strdup(chroot);
+}
+
+static int _cap_chroot(struct syscaller_s *sc, const char *root)
+{
+    const cap_value_t raise_cap_sys_chroot[] = {CAP_SYS_CHROOT};
+    cap_t working = cap_get_proc();
+    (void) cap_set_flag(working, CAP_EFFECTIVE,
+			1, raise_cap_sys_chroot, CAP_SET);
+    int ret = _cap_set_proc(sc, working);
+    if (ret == 0) {
+	if (_libcap_overrode_syscalls) {
+	    ret = sc->three(SYS_chroot, (long int) root, 0, 0);
+	    if (ret < 0) {
+		errno = -ret;
+		ret = -1;
+	    }
+	} else {
+	    ret = chroot(root);
+	}
+    }
+    int olderrno = errno;
+    (void) cap_clear_flag(working, CAP_EFFECTIVE);
+    (void) _cap_set_proc(sc, working);
+    (void) cap_free(working);
+
+    errno = olderrno;
+    return ret;
+}
+
+/*
+ * _cap_launch is invoked in the forked child, it cannot return but is
+ * required to exit. If the execve fails, it will write the errno value
+ * over the filedescriptor, fd, and exit with status 0.
+ */
+__attribute__ ((noreturn))
+static void _cap_launch(int fd, cap_launch_t attr, void *detail) {
+    struct syscaller_s *sc = &singlethread;
+
+    if (attr->custom_setup_fn && attr->custom_setup_fn(detail)) {
+	goto defer;
+    }
+
+    if (attr->change_uids && _cap_setuid(sc, attr->uid)) {
+	goto defer;
+    }
+    if (attr->change_gids &&
+	_cap_setgroups(sc, attr->gid, attr->ngroups, attr->groups)) {
+	goto defer;
+    }
+    if (attr->change_mode && _cap_set_mode(sc, attr->mode)) {
+	goto defer;
+    }
+    if (attr->iab && _cap_iab_set_proc(sc, attr->iab)) {
+	goto defer;
+    }
+    if (attr->chroot != NULL && _cap_chroot(sc, attr->chroot)) {
+	goto defer;
+    }
+
+    /*
+     * Some type wrangling to work around what the kernel API really
+     * means: not "const char **".
+     */
+    const void *temp_args = attr->argv;
+    const void *temp_envp = attr->envp;
+
+    execve(attr->arg0, temp_args, temp_envp);
+    /* if the exec worked, execution will not reach here */
+
+defer:
+    /*
+     * getting here means an error has occurred and errno is
+     * communicated to the parent
+     */
+    for (;;) {
+	int n = write(fd, &errno, sizeof(errno));
+	if (n < 0 && errno == EAGAIN) {
+	    continue;
+	}
+	break;
+    }
+    close(fd);
+    exit(1);
+}
+
+/*
+ * cap_launch performs a wrapped fork+exec that works in both an
+ * unthreaded environment and also where libcap is linked with
+ * psx+pthreads. The function supports dropping privilege in the
+ * forked thread, but retaining privilege in the parent thread(s).
+ *
+ * Since the ambient set is fragile with respect to changes in I or P,
+ * the function carefully orders setting of these inheritable
+ * characteristics, to make sure they stick, or return an error
+ * of -1 setting errno because the launch failed.
+ */
+pid_t cap_launch(cap_launch_t details, void *data) {
+    int my_errno;
+    int ps[2];
+
+    if (pipe2(ps, O_CLOEXEC) != 0) {
+	return -1;
+    }
+
+    int child = fork();
+    my_errno = errno;
+
+    close(ps[1]);
+    if (child < 0) {
+	goto defer;
+    }
+    if (!child) {
+	close(ps[0]);
+	/* noreturn from this function: */
+	_cap_launch(ps[1], details, data);
+    }
+
+    /*
+     * Extend this function's return codes to include setup failures
+     * in the child.
+     */
+    for (;;) {
+	int ignored;
+	int n = read(ps[0], &my_errno, sizeof(my_errno));
+	if (n == 0) {
+	    goto defer;
+	}
+	if (n < 0 && errno == EAGAIN) {
+	    continue;
+	}
+	waitpid(child, &ignored, 0);
+	child = -1;
+	my_errno = ECHILD;
+	break;
+    }
+
+defer:
+    close(ps[0]);
+    errno = my_errno;
+    return (pid_t) child;
 }
