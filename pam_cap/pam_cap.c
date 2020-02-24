@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999,2007,2019 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 1999,2007,19,20 Andrew G. Morgan <morgan@kernel.org>
  *
  * The purpose of this module is to enforce inheritable, bounding and
  * ambient capability sets for a specified user.
@@ -182,25 +182,13 @@ static int set_capabilities(struct pam_cap_s *cs)
     cap_t cap_s;
     char *conf_caps;
     int ok = 0;
-    int has_ambient = 0, has_bound = 0;
-    int *bound = NULL, *ambient = NULL;
-    cap_flag_value_t had_setpcap = 0;
-    cap_value_t max_caps = 0;
-    const cap_value_t wanted_caps[] = { CAP_SETPCAP };
+    cap_iab_t iab;
 
     cap_s = cap_get_proc();
     if (cap_s == NULL) {
 	D(("your kernel is capability challenged - upgrade: %s",
 	   strerror(errno)));
 	return 0;
-    }
-    if (cap_get_flag(cap_s, CAP_SETPCAP, CAP_EFFECTIVE, &had_setpcap)) {
-	D(("failed to read a e capability: %s", strerror(errno)));
-	goto cleanup_cap_s;
-    }
-    if (cap_set_flag(cap_s, CAP_EFFECTIVE, 1, wanted_caps, CAP_SET) != 0) {
-	D(("unable to raise CAP_SETPCAP: %s", strerrno(errno)));
-	goto cleanup_cap_s;
     }
 
     conf_caps =	read_capabilities_for_user(cs->user,
@@ -218,147 +206,36 @@ static int set_capabilities(struct pam_cap_s *cs)
 	 * likely to be the same as none for sensible system defaults.
 	 */
 	ok = 1;
-	goto cleanup_caps;
-    }
-
-    if (cap_set_proc(cap_s) != 0) {
-	D(("unable to use CAP_SETPCAP: %s", strerrno(errno)));
-	goto cleanup_caps;
-    }
-    if (cap_reset_ambient() == 0) {
-	/* Ambient set fully declared by this config. */
-	has_ambient = 1;
+	goto cleanup_conf;
     }
 
     if (!strcmp(conf_caps, "none")) {
-	/* clearing CAP_INHERITABLE will also clear the ambient caps. */
+	/* clearing CAP_INHERITABLE will also clear the ambient caps,
+	 * but for legacy reasons we do not alter the bounding set. */
 	cap_clear_flag(cap_s, CAP_INHERITABLE);
-    } else {
-	/*
-	 * we know we have to perform some capability operations and
-	 * we need to know how many capabilities there are to do it
-	 * successfully.
-	 */
-	while (cap_get_bound(max_caps) >= 0) {
-	    max_caps++;
+	if (!cap_set_proc(cap_s)) {
+	    ok = 1;
 	}
-	if (max_caps != cap_max_bits()) {
-	    D(("this vintage of libcap cannot be trusted; give up"));
-	    goto cleanup_caps;
-	}
-	has_bound = (max_caps != 0);
-	if (has_bound) {
-	    bound = calloc(max_caps, sizeof(int));
-	    if (has_ambient) {
-		/* In kernel lineage, bound came first. */
-		ambient = calloc(max_caps, sizeof(int));
-	    }
-	}
-
-	/*
-	 * Scan the configured capability string for:
-	 *
-	 *   cap_name: add to cap_s' inheritable vector
-	 *   ^cap_name: add to cap_s' inheritable vector and ambient set
-	 *   !cap_name: drop from bounding set
-	 *
-	 * Setting ambient capabilities requires that we first enable
-	 * the corresponding inheritable capability to set them. So,
-	 * there is an order we use: parse the config line, building
-	 * the inheritable, ambient and bounding sets in three separate
-	 * arrays. Then, set I set A set B. Finally, at the end, we
-	 * restore the E value for CAP_SETPCAP.
-	 */
-	char *token = NULL;
-	char *next = conf_caps;
-	while ((token = strtok_r(next, ",", &next))) {
-	    if (strlen(token) < 4) {
-		D(("bogus cap: [%s] - ignored\n", token));
-		goto cleanup_caps;
-	    }
-	    int is_a = 0, is_b = 0;
-	    if (*token == '^') {
-		if (!has_ambient) {
-		    D(("want ambient [%s] but kernel has no support", token));
-		    goto cleanup_caps;
-		}
-		is_a = 1;
-		token++;
-	    } else if (*token == '!') {
-		if (!has_bound) {
-		    D(("want bound [%s] dropped - no kernel support", token));
-		}
-		is_b = 1;
-		token++;
-	    }
-
-	    cap_value_t c;
-	    if (cap_from_name(token, &c) != 0) {
-		D(("unrecognized name [%s]: %s - ignored", token,
-		   strerror(errno)));
-		goto cleanup_caps;
-	    }
-
-	    if (is_b) {
-		bound[c] = 1;
-	    } else {
-		if (cap_set_flag(cap_s, CAP_INHERITABLE, 1, &c, CAP_SET)) {
-		    D(("failed to raise inheritable [%s]: %s", token,
-		       strerror(errno)));
-		    goto cleanup_caps;
-		}
-		if (is_a) {
-		    ambient[c] = 1;
-		}
-	    }
-	}
-
-#ifdef DEBUG
-	{
-	    char *temp = cap_to_text(cap_s, NULL);
-	    D(("abbreviated caps for process will be [%s]", temp));
-	    cap_free(temp);
-	}
-#endif /* DEBUG */
+	goto cleanup_cap_s;
     }
 
-    if (cap_set_proc(cap_s)) {
-	D(("failed to set specified capabilities: %s", strerror(errno)));
-    } else {
-	cap_value_t c;
-	for (c = 0; c < max_caps; c++) {
-	    if (ambient != NULL && ambient[c]) {
-		cap_set_ambient(c, CAP_SET);
-	    }
-	    if (bound != NULL && bound[c]) {
-		cap_drop_bound(c);
-	    }
-	}
+    iab = cap_iab_from_text(conf_caps);
+    if (iab == NULL) {
+	D(("unable to parse the IAB [%s] value", conf_caps));
+	goto cleanup_conf;
+    }
+
+    if (!cap_iab_set_proc(iab)) {
+	D(("able to set the IAB [%s] value", conf_caps));
 	ok = 1;
     }
+    cap_free(iab);
 
-cleanup_caps:
-    if (has_ambient) {
-	memset(ambient, 0, max_caps * sizeof(*ambient));
-	_pam_drop(ambient);
-	ambient = NULL;
-    }
-    if (has_bound) {
-	memset(bound, 0, max_caps * sizeof(*bound));
-	_pam_drop(bound);
-	bound = NULL;
-    }
+cleanup_conf:
     memset(conf_caps, 0, conf_caps_length);
     _pam_drop(conf_caps);
 
 cleanup_cap_s:
-    if (!had_setpcap) {
-	/* Only need to lower if it wasn't raised by caller */
-	if (!cap_set_flag(cap_s, CAP_EFFECTIVE, 1, wanted_caps,
-			  CAP_CLEAR)) {
-	    cap_set_proc(cap_s);
-	}
-    }
     if (cap_s) {
 	cap_free(cap_s);
 	cap_s = NULL;
