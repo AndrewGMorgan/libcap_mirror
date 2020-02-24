@@ -126,7 +126,7 @@ func main() {
 
 	if !*skipPriv {
 		if err := cap.ModeNoPriv.Set(); err != nil {
-			panic(fmt.Errorf("unable to drop all privilege: %v", err))
+			log.Fatalf("unable to drop all privilege: %v", err)
 		}
 	}
 
