@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2020 Andrew G. Morgan <morgan@kernel.org>
  *
  * This is a file to make the capability <-> string mappings for
  * libcap.
@@ -49,16 +49,16 @@ int main(void)
 	   "#define __CAP_NAME_SIZE  %d\n"
 	   "\n"
 	   "#ifdef LIBCAP_PLEASE_INCLUDE_ARRAY\n"
-	   "  char const *_cap_names[__CAP_BITS] = {\n", maxcaps, maxlength+1);
+	   "#define LIBCAP_CAP_NAMES { \\\n", maxcaps, maxlength+1);
 
     for (i=0; i<maxcaps; ++i) {
 	if (pointers[i])
-	    printf("      /* %d */\t\"%s\",\n", i, pointers[i]);
+	    printf("      /* %d */\t\"%s\", \\\n", i, pointers[i]);
 	else
-	    printf("      /* %d */\tNULL,\t\t/* - presently unused */\n", i);
+	    printf("      /* %d */\tNULL,\t\t/* - presently unused */ \\\n", i);
     }
 
-    printf("  };\n"
+    printf("  }\n"
 	   "#endif /* LIBCAP_PLEASE_INCLUDE_ARRAY */\n"
 	   "\n"
 	   "/* END OF FILE */\n");

@@ -12,6 +12,8 @@
 #define LIBCAP_PLEASE_INCLUDE_ARRAY
 #include "libcap.h"
 
+static char const *_cap_names[__CAP_BITS] = LIBCAP_CAP_NAMES;
+
 #include <ctype.h>
 #include <limits.h>
 
