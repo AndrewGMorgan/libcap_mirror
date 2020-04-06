@@ -23,7 +23,7 @@ $(BUILD): %: %.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
 
 %.o: %.c $(INCS)
-	$(CC) $(IPATH) $(CFLAGS) -c $< -o $@
+	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -c $< -o $@
 
 install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(SBINDIR)

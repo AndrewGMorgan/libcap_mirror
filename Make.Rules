@@ -87,6 +87,14 @@ CGO_LDFLAGS_ALLOW := -Wl,-wrap,.+
 CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh)
 endif
 
+# If you want capsh to launch with something other than /bin/bash
+# build like this:
+#
+#   make CAPSH_SHELL='-DSHELL=\"/bin/sh\"'
+#
+# or undefine the following:
+#CAPSH_SHELL := '-DSHELL="/bin/sh"'
+
 # When installing setcap, you can arrange for the installation process
 # to set its inheritable bit to be able to place capabilities on files.
 # It can be used in conjunction with pam_cap (associated with su and

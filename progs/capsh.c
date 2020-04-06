@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2008-11,16,19,2020 Andrew G. Morgan <morgan@kernel.org>
  *
- * This is a simple 'bash' wrapper program that can be used to
- * raise and lower both the bset and pI capabilities before invoking
- * /bin/bash (hardcoded right now).
+ * This is a simple 'bash' (-DSHELL) wrapper program that can be used
+ * to raise and lower both the bset and pI capabilities before
+ * invoking /bin/bash.
  *
  * The --print option can be used as a quick test whether various
  * capability manipulations work as expected (or not).
@@ -24,6 +24,10 @@
 #include <sys/securebits.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#ifndef SHELL
+#define SHELL "/bin/bash"
+#endif /* ndef SHELL */
 
 #define MAX_GROUPS       100   /* max number of supplementary groups for user */
 
@@ -322,6 +326,7 @@ int main(int argc, char *argv[], char *envp[])
 {
     pid_t child;
     unsigned i;
+    const char *shell = SHELL;
 
     child = 0;
 
@@ -775,11 +780,13 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strcmp("--print", argv[i])) {
 	    arg_print();
 	} else if ((!strcmp("--", argv[i])) || (!strcmp("==", argv[i]))) {
-	    argv[i] = strdup(argv[i][0] == '-' ? "/bin/bash" : argv[0]);
+	    argv[i] = strdup(argv[i][0] == '-' ? shell : argv[0]);
 	    argv[argc] = NULL;
 	    execve(argv[i], argv+i, envp);
-	    fprintf(stderr, "execve /bin/bash failed!\n");
+	    fprintf(stderr, "execve '%s' failed!\n", shell);
 	    exit(1);
+	} else if (!strncmp("--shell=", argv[i], 8)) {
+	    shell = argv[i]+8;
 	} else if (!strncmp("--has-p=", argv[i], 8)) {
 	    cap_value_t cap;
 	    cap_flag_value_t enabled;
@@ -887,8 +894,9 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --inmode=<xxx> exit 1 if current mode is not <xxx>\n"
 		   "  --killit=<n>   send signal(n) to child\n"
 		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
+		   "  --shell=/xx/yy use /xx/yy instead of " SHELL " for --\n"
 		   "  ==             re-exec(capsh) with args as for --\n"
-		   "  --             remaing arguments are for /bin/bash\n"
+		   "  --             remaing arguments are for " SHELL "\n"
 		   "                 (without -- [%s] will simply exit(0))\n",
 		   argv[0], argv[0]);
 
