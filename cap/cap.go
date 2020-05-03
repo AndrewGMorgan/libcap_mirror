@@ -104,7 +104,7 @@ type syscaller struct {
 
 // caprcall provides a pointer etc wrapper for the system calls
 // associated with getcap.
-//go:nosplit
+//go:uintptrescapes
 func (sc *syscaller) caprcall(call uintptr, h *header, d []data) error {
 	x := uintptr(0)
 	if d != nil {
@@ -119,7 +119,7 @@ func (sc *syscaller) caprcall(call uintptr, h *header, d []data) error {
 
 // capwcall provides a pointer etc wrapper for the system calls
 // associated with setcap.
-//go:nosplit
+//go:uintptrescapes
 func (sc *syscaller) capwcall(call uintptr, h *header, d []data) error {
 	x := uintptr(0)
 	if d != nil {
@@ -135,7 +135,6 @@ func (sc *syscaller) capwcall(call uintptr, h *header, d []data) error {
 // prctlrcall provides a wrapper for the prctl systemcalls that only
 // read kernel state. There is a limited number of arguments needed
 // and the caller should use 0 for those not needed.
-//go:nosplit
 func (sc *syscaller) prctlrcall(prVal, v1, v2 uintptr) (int, error) {
 	r, _, err := sc.r3(syscall.SYS_PRCTL, prVal, v1, v2)
 	if err != 0 {
@@ -148,7 +147,6 @@ func (sc *syscaller) prctlrcall(prVal, v1, v2 uintptr) (int, error) {
 // read kernel state and require 6 arguments - ambient cap API, I'm
 // looking at you. There is a limited number of arguments needed and
 // the caller should use 0 for those not needed.
-//go:nosplit
 func (sc *syscaller) prctlrcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error) {
 	r, _, err := sc.r6(syscall.SYS_PRCTL, prVal, v1, v2, v3, v4, v5)
 	if err != 0 {
@@ -161,7 +159,6 @@ func (sc *syscaller) prctlrcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error)
 // write/modify kernel state. Where available, these will use the
 // POSIX semantics fixup system calls. There is a limited number of
 // arguments needed and the caller should use 0 for those not needed.
-//go:nosplit
 func (sc *syscaller) prctlwcall(prVal, v1, v2 uintptr) (int, error) {
 	r, _, err := sc.w3(syscall.SYS_PRCTL, prVal, v1, v2)
 	if err != 0 {
@@ -175,7 +172,6 @@ func (sc *syscaller) prctlwcall(prVal, v1, v2 uintptr) (int, error) {
 // API, I'm looking at you. (Where available, these will use the POSIX
 // semantics fixup system calls). There is a limited number of
 // arguments needed and the caller should use 0 for those not needed.
-//go:nosplit
 func (sc *syscaller) prctlwcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error) {
 	r, _, err := sc.w6(syscall.SYS_PRCTL, prVal, v1, v2, v3, v4, v5)
 	if err != 0 {
@@ -186,7 +182,6 @@ func (sc *syscaller) prctlwcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error)
 
 // cInit perfoms the lazy identification of the capability vintage of
 // the running system.
-//go:nosplit
 func (sc *syscaller) cInit() {
 	h := &header{
 		magic: kv3,
@@ -267,7 +262,6 @@ func GetProc() *Set {
 	return c
 }
 
-//go:nosplit
 func (sc *syscaller) setProc(c *Set) error {
 	if c == nil || len(c.flat) == 0 {
 		return ErrBadSet
@@ -301,7 +295,7 @@ func GetBound(val Value) (bool, error) {
 	return v > 0, nil
 }
 
-//go:nosplit
+//go:uintptrescapes
 func (sc *syscaller) dropBound(val ...Value) error {
 	for _, v := range val {
 		if _, err := sc.prctlwcall(pr_CAPBSET_DROP, uintptr(v), 0); err != nil {
@@ -344,7 +338,7 @@ func GetAmbient(val Value) (bool, error) {
 	return r > 0, err
 }
 
-//go:nosplit
+//go:uintptrescapes
 func (sc *syscaller) setAmbient(enable bool, val ...Value) error {
 	dir := uintptr(pr_CAP_AMBIENT_LOWER)
 	if enable {
@@ -370,7 +364,6 @@ func SetAmbient(enable bool, val ...Value) error {
 	return multisc.setAmbient(enable, val...)
 }
 
-//go:nosplit
 func (sc *syscaller) resetAmbient() error {
 	var v bool
 	var err error

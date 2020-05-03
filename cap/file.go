@@ -118,6 +118,8 @@ func digestFileCap(d []byte, sz int, err error) (*Set, error) {
 	return c, nil
 }
 
+//go:uintptrescapes
+
 // GetFd returns the file capabilities of an open (*os.File).Fd().
 func GetFd(file *os.File) (*Set, error) {
 	var raw3 vfs_caps_3
@@ -129,6 +131,8 @@ func GetFd(file *os.File) (*Set, error) {
 	}
 	return digestFileCap(d, int(sz), err)
 }
+
+//go:uintptrescapes
 
 // GetFile returns the file capabilities of a named file.
 func GetFile(path string) (*Set, error) {
@@ -194,6 +198,8 @@ func (c *Set) packFileCap() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+//go:uintptrescapes
+
 // SetFd attempts to set the file capabilities of an open
 // (*os.File).Fd(). Note, Linux does not store the full Effective
 // Value vector in the metadata for the file. Only a single Effective
@@ -226,6 +232,8 @@ func (c *Set) SetFd(file *os.File) error {
 	}
 	return nil
 }
+
+//go:uintptrescapes
 
 // SetFile attempts to set the file capabilities of the specfied
 // filename. See the comment for SetFd() for some non-obvious behavior

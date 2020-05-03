@@ -231,6 +231,7 @@ func SetUID(uid int) error {
 	return multisc.setUID(uid)
 }
 
+//go:uintptrescapes
 func (sc *syscaller) setGroups(gid int, suppl []int) error {
 	w := GetProc()
 	defer func() {

@@ -126,7 +126,6 @@ func (iab *IAB) String() string {
 	return strings.Join(vs, ",")
 }
 
-//go:nosplit
 func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 	temp := GetProc()
 	var raising uint32

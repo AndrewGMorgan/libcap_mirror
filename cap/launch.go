@@ -125,6 +125,7 @@ var lName = []byte("cap-launcher\000")
 // <uapi/linux/prctl.h>
 const pr_SET_NAME = 15
 
+//go:uintptrescapes
 func launch(result chan<- lResult, attr *Launcher, data interface{}) {
 	defer close(result)
 
