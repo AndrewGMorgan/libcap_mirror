@@ -59,8 +59,9 @@ static char const *namcmp(char const *str, char const *nam)
 }
 
 /*
- * forceall forces all of the named capabilities to be assigned the
- * masked value, and zeroed otherwise.
+ * forceall forces all of the kernel named capabilities to be assigned
+ * the masked value, and zeroed otherwise. Note, if the kernel is ahead
+ * of libcap, the upper bits will be referred to by number.
  */
 static void forceall(__u32 *flat, __u32 value, unsigned blks)
 {
@@ -114,13 +115,16 @@ static int lookupname(char const **strp)
 	}
 #else /* ie., ndef GPERF_DOWNCASE */
 	char const *s;
-	unsigned n;
-
-	for (n = cap_max_bits(); n--; )
+	unsigned n = cap_max_bits();
+	if (n > __CAP_BITS) {
+	    n = __CAP_BITS;
+	}
+	while (n--) {
 	    if (_cap_names[n] && (s = namcmp(str.constp, _cap_names[n]))) {
 		*strp = s;
 		return n;
 	    }
+	}
 #endif /* def GPERF_DOWNCASE */
 
 	return -1;   	/* No definition available */
@@ -515,7 +519,11 @@ char *cap_iab_to_text(cap_iab_t iab)
 		*p++ = '%';
 	    }
 	    if (keep || ib) {
-		strcpy(p, _cap_names[c]);
+		if (c < __CAP_BITS) {
+		    strcpy(p, _cap_names[c]);
+		} else {
+		    sprintf(p, "%u", c);
+		}
 		p += strlen(p);
 		first = 0;
 	    }
