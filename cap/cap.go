@@ -5,12 +5,11 @@
 // POSIX semantics system calls that manipulate process state.
 //
 // If the Go runtime syscall interface contains the
-// syscall.PerOSThreadSyscall() API then then this package will use
-// that to invoke capability setting system calls for pure Go
-// binaries. To force this behavior use the CGO_ENABLED=0 environment
-// variable.
+// syscall.AllThreadsSyscall() API then this package will use that to
+// invoke capability setting system calls for pure Go binaries. To
+// force this behavior use the CGO_ENABLED=0 environment variable.
 //
-// If syscall.PerOSThreadSyscall() is not present, the "libcap/cap"
+// If syscall.AllThreadsSyscall() is not present, the "libcap/cap"
 // package will failover to using "libcap/psx".
 package cap
 

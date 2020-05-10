@@ -7,8 +7,8 @@ if [[ -z "$dir" ]]; then
 fi
 
 # We use one or the other syscalls.go file based on whether or not the
-# Go runtime include syscall.PerOSThreadSyscall or not.
-if [ -z "$(go doc syscall 2>/dev/null|grep PerOSThreadSyscall)" ]; then
+# Go runtime include syscall.AllThreadsSyscall or not.
+if [ -z "$(go doc syscall 2>/dev/null|grep AllThreadsSyscall)" ]; then
     rm -f "${dir}/syscalls_cgo.go"
     cat > "${dir}/syscalls.go" <<EOF
 // +build linux
@@ -22,7 +22,7 @@ import (
 
 // multisc provides syscalls overridable for testing purposes that
 // support a single kernel security state for all OS threads.
-// (Go build tree has no syscall.PerOSThreadSyscall support.)
+// (Go build tree has no syscall.AllThreadsSyscall support.)
 var multisc = &syscaller{
 	w3: psx.Syscall3,
 	w6: psx.Syscall6,
@@ -54,8 +54,8 @@ import "syscall"
 // multisc provides syscalls overridable for testing purposes that
 // support a single kernel security state for all OS threads.
 var multisc = &syscaller{
-	w3: syscall.PerOSThreadSyscall,
-	w6: syscall.PerOSThreadSyscall6,
+	w3: syscall.AllThreadsSyscall,
+	w6: syscall.AllThreadsSyscall6,
 	r3: syscall.RawSyscall,
 	r6: syscall.RawSyscall6,
 }
