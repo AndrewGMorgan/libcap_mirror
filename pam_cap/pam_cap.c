@@ -335,7 +335,7 @@ int pam_sm_setcred(pam_handle_t *pamh, int flags,
     int retval;
     struct pam_cap_s pcs;
 
-    if (!(flags & PAM_ESTABLISH_CRED)) {
+    if (!(flags & (PAM_ESTABLISH_CRED | PAM_REINITIALIZE_CRED))) {
 	D(("we don't handle much in the way of credentials"));
 	return PAM_IGNORE;
     }
