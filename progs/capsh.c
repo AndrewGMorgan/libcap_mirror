@@ -896,7 +896,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
 		   "  --shell=/xx/yy use /xx/yy instead of " SHELL " for --\n"
 		   "  ==             re-exec(capsh) with args as for --\n"
-		   "  --             remaing arguments are for " SHELL "\n"
+		   "  --             remaining arguments are for " SHELL "\n"
 		   "                 (without -- [%s] will simply exit(0))\n",
 		   argv[0], argv[0]);
 
