@@ -45,7 +45,7 @@ cap_mode_name, cap_get_pid, cap_setuid, cap_setgroups \
 .BI "int cap_setgroups(gid_t " gid ", size_t " ngroups ", const gid_t " \
 groups );
 .sp
-Link with \fI-lcap\fP.
+Link with \fI\-lcap\fP.
 .SH DESCRIPTION
 .BR cap_get_proc ()
 allocates a capability state in working storage, sets its state to
@@ -202,7 +202,7 @@ return a non-NULL value on success, and NULL on failure.
 .PP
 The function
 .BR cap_get_bound ()
-returns -1 if the requested capability is unknown, otherwise the
+returns \-1 if the requested capability is unknown, otherwise the
 return value reflects the current state of that capability in the
 prevailing bounding set. Note, a macro function,
 .PP
@@ -271,11 +271,11 @@ attempts to set the capabilities of some other process(es),
 If
 .I pid
 is positive it refers to a specific process;  if it is zero, it refers
-to the current process; -1 refers to all processes other than the
+to the current process; \-1 refers to all processes other than the
 current process and process '1' (typically 
 .BR init (8));
 other negative values refer to the
-.I -pid
+.I \-pid
 process group.  In order to use this function, the kernel must support
 it and the current process must have
 .B CAP_SETPCAP
@@ -319,13 +319,13 @@ effective capabilities for the caller:
     if (caps == NULL)
         /* handle error */;
 
-    if (cap_set_flag(caps, CAP_EFFECTIVE, 2, cap_list, CAP_SET) == -1)
+    if (cap_set_flag(caps, CAP_EFFECTIVE, 2, cap_list, CAP_SET) == \-1)
         /* handle error */;
 
-    if (cap_set_proc(caps) == -1)
+    if (cap_set_proc(caps) == \-1)
         /* handle error */;
 
-    if (cap_free(caps) == -1)
+    if (cap_free(caps) == \-1)
         /* handle error */;
     ...
 

@@ -13,18 +13,18 @@ debugging features useful for summarizing capability state.
 The tool takes a number of optional arguments, acting on them in the
 order they are provided. They are as follows:
 .TP 22
-.B --help
+.B \-\-help
 Display the list of commands supported by
 .BR capsh .
 .TP
-.B --print
+.B \-\-print
 Display prevailing capability and related state.
 .TP
-.BI -- " [args]"
+.BI \-\- " [args]"
 Execute
 .B /bin/bash
 with trailing arguments. Note, you can use
-.B -c 'command to execute'
+.B \-c 'command to execute'
 for specific commands.
 .TP
 .B ==
@@ -34,7 +34,7 @@ again with remaining arguments. Useful for testing
 .BR exec ()
 behavior.
 .TP
-.BI --caps= cap-set
+.BI \-\-caps= cap-set
 Set the prevailing process capabilities to those specified by
 .IR cap-set .
 Where
@@ -42,9 +42,9 @@ Where
 is a text-representation of capability state as per
 .BR cap_from_text (3).
 .TP
-.BI --drop= cap-list
+.BI \-\-drop= cap-list
 Remove the listed capabilities from the prevailing bounding set. The
-capabilites are a comma separated list of capabilities as recognized
+capabilities are a comma separated list of capabilities as recognized
 by the
 .BR cap_from_name (3)
 function. Use of this feature requires that the capsh program is
@@ -52,7 +52,7 @@ operating with
 .B CAP_SETPCAP
 in its effective set.
 .TP
-.BI --inh= cap-list
+.BI \-\-inh= cap-list
 Set the inheritable set of capabilities for the current process to
 equal those provided in the comma separated list. For this action to
 succeed, the prevailing process should already have each of these
@@ -61,7 +61,7 @@ capability sets, or the capsh program is operating with
 .B CAP_SETPCAP
 in its effective set.
 .TP
-.BI --user= username
+.BI \-\-user= username
 Assume the identity of the named user. That is, look up the user's
 .IR uid " and " gid
 with
@@ -76,20 +76,20 @@ Following this command, the effective capabilities will be cleared,
 but the permitted set will not be so the running program is still
 privileged.
 .TP
-.B --modes
+.B \-\-modes
 Lists all of the libcap modes supported by
-.BR --mode .
+.BR \-\-mode .
 .TP
-.BR --mode= <mode>
+.BR \-\-mode= <mode>
 Force the program into a
 .BR cap_set_mode (3)
 security mode. This is a set of securebits and prevailing capability
 arrangement recommended for its pre-determined security stance.
 .TP
-.BR --inmode= <mode>
+.BR \-\-inmode= <mode>
 Confirm that the prevailing mode is so named, or exit with a status 1.
 .TP
-.BI --uid= id
+.BI \-\-uid= id
 Force all
 .B uid
 values to equal
@@ -99,7 +99,7 @@ using the
 system call. This argument may require explicit preparation of the
 effective set.
 .TP
-.BR --cap-uid= <uid>
+.BR \-\-cap\-uid= <uid>
 use the
 .BR cap_setuid (3)
 function to set the uid of the current process. This performs all
@@ -107,11 +107,11 @@ prepations for setting the uid without dropping capabilities in the
 process. Following this command the prevailing effective capabilities
 will be lowered.
 .TP
-.BI --is-uid= <id>
+.BI \-\-is-uid= <id>
 Exit with status 1 unless the current
 .IR uid " equals " <id> .
 .TP
-.BI --gid= <id>
+.BI \-\-gid= <id>
 Force all
 .B gid
 values to equal
@@ -120,11 +120,11 @@ using the
 .BR setgid (2)
 system call.
 .TP
-.BI --is-gid= <id>
+.BI \-\-is-gid= <id>
 Exit with status 1 unless the current
 .IR gid " equals " <id> .
 .TP
-.BI --groups= <gid-list>
+.BI \-\-groups= <gid-list>
 Set the supplementary groups to the numerical list provided. The
 groups are set with the
 .BR setgroups (2)
@@ -132,7 +132,7 @@ system call. See
 .B --user
 for a more convenient way of doing this.
 .TP
-.BI --keep= <0|1>
+.BI \-\-keep= <0|1>
 In a non-pure capability mode, the kernel provides liberal privilege
 to the super-user. However, it is normally the case that when the
 super-user changes
@@ -155,17 +155,17 @@ is performed. See
 .B --secbits
 for ways to disable this feature.
 .TP
-.BI --secbits= N
+.BI \-\-secbits= N
 Set the security-bits for the program, this is via
 .BR prctl "(2), " PR_SET_SECUREBITS
 API, and the list of supported bits and their meaning can be found in
 the
 .B <sys/secbits.h>
 header file. The program will list these bits via the
-.B --print
+.B \-\-print
 command.
 .TP
-.BI --chroot= path
+.BI \-\-chroot= path
 Execute the
 .BR chroot (2)
 system call with the new root-directory (/) equal to
@@ -174,17 +174,17 @@ This operation requires
 .B CAP_SYS_CHROOT
 to be in effect.
 .TP
-.BI --forkfor= sec
+.BI \-\-forkfor= sec
 This command causes the program to fork a child process for so many
 seconds. The child will sleep that long and then exit with status
 0. The purpose of this command is to support exploring the way
 processes are killable in the face of capability changes. See the
-.B --killit
+.B \-\-killit
 command. Only one fork can be active at a time.
 .TP
-.BI --killit= sig
+.BI \-\-killit= sig
 This commands causes a
-.B --forkfor
+.B \-\-forkfor
 child to be
 .BR kill (2)d
 with the specified signal. The command then waits for the child to exit.
@@ -192,7 +192,7 @@ If the exit status does not match the signal being used to kill it, the
 .B capsh
 program exits with status 1.
 .TP
-.BI --decode= N
+.BI \-\-decode= N
 This is a convenience feature. If you look at
 .B /proc/1/status
 there are some capability related fields of the following form:
@@ -206,44 +206,44 @@ This option provides a quick way to decode a capability vector
 represented in this form. For example, the missing capability from
 this effective set is 0x0100. By running:
 
- capsh --decode=0x0100
+ capsh \-\-decode=0x0100
 
 we observe that the missing capability is:
 .BR cap_setpcap .
 .TP
-.BI --supports= xxx
+.BI \-\-supports= xxx
 As the kernel evolves, more capabilities are added. This option can be used
 to verify the existence of a capability on the system. For example,
-.BI --supports= cap_syslog
+.BI \-\-supports= cap_syslog
 will cause capsh to promptly exit with a status of 1 when run on
 kernel 2.6.27.  However, when run on kernel 2.6.38 it will silently
 succeed.
 .TP
-.BI --has-p= xxx
+.BI \-\-has-p= xxx
 Exit with status 1 unless the
 .I permitted
 vector has capability
 .B xxx
 raised.
 .TP
-.B --has-ambient
+.B \-\-has-ambient
 Performs a check to see if the running kernel supports ambient
 capabilities. If not, the capsh command exits with status 1.
 .TP
-.BI --has-a= xxx
+.BI \-\-has-a= xxx
 Exit with status 1 unless the
 .I ambient
 vector has capability
 .B xxx
 raised.
 .TP
-.BI --addamb= xxx
+.BI \-\-addamb= xxx
 Adds the specificed ambient capability to the running process.
 .TP
-.BI --delamb= xxx
+.BI \-\-delamb= xxx
 Removes the specified ambient capability from the running process.
 .TP
-.B --noamb
+.B \-\-noamb
 Drops all ambient capabilities from the running process.
 .TP
 

@@ -16,7 +16,7 @@ state textual representation translation
 .sp
 .BI "char *cap_to_name(cap_value_t " cap );
 .sp
-Link with \fI-lcap\fP.
+Link with \fI\-lcap\fP.
 .SH DESCRIPTION
 These functions translate a capability state between
 an internal representation and a textual one.
@@ -100,7 +100,7 @@ followed by an
 An action-list consists of a sequence of
 .I operator flag
 pairs.  Legal operators are:
-.RB ` = "', '" + "', and `" - "'."
+.RB ` = "', '" + "', and `" \- "'."
 Legal flags are:
 .RB ` e "', `" i "', and `" p "'."
 These flags are case-sensitive and specify the Effective, Inheritable
@@ -136,15 +136,15 @@ refer to `all' capabilities.  For example, the following three
 clauses are equivalent to each other (and indicate a completely empty
 capability set): "all="; "="; "cap_chown,<every-other-capability>=".
 .PP
-The operators, `+' and `-' both require an explicit preceding
+The operators, `+' and `\-' both require an explicit preceding
 capability list and one or more explicit trailing flags.  The `+'
 operator will raise all of the listed capabilities in the flagged
-capability sets.  The `-' operator will lower all of the listed
+capability sets.  The `\-' operator will lower all of the listed
 capabilities in the flagged capability sets.  For example:
-"all+p" will raise all of the Permitted capabilities; "cap_fowner+p-i"
+"all+p" will raise all of the Permitted capabilities; "cap_fowner+p\-i"
 will raise the override-file-ownership capability in the Permitted
 capability set and lower this Inheritable capability;
-"cap_fowner+pe-i" and "cap_fowner=+pe" are equivalent.
+"cap_fowner+pe\-i" and "cap_fowner=+pe" are equivalent.
 .SH "RETURN VALUE"
 .BR cap_from_text (),
 .BR cap_to_text ()
@@ -152,7 +152,7 @@ and
 .BR cap_to_name ()
 return a non-NULL value on success, and NULL on failure.
 .BR cap_from_name ()
-returns 0 for success, and -1 on failure (unknown capability).
+returns 0 for success, and \-1 on failure (unknown capability).
 .PP
 On failure,
 .I errno
@@ -180,8 +180,8 @@ The following shell session shows a some example runs:
 
 $ ./a.out "cap_chown=p cap_chown+e"
 caps_to_text() returned "= cap_chown+ep"
-$ ./a.out "all=pe cap_chown-e cap_kill-pe"
-caps_to_text() returned "=ep cap_chown-e cap_kill-ep"
+$ ./a.out "all=pe cap_chown\-e cap_kill\-pe"
+caps_to_text() returned "=ep cap_chown\-e cap_kill\-ep"
 
 .fi
 .in
