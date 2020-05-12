@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/capability.h>
 
 /*
  * #include 'sed' generated array
@@ -22,17 +21,26 @@ struct {
     {NULL, -1}
 };
 
-/* this should be more than big enough (factor of three at least) */
-const char *pointers[8*sizeof(struct __user_cap_data_struct)];
-
 int main(void)
 {
     int i, maxcaps=0, maxlength=0;
+    const char **pointers = NULL, **pointers_tmp;
+    int pointers_avail = 0;
+
 
     for ( i=0; list[i].index >= 0 && list[i].name; ++i ) {
 	if (maxcaps <= list[i].index) {
 	    maxcaps = list[i].index + 1;
 	}
+        if (list[i].index >= pointers_avail) {
+                pointers_avail = 2 * list[i].index + 1;
+                pointers_tmp = realloc(pointers, pointers_avail * sizeof(char *));
+                if (!pointers_tmp) {
+                        fputs("out of memory", stderr);
+                        exit(1);
+                }
+                pointers = pointers_tmp;
+        }
 	pointers[list[i].index] = list[i].name;
 	int n = strlen(list[i].name);
 	if (n > maxlength) {
@@ -63,5 +71,6 @@ int main(void)
 	   "\n"
 	   "/* END OF FILE */\n");
 
+    free(pointers);
     exit(0);
 }
