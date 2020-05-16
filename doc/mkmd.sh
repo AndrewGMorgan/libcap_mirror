@@ -37,7 +37,7 @@ function do_page () {
 	return
     fi
 
-    man-to-md < "${m}" | sed -e 's/^\*\*\([^\*]\+\)\*\*(\([138]\+\))/[\1(\2)](\1-\2.md)/' > "${outdir}/${base}-${sect}.md"
+    man-to-md -f < "${m}" | sed -e 's/^\*\*\([^\*]\+\)\*\*(\([138]\+\))/[\1(\2)](\1-\2.md)/' > "${outdir}/${base}-${sect}.md"
     echo "* [${base}(${sect})](${base}-${sect}.md)" >> "${index}"
 }
 

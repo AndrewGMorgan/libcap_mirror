@@ -6,16 +6,14 @@
 cap_from_text, cap_to_text, cap_to_name, cap_from_name \- capability
 state textual representation translation
 .SH SYNOPSIS
-.B #include <sys/capability.h>
-.sp
-.BI "cap_t cap_from_text(const char *" buf_p );
-.sp
-.BI "char *cap_to_text(cap_t " caps ", ssize_t *" length_p );
-.sp
-.BI "int cap_from_name(const char *" name ", cap_value_t *" cap_p );
-.sp
-.BI "char *cap_to_name(cap_value_t " cap );
-.sp
+.nf
+#include <sys/capability.h>
+
+cap_t cap_from_text(const char* buf_p );
+char *cap_to_text(cap_t caps, ssize_t * length_p);
+int cap_from_name(const char* name , cap_value_t* cap_p);
+char *cap_to_name(cap_value_t cap);
+.fi
 Link with \fI\-lcap\fP.
 .SH DESCRIPTION
 These functions translate a capability state between
@@ -175,7 +173,6 @@ The example program below demonstrates the use of
 and
 .BR cap_to_text ().
 The following shell session shows a some example runs:
-.in +4n
 .nf
 
 $ ./a.out "cap_chown=p cap_chown+e"
@@ -184,7 +181,6 @@ $ ./a.out "all=pe cap_chown\-e cap_kill\-pe"
 caps_to_text() returned "=ep cap_chown\-e cap_kill\-ep"
 
 .fi
-.in
 The source code of the program is as follows:
 .nf
 

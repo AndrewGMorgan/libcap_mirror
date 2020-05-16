@@ -196,18 +196,22 @@ program exits with status 1.
 This is a convenience feature. If you look at
 .B /proc/1/status
 there are some capability related fields of the following form:
+.nf
 
  CapInh:	0000000000000000
  CapPrm:	ffffffffffffffff
  CapEff:	fffffffffffffeff
  CapBnd:	ffffffffffffffff
 
+.fi
 This option provides a quick way to decode a capability vector
 represented in this form. For example, the missing capability from
 this effective set is 0x0100. By running:
+.nf
 
  capsh \-\-decode=0x0100
 
+.fi
 we observe that the missing capability is:
 .BR cap_setpcap .
 .TP
@@ -258,6 +262,7 @@ Please report bugs via:
 https://bugzilla.kernel.org/buglist.cgi?component=libcap&list_id=1047723&product=Tools&resolution=---
 .SH "SEE ALSO"
 .BR libcap (3),
-.BR getcap "(8), " setcap (8)
+.BR getcap (8),
+.BR setcap (8)
 and
 .BR capabilities (7).
