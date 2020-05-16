@@ -21,25 +21,34 @@ struct {
     {NULL, -1}
 };
 
+/*
+ * recalloc uses realloc to grow some memory but it resets the
+ * indicated extended empty space.
+ */
+static void *recalloc(void *p, int was, int is) {
+    void *n = realloc(p, is);
+    if (!n) {
+	fputs("out of memory", stderr);
+	exit(1);
+    }
+    memset(n+was, 0, is-was);
+    return n;
+}
+
 int main(void)
 {
     int i, maxcaps=0, maxlength=0;
     const char **pointers = NULL, **pointers_tmp;
     int pointers_avail = 0;
 
-
     for ( i=0; list[i].index >= 0 && list[i].name; ++i ) {
 	if (maxcaps <= list[i].index) {
 	    maxcaps = list[i].index + 1;
 	}
         if (list[i].index >= pointers_avail) {
-                pointers_avail = 2 * list[i].index + 1;
-                pointers_tmp = realloc(pointers, pointers_avail * sizeof(char *));
-                if (!pointers_tmp) {
-                        fputs("out of memory", stderr);
-                        exit(1);
-                }
-                pointers = pointers_tmp;
+	    int was = pointers_avail * sizeof(char *);
+	    pointers_avail = 2 * list[i].index + 1;
+	    pointers = recalloc(pointers, was, pointers_avail * sizeof(char *));
         }
 	pointers[list[i].index] = list[i].name;
 	int n = strlen(list[i].name);
@@ -60,10 +69,11 @@ int main(void)
 	   "#define LIBCAP_CAP_NAMES { \\\n", maxcaps, maxlength+1);
 
     for (i=0; i<maxcaps; ++i) {
-	if (pointers[i])
+	if (pointers[i]) {
 	    printf("      /* %d */\t\"%s\", \\\n", i, pointers[i]);
-	else
+	} else {
 	    printf("      /* %d */\tNULL,\t\t/* - presently unused */ \\\n", i);
+	}
     }
 
     printf("  }\n"
