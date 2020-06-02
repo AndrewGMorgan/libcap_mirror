@@ -10,7 +10,6 @@
 #include <fcntl.h>              /* Obtain O_* constant definitions */
 #include <grp.h>
 #include <sys/prctl.h>
-#include <sys/psx_syscall.h>
 #include <sys/securebits.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -82,13 +81,24 @@ static int _libcap_overrode_syscalls = 1;
  * no-op. However, if libpsx is linked, the one present in that
  * library (not being weak) will replace this one and the
  * _libcap_overrode_syscalls value isn't forced to zero.
+ *
+ * Note: we hardcode the prototype for the psx_load_syscalls()
+ * function here so the compiler isn't worried. If we force the build
+ * to include the header, we are close to requiring the optional
+ * libpsx to be linked.
  */
-__attribute__((weak))
 void psx_load_syscalls(long int (**syscall_fn)(long int,
 					      long int, long int, long int),
 		       long int (**syscall6_fn)(long int,
-					       long int, long int, long int,
-					       long int, long int, long int))
+						long int, long int, long int,
+						long int, long int, long int));
+
+__attribute__((weak))
+void psx_load_syscalls(long int (**syscall_fn)(long int,
+					       long int, long int, long int),
+		       long int (**syscall6_fn)(long int,
+						long int, long int, long int,
+						long int, long int, long int))
 {
     _libcap_overrode_syscalls = 0;
 }
