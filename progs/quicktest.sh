@@ -86,14 +86,14 @@ pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 # from setuid root to capable luser (as per wireshark/dumpcap 0.99.7)
 # This test is subtle. It is testing that a change to self, dropping
 # euid=0 back to that of the luser keeps capabilities.
-pass_capsh --uid=500 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --print --uid=500 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
+pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --print --uid=1 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
 
 # this test is a change of user to a new user, note we need to raise
 # the cap_setuid capability (libcap has a function for that) in this case.
-pass_capsh --uid=500 -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_admin=ip cap_setuid=p\" --print --cap-uid=501 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
+pass_capsh --uid=1 -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_admin=ip cap_setuid=p\" --print --cap-uid=2 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
 
 # This fails, on 2.6.24, but shouldn't
-pass_capsh --uid=500 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --uid=500 --forkfor=10 --caps= --print --killit=9 --print"
+pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --uid=1 --forkfor=10 --caps= --print --killit=9 --print"
 
 # only continue with these if --secbits is supported
 ./capsh --secbits=0x2f > /dev/null 2>&1
@@ -130,7 +130,7 @@ fail_capsh --drop=cap_setuid --secbits=0x2f --print -- -c "./privileged --uid=$n
 # Note, the bounding set (edited with --drop) only limits p
 # capabilities, not i's.
 pass_capsh --secbits=47 --inh=cap_setuid,cap_setgid --drop=cap_setuid \
-    --uid=500 --print -- -c "./privileged --uid=$nouid"
+    --uid=1 --print -- -c "./privileged --uid=$nouid"
 
 # test that we do not support capabilities on setuid shell-scripts
 /bin/cat > hack.sh <<EOF
@@ -148,7 +148,7 @@ fi
 exit 0
 EOF
 /bin/chmod +xs hack.sh
-./capsh --uid=500 --inh=none --print -- ./hack.sh
+./capsh --uid=1 --inh=none --print -- ./hack.sh
 status=$?
 /bin/rm -f ./hack.sh
 if [ $status -ne 0 ]; then
@@ -199,11 +199,11 @@ EOF
     # This is sort of the opposite of privileged - it should ensure that
     # the file can never aquire privilege by the ambient method.
     ./setcap = ./privileged
-    fail_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=500"
+    fail_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=1"
 
     # finally remove the capability from the privileged binary and try again.
     ./setcap -r ./privileged
-    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=500"
+    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=1"
 
     # validate IAB setting with an ambient capability
     pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_sys_admin'
@@ -217,9 +217,9 @@ echo "testing namespaced file caps"
 # the same setup as an earlier test but with a ns file cap).
 rm -f nsprivileged
 cp ./capsh ./nsprivileged && /bin/chmod -s ./nsprivileged
-./setcap -n 500 all=ep ./nsprivileged
+./setcap -n 1 all=ep ./nsprivileged
 if [ $? -eq 0 ]; then
-    ./getcap -n ./nsprivileged | fgrep "[rootid=500]"
+    ./getcap -n ./nsprivileged | fgrep "[rootid=1]"
     if [ $? -ne 0 ]; then
 	echo "FAILED setting ns rootid on file"
 	exit 1
