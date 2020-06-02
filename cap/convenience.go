@@ -31,9 +31,16 @@ const (
 	securedAmbientBits = securedBasicBits | SecbitNoCapAmbientRaise | SecbitNoCapAmbientRaiseLocked
 )
 
+// defines from uapi/linux/prctl.h
+const (
+	prSetKeepCaps   = 8
+	prGetSecureBits = 27
+	prSetSecureBits = 28
+)
+
 // GetSecbits returns the current setting of the process' Secbits.
 func GetSecbits() Secbits {
-	v, err := multisc.prctlrcall(PR_GET_SECUREBITS, 0, 0)
+	v, err := multisc.prctlrcall(prGetSecureBits, 0, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +48,7 @@ func GetSecbits() Secbits {
 }
 
 func (sc *syscaller) setSecbits(s Secbits) error {
-	_, err := sc.prctlwcall(PR_SET_SECUREBITS, uintptr(s), 0)
+	_, err := sc.prctlwcall(prSetSecureBits, uintptr(s), 0)
 	return err
 }
 
@@ -65,13 +72,6 @@ const (
 	ModeNoPriv
 	ModePure1EInit
 	ModePure1E
-)
-
-// defines from uapi/linux/prctl.h
-const (
-	PR_SET_KEEPCAPS   = 8
-	PR_GET_SECUREBITS = 27
-	PR_SET_SECUREBITS = 28
 )
 
 // GetMode assesses the current process state and summarizes it as
@@ -207,8 +207,8 @@ func (sc *syscaller) setUID(uid int) error {
 
 	// these may or may not work depending on whether or not they
 	// are locked. We try them just in case.
-	sc.prctlwcall(PR_SET_KEEPCAPS, 1, 0)
-	defer sc.prctlwcall(PR_SET_KEEPCAPS, 0, 0)
+	sc.prctlwcall(prSetKeepCaps, 1, 0)
+	defer sc.prctlwcall(prSetKeepCaps, 0, 0)
 
 	if err := sc.setProc(w); err != nil {
 		return err
@@ -250,7 +250,7 @@ func (sc *syscaller) setGroups(gid int, suppl []int) error {
 		return err
 	}
 	if len(suppl) == 0 {
-		if _, _, err := sc.w3(sys_setgroups_variant, 0, 0, 0); err != 0 {
+		if _, _, err := sc.w3(sysSetGroupsVariant, 0, 0, 0); err != 0 {
 			return err
 		}
 		return nil
@@ -261,7 +261,7 @@ func (sc *syscaller) setGroups(gid int, suppl []int) error {
 	for i, g := range suppl {
 		gs[i] = uint32(g)
 	}
-	if _, _, err := sc.w3(sys_setgroups_variant, uintptr(len(suppl)), uintptr(unsafe.Pointer(&gs[0])), 0); err != 0 {
+	if _, _, err := sc.w3(sysSetGroupsVariant, uintptr(len(suppl)), uintptr(unsafe.Pointer(&gs[0])), 0); err != 0 {
 		return err
 	}
 	return nil

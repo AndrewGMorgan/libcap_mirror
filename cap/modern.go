@@ -5,4 +5,4 @@ package cap
 
 import "syscall"
 
-var sys_setgroups_variant = uintptr(syscall.SYS_SETGROUPS)
+var sysSetGroupsVariant = uintptr(syscall.SYS_SETGROUPS)

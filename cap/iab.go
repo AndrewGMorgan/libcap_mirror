@@ -31,7 +31,7 @@ const (
 	Bound
 )
 
-// IABInit() returns an empty IAB.
+// IABInit returns an empty IAB.
 func IABInit() *IAB {
 	startUp.Do(multisc.cInit)
 	return &IAB{

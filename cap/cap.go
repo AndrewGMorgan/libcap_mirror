@@ -279,15 +279,15 @@ func (c *Set) SetProc() error {
 
 // defines from uapi/linux/prctl.h
 const (
-	pr_CAPBSET_READ = 23
-	pr_CAPBSET_DROP = 24
+	prCapBSetRead = 23
+	prCapBSetDrop = 24
 )
 
 // GetBound determines if a specific capability is currently part of
 // the local bounding set. On systems where the bounding set Value is
 // not present, this function returns an error.
 func GetBound(val Value) (bool, error) {
-	v, err := multisc.prctlrcall(pr_CAPBSET_READ, uintptr(val), 0)
+	v, err := multisc.prctlrcall(prCapBSetRead, uintptr(val), 0)
 	if err != nil {
 		return false, err
 	}
@@ -297,7 +297,7 @@ func GetBound(val Value) (bool, error) {
 //go:uintptrescapes
 func (sc *syscaller) dropBound(val ...Value) error {
 	for _, v := range val {
-		if _, err := sc.prctlwcall(pr_CAPBSET_DROP, uintptr(v), 0); err != nil {
+		if _, err := sc.prctlwcall(prCapBSetDrop, uintptr(v), 0); err != nil {
 			return err
 		}
 	}
@@ -321,30 +321,30 @@ func DropBound(val ...Value) error {
 
 // defines from uapi/linux/prctl.h
 const (
-	pr_CAP_AMBIENT = 47
+	prCapAmbient = 47
 
-	pr_CAP_AMBIENT_IS_SET    = 1
-	pr_CAP_AMBIENT_RAISE     = 2
-	pr_CAP_AMBIENT_LOWER     = 3
-	pr_CAP_AMBIENT_CLEAR_ALL = 4
+	prCapAmbientIsSet    = 1
+	prCapAmbientRaise    = 2
+	prCapAmbientLower    = 3
+	prCapAmbientClearAll = 4
 )
 
 // GetAmbient determines if a specific capability is currently part of
 // the local ambient set. On systems where the ambient set Value is
 // not present, this function returns an error.
 func GetAmbient(val Value) (bool, error) {
-	r, err := multisc.prctlrcall6(pr_CAP_AMBIENT, pr_CAP_AMBIENT_IS_SET, uintptr(val), 0, 0, 0)
+	r, err := multisc.prctlrcall6(prCapAmbient, prCapAmbientIsSet, uintptr(val), 0, 0, 0)
 	return r > 0, err
 }
 
 //go:uintptrescapes
 func (sc *syscaller) setAmbient(enable bool, val ...Value) error {
-	dir := uintptr(pr_CAP_AMBIENT_LOWER)
+	dir := uintptr(prCapAmbientLower)
 	if enable {
-		dir = pr_CAP_AMBIENT_RAISE
+		dir = prCapAmbientRaise
 	}
 	for _, v := range val {
-		_, err := sc.prctlwcall6(pr_CAP_AMBIENT, dir, uintptr(v), 0, 0, 0)
+		_, err := sc.prctlwcall6(prCapAmbient, dir, uintptr(v), 0, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -373,7 +373,7 @@ func (sc *syscaller) resetAmbient() error {
 			return nil
 		}
 	}
-	_, err = sc.prctlwcall6(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0, 0)
+	_, err = sc.prctlwcall6(prCapAmbient, prCapAmbientClearAll, 0, 0, 0, 0)
 	return err
 }
 

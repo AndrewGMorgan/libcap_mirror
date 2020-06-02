@@ -785,10 +785,14 @@ void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
     attr->change_mode = 1;
 }
 
-cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t bits)
+/*
+ * cap_launcher_set_iab primes the launcher to attempt to change the iab bits of
+ * the launched child.
+ */
+cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
 {
     cap_iab_t old = attr->iab;
-    attr->iab = bits;
+    attr->iab = iab;
     return old;
 }
 

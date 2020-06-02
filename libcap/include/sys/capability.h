@@ -155,8 +155,8 @@ extern char *  cap_to_text(cap_t, ssize_t *);
 extern int     cap_from_name(const char *, cap_value_t *);
 extern char *  cap_to_name(cap_value_t);
 
-extern char *     cap_iab_to_text(cap_iab_t bits);
-extern cap_iab_t  cap_iab_from_text(const char *summary);
+extern char *     cap_iab_to_text(cap_iab_t iab);
+extern cap_iab_t  cap_iab_from_text(const char *text);
 
 #define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
 extern int     cap_compare(cap_t, cap_t);
@@ -193,7 +193,7 @@ extern void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
 extern void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor);
 extern cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab);
 extern void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot);
-extern pid_t cap_launch(cap_launch_t attr, void *detail);
+extern pid_t cap_launch(cap_launch_t attr, void *data);
 
 /*
  * system calls - look to libc for function to system call

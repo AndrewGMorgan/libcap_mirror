@@ -123,7 +123,7 @@ var ErrAmbiguousAmbient = errors.New("use Launcher for ambient caps")
 var lName = []byte("cap-launcher\000")
 
 // <uapi/linux/prctl.h>
-const pr_SET_NAME = 15
+const prSetName = 15
 
 //go:uintptrescapes
 func launch(result chan<- lResult, attr *Launcher, data interface{}) {
@@ -149,7 +149,7 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}) {
 
 	// Name the launcher thread - transient, but helps if the
 	// callbackFn or something else hangs up.
-	singlesc.prctlrcall(pr_SET_NAME, uintptr(unsafe.Pointer(&lName[0])), 0)
+	singlesc.prctlrcall(prSetName, uintptr(unsafe.Pointer(&lName[0])), 0)
 
 	pa := &syscall.ProcAttr{
 		Files: []uintptr{0, 1, 2},
