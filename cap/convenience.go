@@ -120,6 +120,8 @@ func GetMode() Mode {
 	return ModeNoPriv
 }
 
+// ErrBadMode is the error returned when an attempt is made to set an
+// unrecognized libcap security mode.
 var ErrBadMode = errors.New("unsupported mode")
 
 func (sc *syscaller) setMode(m Mode) error {

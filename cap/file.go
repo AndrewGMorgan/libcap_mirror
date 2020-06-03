@@ -17,32 +17,32 @@ var (
 
 // uapi/linux/capability.h defined.
 const (
-	VFS_CAP_REVISION_MASK   = uint32(0xff000000)
-	VFS_CAP_FLAGS_MASK      = ^VFS_CAP_REVISION_MASK
-	VFS_CAP_FLAGS_EFFECTIVE = uint32(1)
+	vfsCapRevisionMask   = uint32(0xff000000)
+	vfsCapFlagsMask      = ^vfsCapRevisionMask
+	vfsCapFlagsEffective = uint32(1)
 
-	VFS_CAP_REVISION_1 = uint32(0x01000000)
-	VFS_CAP_REVISION_2 = uint32(0x02000000)
-	VFS_CAP_REVISION_3 = uint32(0x03000000)
+	vfsCapRevision1 = uint32(0x01000000)
+	vfsCapRevision2 = uint32(0x02000000)
+	vfsCapRevision3 = uint32(0x03000000)
 )
 
 // Data types stored in little-endian order.
 
-type vfs_caps_1 struct {
+type vfsCaps1 struct {
 	MagicEtc uint32
 	Data     [1]struct {
 		Permitted, Inheritable uint32
 	}
 }
 
-type vfs_caps_2 struct {
+type vfsCaps2 struct {
 	MagicEtc uint32
 	Data     [2]struct {
 		Permitted, Inheritable uint32
 	}
 }
 
-type vfs_caps_3 struct {
+type vfsCaps3 struct {
 	MagicEtc uint32
 	Data     [2]struct {
 		Permitted, Inheritable uint32
@@ -64,9 +64,9 @@ func digestFileCap(d []byte, sz int, err error) (*Set, error) {
 	if err != nil {
 		return nil, err
 	}
-	var raw1 vfs_caps_1
-	var raw2 vfs_caps_2
-	var raw3 vfs_caps_3
+	var raw1 vfsCaps1
+	var raw2 vfsCaps2
+	var raw3 vfsCaps3
 	if sz < binary.Size(raw1) || sz > binary.Size(raw3) {
 		return nil, ErrBadSize
 	}
@@ -78,36 +78,36 @@ func digestFileCap(d []byte, sz int, err error) (*Set, error) {
 
 	c := NewSet()
 	b.Seek(0, io.SeekStart)
-	switch magicEtc & VFS_CAP_REVISION_MASK {
-	case VFS_CAP_REVISION_1:
+	switch magicEtc & vfsCapRevisionMask {
+	case vfsCapRevision1:
 		if err = binary.Read(b, binary.LittleEndian, &raw1); err != nil {
 			return nil, err
 		}
 		data := raw1.Data[0]
 		c.flat[0][Permitted] = data.Permitted
 		c.flat[0][Inheritable] = data.Inheritable
-		if raw1.MagicEtc&VFS_CAP_FLAGS_MASK == VFS_CAP_FLAGS_EFFECTIVE {
+		if raw1.MagicEtc&vfsCapFlagsMask == vfsCapFlagsEffective {
 			c.flat[0][Effective] = data.Inheritable | data.Permitted
 		}
-	case VFS_CAP_REVISION_2:
+	case vfsCapRevision2:
 		if err = binary.Read(b, binary.LittleEndian, &raw2); err != nil {
 			return nil, err
 		}
 		for i, data := range raw2.Data {
 			c.flat[i][Permitted] = data.Permitted
 			c.flat[i][Inheritable] = data.Inheritable
-			if raw2.MagicEtc&VFS_CAP_FLAGS_MASK == VFS_CAP_FLAGS_EFFECTIVE {
+			if raw2.MagicEtc&vfsCapFlagsMask == vfsCapFlagsEffective {
 				c.flat[i][Effective] = data.Inheritable | data.Permitted
 			}
 		}
-	case VFS_CAP_REVISION_3:
+	case vfsCapRevision3:
 		if err = binary.Read(b, binary.LittleEndian, &raw3); err != nil {
 			return nil, err
 		}
 		for i, data := range raw3.Data {
 			c.flat[i][Permitted] = data.Permitted
 			c.flat[i][Inheritable] = data.Inheritable
-			if raw3.MagicEtc&VFS_CAP_FLAGS_MASK == VFS_CAP_FLAGS_EFFECTIVE {
+			if raw3.MagicEtc&vfsCapFlagsMask == vfsCapFlagsEffective {
 				c.flat[i][Effective] = data.Inheritable | data.Permitted
 			}
 		}
@@ -122,7 +122,7 @@ func digestFileCap(d []byte, sz int, err error) (*Set, error) {
 
 // GetFd returns the file capabilities of an open (*os.File).Fd().
 func GetFd(file *os.File) (*Set, error) {
-	var raw3 vfs_caps_3
+	var raw3 vfsCaps3
 	d := make([]byte, binary.Size(raw3))
 	sz, _, oErr := multisc.r6(syscall.SYS_FGETXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0)
 	var err error
@@ -140,7 +140,7 @@ func GetFile(path string) (*Set, error) {
 	if err != nil {
 		return nil, err
 	}
-	var raw3 vfs_caps_3
+	var raw3 vfsCaps3
 	d := make([]byte, binary.Size(raw3))
 	sz, _, oErr := multisc.r6(syscall.SYS_GETXATTR, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(xattrNameCaps)), uintptr(unsafe.Pointer(&d[0])), uintptr(len(d)), 0, 0)
 	if oErr != 0 {
@@ -168,13 +168,13 @@ func (c *Set) packFileCap() ([]byte, error) {
 		if c.nsRoot != 0 {
 			return nil, ErrBadSet // nsRoot not supported for single DWORD caps.
 		}
-		magic = VFS_CAP_REVISION_1
+		magic = vfsCapRevision1
 	case 2:
 		if c.nsRoot == 0 {
-			magic = VFS_CAP_REVISION_2
+			magic = vfsCapRevision2
 			break
 		}
-		magic = VFS_CAP_REVISION_3
+		magic = vfsCapRevision3
 	}
 	if magic == 0 {
 		return nil, ErrBadSize
@@ -184,7 +184,7 @@ func (c *Set) packFileCap() ([]byte, error) {
 		eff |= (f[Permitted] | f[Inheritable]) & f[Effective]
 	}
 	if eff != 0 {
-		magic |= VFS_CAP_FLAGS_EFFECTIVE
+		magic |= vfsCapFlagsEffective
 	}
 	b := new(bytes.Buffer)
 	binary.Write(b, binary.LittleEndian, magic)

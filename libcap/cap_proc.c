@@ -899,7 +899,7 @@ defer:
  * characteristics, to make sure they stick, or return an error
  * of -1 setting errno because the launch failed.
  */
-pid_t cap_launch(cap_launch_t details, void *data) {
+pid_t cap_launch(cap_launch_t attr, void *data) {
     int my_errno;
     int ps[2];
 
@@ -917,7 +917,7 @@ pid_t cap_launch(cap_launch_t details, void *data) {
     if (!child) {
 	close(ps[0]);
 	/* noreturn from this function: */
-	_cap_launch(ps[1], details, data);
+	_cap_launch(ps[1], attr, data);
     }
 
     /*
