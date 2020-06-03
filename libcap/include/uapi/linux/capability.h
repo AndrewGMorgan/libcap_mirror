@@ -331,6 +331,8 @@ struct vfs_ns_cap_data {
 
 #define CAP_AUDIT_CONTROL    30
 
+/* Set capabilities on files. */
+
 #define CAP_SETFCAP	     31
 
 /* Override MAC access.
@@ -366,8 +368,12 @@ struct vfs_ns_cap_data {
 
 #define CAP_AUDIT_READ       37
 
+/* Alow system performace and observability privileged opeations using
+ * perf_events, i915_perf and other kernel subsystems. */
 
-#define CAP_LAST_CAP         CAP_AUDIT_READ
+#define CAP_PERFMON	     38
+
+#define CAP_LAST_CAP         CAP_PERFMON
 
 #define cap_valid(x) ((x) >= 0 && (x) <= CAP_LAST_CAP)
 

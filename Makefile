@@ -55,7 +55,10 @@ ifeq ($(GOLANG),yes)
 endif
 	make -C progs $@
 
-morganrelease: distclean
+distcheck:
+	./distcheck.sh
+
+morganrelease: distclean distcheck
 	@echo "sign the tag twice: older DSA key; and newer RSA kernel.org key"
 	git tag -u D41A6DF2 -s libcap-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"
 	git tag -u E2CCF3F4 -s libcap-korg-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"
