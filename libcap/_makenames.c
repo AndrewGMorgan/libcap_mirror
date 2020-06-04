@@ -38,7 +38,7 @@ static void *recalloc(void *p, int was, int is) {
 int main(void)
 {
     int i, maxcaps=0, maxlength=0;
-    const char **pointers = NULL, **pointers_tmp;
+    const char **pointers = NULL;
     int pointers_avail = 0;
 
     for ( i=0; list[i].index >= 0 && list[i].name; ++i ) {
