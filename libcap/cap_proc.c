@@ -4,7 +4,9 @@
  * This file deals with getting and setting capabilities on processes.
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <errno.h>
 #include <fcntl.h>              /* Obtain O_* constant definitions */

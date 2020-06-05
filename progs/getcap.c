@@ -4,6 +4,7 @@
  * This displays the capabilities of a given file.
  */
 
+#undef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 500
 
 #include <errno.h>

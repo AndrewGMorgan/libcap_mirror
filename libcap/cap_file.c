@@ -4,7 +4,9 @@
  * This file deals with setting capabilities on files.
  */
 
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
 
 #include <sys/types.h>
 #include <byteswap.h>
