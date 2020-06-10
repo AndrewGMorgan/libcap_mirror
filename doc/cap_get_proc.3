@@ -87,7 +87,7 @@ with a
 .I  cap
 as an argument returns the current value of this bounding set
 capability flag in effect for the current process. This operation is
-unpriveged. Note, a macro function
+unprivileged. Note, a macro function
 .BR "CAP_IS_SUPPORTED(cap_value_t " cap )
 is provided that evaluates to true (1) if the system supports the
 specified capability,
@@ -216,7 +216,7 @@ On failure,
 .I errno
 is set to
 .BR EINVAL ,
-.BR EPERM,
+.BR EPERM ,
 or
 .BR ENOMEM .
 .SH "CONFORMING TO"
@@ -298,7 +298,7 @@ Linux.  Note that, by default, the only processes that have
 available to them are processes started as a kernel thread.
 (Typically this includes
 .BR init (8),
-kflushd and kswapd). You will need to recompile the kernel to modify
+kflushd and kswapd.) You will need to recompile the kernel to modify
 this default.
 .SH EXAMPLE
 The code segment below raises the
