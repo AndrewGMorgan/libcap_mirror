@@ -10,7 +10,14 @@ getpcaps \- display process capabilities
 .B getpcaps
 displays the capabilities on the processes indicated by the
 .I pid
-value(s) given on the commandline. The capabilities are displayed in
+value(s) given on the command line.
+A
+.I pid
+of 0 displays the capabilities of the process that is running
+.B getpcaps
+itself.
+.PP
+The capabilities are displayed in
 the
 .BR cap_from_text (3)
 format.
