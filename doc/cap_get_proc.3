@@ -78,6 +78,9 @@ see
 .BR cap_init (3),
 with the process capabilities of the process indicated by
 .IR pid .
+(If
+.I pid
+is 0, then the calling process's capabilities are returned.)
 This information can also be obtained from the
 .I /proc/<pid>/status
 file.
