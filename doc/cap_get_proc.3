@@ -89,7 +89,7 @@ file.
 with a
 .I  cap
 as an argument returns the current value of this bounding set
-capability flag in effect for the current process. This operation is
+capability flag in effect for the calling process. This operation is
 unprivileged. Note, a macro function
 .BR "CAP_IS_SUPPORTED(cap_value_t " cap )
 is provided that evaluates to true (1) if the system supports the
@@ -122,11 +122,11 @@ capability set must have a raised
 .BR CAP_SETPCAP .
 Further, to raise a specific ambient capability the
 .IR inheritable " and " permitted
-sets of the current process must contain the specified capability, and
+sets of the calling process must contain the specified capability, and
 raised ambient bits will only be retained as long as this remains true.
 .PP
 .BR cap_reset_ambient ()
-resets all of the ambient capabilities for the current process to
+resets all of the ambient capabilities for the calling process to
 their lowered value. To complete successfully, the prevailing
 .I effective
 capability set must have a raised
@@ -139,12 +139,12 @@ changes to the inheritable set by the program code without explicitly
 fixing up the ambient set can also drop ambient bits.
 .PP
 .BR cap_get_secbits ()
-returns the securebits of the current process. These bits affect the
-way in which the current process implements things like setuid-root
+returns the securebits of the calling process. These bits affect the
+way in which the calling process implements things like setuid-root
 fixup and ambient capabilities.
 .PP
 .BR cap_set_secbits ()
-attempts to modify the securebits of the current process. Note
+attempts to modify the securebits of the calling process. Note
 .B CAP_SETPCAP
 must be in the effective capability set for this to be effective. Some
 settings lock the sub-states of the securebits, so attempts to set values
@@ -274,13 +274,13 @@ attempts to set the capabilities of some other process(es),
 If
 .I pid
 is positive it refers to a specific process;  if it is zero, it refers
-to the current process; \-1 refers to all processes other than the
-current process and process '1' (typically 
+to the calling process; \-1 refers to all processes other than the
+calling process and process '1' (typically 
 .BR init (8));
 other negative values refer to the
 .I \-pid
 process group.  In order to use this function, the kernel must support
-it and the current process must have
+it and the calling process must have
 .B CAP_SETPCAP
 raised in its Effective capability set. The capabilities set in the
 target process(es) are those contained in
@@ -288,7 +288,7 @@ target process(es) are those contained in
 Kernels that support filesystem capabilities redefine the semantics of
 .B CAP_SETPCAP
 and on such systems this function will always fail for any target not
-equal to the current process.
+equal to the calling process.
 .BR capsetp ()
 returns zero for success, and \-1 on failure.
 
