@@ -27,6 +27,17 @@ extern int fsetxattr(int, const char *, const void *, size_t, int);
 extern int removexattr(const char *, const char *);
 extern int fremovexattr(int, const char *);
 
+// This public API went private in the 2.6.36 kernel and above - hope it never changes
+#ifndef XATTR_CAPS_SUFFIX
+#define XATTR_CAPS_SUFFIX "capability"
+#endif
+#ifndef XATTR_SECURITY_PREFIX
+#define XATTR_SECURITY_PREFIX "security."
+#endif
+#ifndef XATTR_NAME_CAPS
+#define XATTR_NAME_CAPS XATTR_SECURITY_PREFIX XATTR_CAPS_SUFFIX
+#endif
+
 #include "libcap.h"
 
 #ifdef VFS_CAP_U32
