@@ -362,7 +362,7 @@ int cap_set_file(const char *filename, cap_t cap_d)
     return -1;
 }
 
-void cap_set_nsowner(cap_t cap_d, uid_t rootid)
+int cap_set_nsowner(cap_t cap_d, uid_t rootid)
 {
 	errno = EINVAL;
 	return -1;
