@@ -27,7 +27,12 @@ extern int fsetxattr(int, const char *, const void *, size_t, int);
 extern int removexattr(const char *, const char *);
 extern int fremovexattr(int, const char *);
 
-// This public API went private in the 2.6.36 kernel and above - hope it never changes
+/*
+ * This public API was moved to include/uapi/linux/xattr.h . For just
+ * these definitions, it isn't really worth managing this in our build
+ * system with yet another copy of a header file. We just, provide
+ * fallback definitions here.
+ */
 #ifndef XATTR_CAPS_SUFFIX
 #define XATTR_CAPS_SUFFIX "capability"
 #endif
