@@ -42,6 +42,7 @@ GOPKGDIR=$(prefix)/share/gocode/src
 LIBTITLE=libcap
 VERSION=2
 MINOR=36
+PATCH=0
 #
 
 # Compilation specifics
@@ -83,7 +84,7 @@ GOCGO := $(shell if [ "$(shell go env CGO_ENABLED)" = 1 ]; then echo yes ; else 
 GOOSARCH := $(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 CGO_CFLAGS := -I$(topdir)/libcap/include
 CGO_LDFLAGS := -L$(topdir)/libcap
-CGO_LDFLAGS_ALLOW := -Wl,-wrap,.+
+CGO_LDFLAGS_ALLOW := -Wl,-?-wrap[=,][^-.@][^,]*
 CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh)
 endif
 

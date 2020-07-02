@@ -1,5 +1,49 @@
-// Package psx provides Go wrappers for two system call functions that
-// work by calling the C libpsx functions of these names.
+// Package psx provides CGo wrappers for two system call functions
+// that work by calling the C libpsx functions of these names. The
+// purpose being to perform system calls symultaneously on all the
+// pthreads of the Go (and CGo) combined runtime. Since Go's runtime
+// freely migrates code execution between pthreads. Support of this
+// type is required for any successful attempt to fully drop or modify
+// user privilege of a Go program under Linux.
+//
+// Correct compilation of this package may require some extra steps:
+//
+// The first is that the package needs to be able to find the libpsx C
+// library and <sys/psx_syscall.h> header files.  The official
+// releases of libpsx are bundled with libcap and can be found in
+// releases after libcap-2.28. See the release notes and other libcap
+// related news here:
+//
+//    https://sites.google.com/site/fullycapable
+//
+// Without a full system install of the libpsx C library and header,
+// you can download the latest libcap sources, type make and use Go
+// environment variable overrides to include and link against the
+// libpsx.a static library it builds. Specifically, these:
+//
+//    export CGO_CFLAGS="-I ...path-to.../libcap/include"
+//    export CGO_LDFLAGS="-L ...path-to.../libcap"
+//
+// The second may be required to be able to link this package using
+// the Go compiler. In order to do what it needs to, this package
+// employs some unusual linking flags. Specifically, for Go releases
+// prior to those that include this patch:
+//
+//    https://go-review.googlesource.com/c/go/+/236139/
+//
+// As of the time of writing, that is all releases earlier than
+// go1.15beta1 .
+//
+// The workaround is to build using the CGO_LDFLAGS_ALLOW override as
+// follows:
+//
+//    export CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
+//
+// A future version of this package may simply require go1.15 to build
+// it, or exclude the versions of Go that introduced CGO_LDFLAGS_ALLOW
+// but didn't include the above patch.
+//
+// Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
 package psx
 
 import (
