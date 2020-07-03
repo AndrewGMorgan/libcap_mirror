@@ -4,9 +4,9 @@
 //
 // This program cannot work reliably as a pure Go application without
 // the equivalent of the Go runtime patch that adds a POSIX semantics
-// wrapper around the system calls that change kernel state. A patch
-// for the pure Go compiler/runtime to add this support is available
-// here [2019-12-14]:
+// wrapper around the system calls that change per-thread security
+// state. A patch for the pure Go compiler/runtime to add this support
+// is available here [2019-12-14]:
 //
 //    https://go-review.googlesource.com/c/go/+/210639/
 //
@@ -14,11 +14,12 @@
 // runtime the only way to get capabilities to work reliably on the Go
 // runtime is to use something like libpsx via cgo to do capability
 // setting syscalls in C with POSIX semantics. As of this build of the
-// Go "libcap/cap" package, courtesy of the "libcap/psx" package, this
-// is how things work.
+// Go "git.kernel.org/libs/libcap/cap" package, courtesy of the
+// "git.kernel.org/libs/libcap/psx" package, this is how things work.
 //
-// To set this up, compile and empower this binary as follows
-// (packages libcap/{cap,psx} should be installed, as must libpsx.a):
+// To set this up, compile and empower this binary as follows (read
+// over the detail in the psx package description if this doesn't
+// 'just' work):
 //
 //   go build web.go
 //   sudo setcap cap_setpcap,cap_net_bind_service=p web
@@ -32,12 +33,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"libcap/cap"
 	"log"
 	"net"
 	"net/http"
 	"runtime"
 	"syscall"
+
+	"git.kernel.org/libs/libcap/cap"
 )
 
 var (

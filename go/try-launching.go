@@ -7,7 +7,7 @@ import (
 	"strings"
 	"syscall"
 
-	"libcap/cap"
+	"git.kernel.org/libs/libcap/cap"
 )
 
 // tryLaunching attempts to launch a bunch of programs in parallel. It

@@ -16,8 +16,9 @@ if [ -z "$(go doc syscall 2>/dev/null|grep AllThreadsSyscall)" ]; then
 package cap
 
 import (
-	"libcap/psx"
 	"syscall"
+
+	"git.kernel.org/libs/libcap/psx"
 )
 
 // multisc provides syscalls overridable for testing purposes that
@@ -76,8 +77,9 @@ cat > "${dir}/syscalls_cgo.go" <<EOF
 package cap
 
 import (
-	"libcap/psx"
 	"syscall"
+
+	"git.kernel.org/libs/libcap/psx"
 )
 
 // multisc provides syscalls overridable for testing purposes that

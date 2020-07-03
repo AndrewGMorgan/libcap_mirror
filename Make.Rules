@@ -38,12 +38,13 @@ LIBDIR=$(lib_prefix)/$(lib)
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
 GOPKGDIR=$(prefix)/share/gocode/src
 
-# common defines for libcap
+# Common defines for libcap
 LIBTITLE=libcap
 VERSION=2
 MINOR=36
-PATCH=0
-#
+
+# Go modules have their own semantics.
+GOMAJOR=0
 
 # Compilation specifics
 
@@ -86,6 +87,10 @@ CGO_CFLAGS := -I$(topdir)/libcap/include
 CGO_LDFLAGS := -L$(topdir)/libcap
 CGO_LDFLAGS_ALLOW := -Wl,-?-wrap[=,][^-.@][^,]*
 CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh)
+ifeq ($(CGO_REQUIRED),0)
+# Hopefully this will not be needed at some point.
+GOBUILDTAG=-tags allthreadssyscall
+endif
 endif
 
 # If you want capsh to launch with something other than /bin/bash
