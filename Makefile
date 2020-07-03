@@ -15,6 +15,7 @@ ifneq ($(PAM_CAP),no)
 endif
 ifeq ($(GOLANG),yes)
 	$(MAKE) -C go $@
+	rm -f cap/go.sum
 endif
 	$(MAKE) -C tests $@
 	$(MAKE) -C progs $@
@@ -30,6 +31,8 @@ clean-here:
 
 distclean: clean
 	$(DISTCLEAN)
+	@echo "CONFIRM Go package cap has right version dependency on psx:"
+	grep -F "require kernel.org/pub/linux/libs/security/libcap/psx v$(GOMAJOR).$(VERSION).$(MINOR)" cap/go.mod
 
 release: distclean
 	cd .. && ln -s libcap libcap-$(VERSION).$(MINOR) && tar cvf libcap-$(VERSION).$(MINOR).tar --exclude patches libcap-$(VERSION).$(MINOR)/* && rm libcap-$(VERSION).$(MINOR)

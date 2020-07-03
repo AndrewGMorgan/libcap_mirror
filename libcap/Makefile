@@ -12,7 +12,7 @@ STACAPLIBNAME=$(LIBTITLE).a
 STAPSXLIBNAME=libpsx.a
 
 CAPFILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file
-PSXFILES=psx
+PSXFILES=../psx/psx
 
 INCLS=libcap.h cap_names.h $(INCS)
 CAPOBJS=$(addsuffix .o, $(CAPFILES))

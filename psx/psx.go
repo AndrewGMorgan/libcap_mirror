@@ -2,33 +2,19 @@
 // that work by calling the C libpsx functions of these names. The
 // purpose being to perform system calls symultaneously on all the
 // pthreads of the Go (and CGo) combined runtime. Since Go's runtime
-// freely migrates code execution between pthreads. Support of this
+// freely migrates code execution between pthreads, support of this
 // type is required for any successful attempt to fully drop or modify
-// user privilege of a Go program under Linux.
-//
-// Correct compilation of this package may require some extra steps:
-//
-// The first is that the package needs to be able to find the libpsx C
-// library and <sys/psx_syscall.h> header files.  The official
-// releases of libpsx are bundled with libcap and can be found in
-// releases after libcap-2.28. See the release notes and other libcap
-// related news here:
+// user privilege of a Go program under Linux. More info on how
+// privilege works can be found here:
 //
 //    https://sites.google.com/site/fullycapable
 //
-// Without a full system install of the libpsx C library and header,
-// you can download the latest libcap sources (see above site) and
-// type make to build them. Use the Go environment variable overrides
-// to include and link against the libpsx.a static library it
-// builds. Specifically, these:
+// Correct compilation of this package may require an extra step:
 //
-//    export CGO_CFLAGS="-I /...your-path-to.../libcap/include"
-//    export CGO_LDFLAGS="-L /...your-path-to.../libcap"
-//
-// The second, if your Go compiler is pre-go1.15, may be required to
+// If your Go compiler is pre-go1.15, a workaround may be required to
 // be able to link this package. In order to do what it needs to, this
-// package employs some unusual linking flags. Specifically, for Go
-// releases prior to those that include this patch:
+// package employs some unusual linking flags. You will need to do
+// this for any Go toolchain that that does not include this patch:
 //
 //    https://go-review.googlesource.com/c/go/+/236139/
 //
@@ -47,7 +33,8 @@ import (
 	"syscall"
 )
 
-// #cgo LDFLAGS: -lpsx -lpthread -Wl,-wrap,pthread_create
+// #cgo CFLAGS: -I${SRCDIR}/include
+// #cgo LDFLAGS: -lpthread -Wl,-wrap,pthread_create
 //
 // #include <errno.h>
 // #include <sys/psx_syscall.h>
