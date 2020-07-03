@@ -12,10 +12,11 @@
 //
 // Until that patch, or something like it, is absorbed into the Go
 // runtime the only way to get capabilities to work reliably on the Go
-// runtime is to use something like libpsx via cgo to do capability
+// runtime is to use something like libpsx via CGo to do capability
 // setting syscalls in C with POSIX semantics. As of this build of the
-// Go "git.kernel.org/libs/libcap/cap" package, courtesy of the
-// "git.kernel.org/libs/libcap/psx" package, this is how things work.
+// Go "kernel.org/pub/linux/libs/security/libcap/cap" package,
+// courtesy of the "kernel.org/pub/linux/libs/security/libcap/psx"
+// package, this is how things work.
 //
 // To set this up, compile and empower this binary as follows (read
 // over the detail in the psx package description if this doesn't
@@ -39,7 +40,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"git.kernel.org/libs/libcap/cap"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 var (

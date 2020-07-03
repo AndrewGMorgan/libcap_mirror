@@ -5,7 +5,7 @@ package cap
 import (
 	"syscall"
 
-	"git.kernel.org/libs/libcap/psx"
+	"kernel.org/pub/linux/libs/security/libcap/psx"
 )
 
 // multisc provides syscalls overridable for testing purposes that

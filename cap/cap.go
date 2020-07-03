@@ -1,17 +1,25 @@
 // Package cap is the Linux capabilities user space API (libcap)
 // bindings in native Go.
 //
-// For cgo linked binaries, package "libcap/psx" is used to broker the
-// POSIX semantics system calls that manipulate process state.
+// For cgo linked binaries, behind the scenes, the package
+// "kernel.org/pub/linux/libs/security/libcap/psx" is used to broker
+// the POSIX semantics system calls that manipulate thread state
+// uniformly over the whole process runtime.
 //
-// If the Go runtime syscall interface contains the
-// syscall.AllThreadsSyscall() API then this package will use that to
-// invoke capability setting system calls for pure Go binaries. To
-// force this behavior use the CGO_ENABLED=0 environment variable.
+// If the Go runtime syscall interface contains the linux variant
+// syscall.AllThreadsSyscall() API (it is not in go1.15beta1 for
+// example) then this package can use that to invoke capability
+// setting system calls for pure Go binaries. To force this behavior
+// use the CGO_ENABLED=0 environment variable and, for now, a build
+// tag:
 //
-// If syscall.AllThreadsSyscall() is not present, the "libcap/cap"
-// package will failover to using "libcap/psx".
-package cap
+//    CGO_ENABLED=0 go build -tags allthreadssyscall ...
+//
+// If syscall.AllThreadsSyscall() is not present, the ".../libcap/cap"
+// package will failover to using ".../libcap/psx".
+//
+// Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
+package cap // import "kernel.org/pub/linux/libs/security/libcap/cap"
 
 import (
 	"errors"

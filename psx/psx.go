@@ -17,21 +17,22 @@
 //    https://sites.google.com/site/fullycapable
 //
 // Without a full system install of the libpsx C library and header,
-// you can download the latest libcap sources, type make and use Go
-// environment variable overrides to include and link against the
-// libpsx.a static library it builds. Specifically, these:
+// you can download the latest libcap sources (see above site) and
+// type make to build them. Use the Go environment variable overrides
+// to include and link against the libpsx.a static library it
+// builds. Specifically, these:
 //
-//    export CGO_CFLAGS="-I ...path-to.../libcap/include"
-//    export CGO_LDFLAGS="-L ...path-to.../libcap"
+//    export CGO_CFLAGS="-I /...your-path-to.../libcap/include"
+//    export CGO_LDFLAGS="-L /...your-path-to.../libcap"
 //
-// The second may be required to be able to link this package using
-// the Go compiler. In order to do what it needs to, this package
-// employs some unusual linking flags. Specifically, for Go releases
-// prior to those that include this patch:
+// The second, if your Go compiler is pre-go1.15, may be required to
+// be able to link this package. In order to do what it needs to, this
+// package employs some unusual linking flags. Specifically, for Go
+// releases prior to those that include this patch:
 //
 //    https://go-review.googlesource.com/c/go/+/236139/
 //
-// As of the time of writing, that is all releases earlier than
+// As of the time of writing, that is all release tags prior to
 // go1.15beta1 .
 //
 // The workaround is to build using the CGO_LDFLAGS_ALLOW override as
@@ -39,12 +40,8 @@
 //
 //    export CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
 //
-// A future version of this package may simply require go1.15 to build
-// it, or exclude the versions of Go that introduced CGO_LDFLAGS_ALLOW
-// but didn't include the above patch.
-//
 // Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
-package psx
+package psx // import "kernel.org/pub/linux/libs/security/libcap/psx"
 
 import (
 	"syscall"

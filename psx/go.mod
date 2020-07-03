@@ -1,3 +1,3 @@
-module git.kernel.org/libs/libcap/psx
+module kernel.org/pub/linux/libs/security/libcap/psx
 
-go 1.14
+go 1.11
