@@ -41,7 +41,7 @@ GOPKGDIR=$(prefix)/share/gocode/src
 # Common defines for libcap
 LIBTITLE=libcap
 VERSION=2
-MINOR=36
+MINOR=37
 
 # Go modules have their own semantics.
 GOMAJOR=0
