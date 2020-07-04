@@ -65,7 +65,8 @@ morganrelease: distclean distcheck
 	@echo "sign the tag twice: older DSA key; and newer RSA kernel.org key"
 	git tag -u D41A6DF2 -s libcap-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"
 	git tag -u E2CCF3F4 -s libcap-korg-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"
-	git tag -u D41A6DF2 -s v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for Go packages associated with libcap-$(VERSION).$(MINOR)."
+	git tag -u D41A6DF2 -s psx/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'psx' Go package associated with libcap-$(VERSION).$(MINOR)."
+	git tag -u D41A6DF2 -s cap/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'cap' Go package associated with libcap-$(VERSION).$(MINOR)."
 	make release
 	@echo "sign the tar file using korg key"
 	cd .. && gpg -sba -u E2CCF3F4 libcap-$(VERSION).$(MINOR).tar
