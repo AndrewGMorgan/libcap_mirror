@@ -201,19 +201,25 @@ func (c *Set) packFileCap() ([]byte, error) {
 //go:uintptrescapes
 
 // SetFd attempts to set the file capabilities of an open
-// (*os.File).Fd(). Note, Linux does not store the full Effective
-// Value vector in the metadata for the file. Only a single Effective
-// bit is stored. This single bit is non-zero if the Permitted vector
-// have any overlapping bits with the Effective or Inheritable vector
-// of c. This may seem suboptimal, but the reasoning behind it is
-// sound. Namely, the purpose of the Effective bit it to support
-// capabability unaware binaries that can work if they magically
-// launch with only the needed bits raised (this bit is sometimes
-// referred to simply as the 'legacy' bit). However, the preferred way
-// a binary will actually manipulate its file-acquired capabilities is
-// carefully and deliberately using this package, or libcap for C
-// family code. This function can also be used to delete a file's
+// (*os.File).Fd(). This function can also be used to delete a file's
 // capabilities, by calling with c = nil.
+//
+// Note, Linux does not store the full Effective Value vector in the
+// metadata for the file. Only a single Effective bit is stored in
+// this metadata. This single bit is non-zero if the Permitted vector
+// has any overlapping bits with the Effective or Inheritable vector
+// of c. This may appear suboptimal, but the reasoning behind it is
+// sound. Namely, the purpose of the Effective bit it to support
+// capabability unaware binaries that will only work if they magically
+// launch with the needed bits already raised (this bit is sometimes
+// referred to simply as the 'legacy' bit). Without *full* support for
+// capability manipulation, as it is provided in this cap package,
+// this was the only way for Go programs to make use of capabilities.
+//
+// The preferred way a binary will actually manipulate its
+// file-acquired capabilities is carefully and deliberately using this
+// package (or libcap, assisted by libpsx, for threaded C/C++ family
+// code).
 func (c *Set) SetFd(file *os.File) error {
 	if c == nil {
 		if _, _, err := multisc.r6(syscall.SYS_FREMOVEXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), 0, 0, 0, 0); err != 0 {
@@ -236,10 +242,11 @@ func (c *Set) SetFd(file *os.File) error {
 //go:uintptrescapes
 
 // SetFile attempts to set the file capabilities of the specfied
-// filename. See the comment for SetFd() for some non-obvious behavior
-// of Linux for the Effective Value vector on the modified file.  This
-// function can also be used to delete a file's capabilities, by
-// calling with c = nil.
+// filename. This function can also be used to delete a file's
+// capabilities, by calling with c = nil.
+//
+// Note, see the comment for SetFd() for some non-obvious behavior of
+// Linux for the Effective Value vector on the modified file.
 func (c *Set) SetFile(path string) error {
 	fi, err := os.Stat(path)
 	if err != nil {
