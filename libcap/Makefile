@@ -57,9 +57,14 @@ $(GPERF_OUTPUT): cap_names.list.h
 	perl -e 'print "struct __cap_token_s { const char *name; int index; };\n%{\nconst struct __cap_token_s *__cap_lookup_name(const char *, size_t);\n%}\n%%\n"; while ($$l = <>) { $$l =~ s/[\{\"]//g; $$l =~ s/\}.*// ; print $$l; }' < $< | gperf --ignore-case --language=ANSI-C --readonly --null-strings --global-table --hash-function-name=__cap_hash_name --lookup-function-name="__cap_lookup_name" -c -t -m20 $(INDENT) > $@
 	sed -e 's/unsigned int len/size_t len/' -i $@
 
-cap_names.list.h: Makefile $(KERNEL_HEADERS)/linux/capability.h
-	@echo "=> making $@ from $(KERNEL_HEADERS)/linux/capability.h"
-	perl -e 'while ($$l=<>) { if ($$l =~ /^\#define[ \t](CAP[_A-Z]+)[ \t]+([0-9]+)\s+$$/) { $$tok=$$1; $$val=$$2; $$tok =~ tr/A-Z/a-z/; print "{\"$$tok\",$$val},\n"; } }' $(KERNEL_HEADERS)/linux/capability.h | fgrep -v 0x > $@
+# Intention is that libcap keeps up with torvalds' tree, as reflected
+# by this maintained version of the kernel header. libcap dynamically
+# trims the meaning of "all" capabilities down to that of the running
+# kernel as of 2.30.
+UAPI_HEADER := $(topdir)/libcap/include/uapi/linux/capability.h
+cap_names.list.h: Makefile $(UAPI_HEADER)
+	@echo "=> making $@ from $(UAPI_HEADER)"
+	perl -e 'while ($$l=<>) { if ($$l =~ /^\#define[ \t](CAP[_A-Z]+)[ \t]+([0-9]+)\s+$$/) { $$tok=$$1; $$val=$$2; $$tok =~ tr/A-Z/a-z/; print "{\"$$tok\",$$val},\n"; } }' $(UAPI_HEADER) | fgrep -v 0x > $@
 
 $(STACAPLIBNAME): $(CAPOBJS)
 	$(AR) rcs $@ $^
