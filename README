@@ -32,14 +32,17 @@ bugs can be found at:
 
 	$ sudo make install
 
-	       installs the library libcap.XX.Y in /lib[64]/
+	       default installs the library libcap.XX.Y in /lib[64]/
 	       the binaries in /sbin/
 	       the header files in /usr/include
 	       the {libcap,libpsx}.pc files in /usr/lib[64]/pkgconfig
+	       the Go packages (if built) under /usr/share/gocode/src
 
-For some example programs look in the progs/ directory. Specifically,
-capsh, getpcaps, setcap and getcap. Go example programs are to be
-found in the go/ directory.
+For some example C programs look in the progs/ directory. Specifically,
+capsh, getpcaps, setcap and getcap.
+
+Go example programs are to be found in the goapps/ directory. There
+are also some more complicated integration tests in the go/ directory.
 
 Cheers
 

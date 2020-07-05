@@ -38,12 +38,15 @@ LIBDIR=$(lib_prefix)/$(lib)
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
 GOPKGDIR=$(prefix)/share/gocode/src
 
-# Common defines for libcap
+# Common version number defines for libcap
 LIBTITLE=libcap
 VERSION=2
-MINOR=37
+MINOR=38
 
-# Go modules have their own semantics.
+# Go modules have their own semantics. I plan to leave this value at 0
+# and keep it there. The Go packages should always remain backwardly
+# compatible, but I may have to up it if Go's syntax changes in a
+# backwards incompatible manner. (Let's hope not.)
 GOMAJOR=0
 
 # Compilation specifics
