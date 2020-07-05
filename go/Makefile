@@ -53,8 +53,8 @@ $(CAPGOPACKAGE): src/$(IMPORTDIR)/cap ../cap/*.go good-names.go $(PSXGOPACKAGE)
 compare-cap: compare-cap.go $(CAPGOPACKAGE)
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
 
-web: web.go $(CAPGOPACKAGE)
-	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build $(GOBUILDTAG) $<
+web: ../goapps/web/web.go $(CAPGOPACKAGE)
+	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@ $(GOBUILDTAG) $<
 ifeq ($(RAISE_GO_FILECAP),yes)
 	make -C ../progs setcap
 	sudo ../progs/setcap cap_setpcap,cap_net_bind_service=p web

@@ -66,7 +66,7 @@ func (s Secbits) Set() error {
 type Mode uint
 
 // ModeUncertain etc are how libcap summarizes security modes
-// involving capabilitys and seure-bits.
+// involving capabilities and secure-bits.
 const (
 	ModeUncertain Mode = iota
 	ModeNoPriv

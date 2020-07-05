@@ -22,8 +22,8 @@ type IAB struct {
 // is being manipulated.
 type Vector int
 
-// Inh, Amb, Bound enumerate the IAB vector components. IMB.Inh is
-// equivalent Set.Inheritable but they are named differently for
+// Inh, Amb, Bound enumerate the IAB vector components. Inh is
+// equivalent to Set.Inheritable but they are named differently for
 // syntax/type checking reasons.
 const (
 	Inh Vector = iota
