@@ -126,30 +126,39 @@ var lName = []byte("cap-launcher\000")
 const prSetName = 15
 
 //go:uintptrescapes
-func launch(result chan<- lResult, attr *Launcher, data interface{}) {
-	defer close(result)
+func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<- struct{}) {
+	if quit != nil {
+		defer close(quit)
+	}
 
 	pid := syscall.Getpid()
 	// Wait until we are not scheduled on the parent thread.  We
 	// will exit this thread once the child has launched, and
 	// don't want other goroutines to use this thread afterwards.
-	for {
-		runtime.LockOSThread()
-		tid := syscall.Gettid()
-		if tid != pid {
-			break
-		}
+	runtime.LockOSThread()
+	tid := syscall.Gettid()
+	if tid == pid {
+		// Force the go runtime to find a new thread to run on.
+		quit := make(chan struct{})
+		go launch(result, attr, data, quit)
+
+		// Wait for that go routine to complete.
+		<-quit
 		runtime.UnlockOSThread()
-		runtime.Gosched()
+		return
 	}
 
 	// By never releasing the LockOSThread here, we guarantee that
-	// the runtime will terminate this OS thread once this
+	// the runtime will terminate the current OS thread once this
 	// function returns.
 
-	// Name the launcher thread - transient, but helps if the
-	// callbackFn or something else hangs up.
+	// Name the launcher thread - transient, but helps to debug if
+	// the callbackFn or something else hangs up.
 	singlesc.prctlrcall(prSetName, uintptr(unsafe.Pointer(&lName[0])), 0)
+
+	// Provide a way to serialize the caller on the thread
+	// completing.
+	defer close(result)
 
 	pa := &syscall.ProcAttr{
 		Files: []uintptr{0, 1, 2},
@@ -225,7 +234,7 @@ func (attr *Launcher) Launch(data interface{}) (int, error) {
 	defer scwMu.Unlock()
 	result := make(chan lResult)
 
-	go launch(result, attr, data)
+	go launch(result, attr, data, nil)
 	for {
 		select {
 		case v, ok := <-result:

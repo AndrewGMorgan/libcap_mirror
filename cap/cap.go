@@ -1,22 +1,35 @@
-// Package cap is the Linux capabilities user space API (libcap)
+// Package cap provides the Linux Capabilities userspace library API
 // bindings in native Go.
 //
-// For cgo linked binaries, behind the scenes, the package
-// "kernel.org/pub/linux/libs/security/libcap/psx" is used to broker
-// the POSIX semantics system calls that manipulate thread state
-// uniformly over the whole process runtime.
+// Capabilities are a feature of the Linux kernel that allow fine
+// grain permissions to perform privileged operations. Privileged
+// operations are required to do irregular system level operations
+// from code. You can read more about how Capabilities are intended to
+// work here:
 //
-// If the Go runtime syscall interface contains the linux variant
-// syscall.AllThreadsSyscall() API (it is not in go1.15beta1 for
-// example) then this package can use that to invoke capability
-// setting system calls for pure Go binaries. To force this behavior
-// use the CGO_ENABLED=0 environment variable and, for now, a build
-// tag:
+//   https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/33528.pdf
 //
-//    CGO_ENABLED=0 go build -tags allthreadssyscall ...
+// This package supports native Go bindings for all the features
+// described in that paper as well as supporting subsequent changes to
+// the kernel for other styles of inheritable Capability.
 //
-// If syscall.AllThreadsSyscall() is not present, the ".../libcap/cap"
-// package will failover to using ".../libcap/psx".
+// See https://sites.google.com/site/fullycapable/ for recent updates
+// and information on how to file bugs.
+//
+// For CGo linked binaries, behind the scenes, the package
+// "kernel.org/pub/linux/libs/security/libcap/psx" is used to perform
+// POSIX semantics system calls that manipulate thread state
+// uniformly over the whole Go (and CGo linked) process runtime.
+//
+// Note, if the Go runtime syscall interface contains the linux
+// variant syscall.AllThreadsSyscall() API (it is not in go1.15beta1
+// for example, but see https://github.com/golang/go/issues/1435 for
+// current status) then this present package can use that to invoke
+// Capability setting system calls for pure Go binaries. In such an
+// enhanced Go runtime, to force this behavior, use the CGO_ENABLED=0
+// environment variable and, for now, a build tag:
+//
+//   CGO_ENABLED=0 go build -tags allthreadssyscall ...
 //
 // Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
 package cap // import "kernel.org/pub/linux/libs/security/libcap/cap"
