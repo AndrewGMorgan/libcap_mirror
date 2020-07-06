@@ -1,4 +1,4 @@
-module web.go
+module web
 
 go 1.11
 
