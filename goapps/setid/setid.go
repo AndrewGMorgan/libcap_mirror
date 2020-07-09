@@ -48,7 +48,6 @@ func main() {
 	setGID := *gid
 	if *gid == -1 {
 		setGID = syscall.Getegid()
-		// not reached.
 	}
 	setUID := *uid
 	if *uid == -1 {
