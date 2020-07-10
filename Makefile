@@ -60,8 +60,11 @@ endif
 
 distcheck:
 	./distcheck.sh
+	make CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
+	make clean all test sudotest
+	make distclean
 
-morganrelease: distclean distcheck
+morganrelease: distcheck
 	@echo "sign the main library tag twice: older DSA key; and newer RSA (kernel.org) key"
 	git tag -u D41A6DF2 -s libcap-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"
 	git tag -u E2CCF3F4 -s libcap-korg-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"

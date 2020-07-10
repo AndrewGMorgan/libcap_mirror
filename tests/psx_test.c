@@ -14,13 +14,21 @@
 #include <time.h>
 #include <unistd.h>
 
+typedef union tp {
+    long long unsigned raw;
+    pthread_t pt;
+} thread_ptr;
+
 static void say_hello_expecting(const char *title, int n, int kept) {
     int keeper = prctl(PR_GET_KEEPCAPS);
-    printf("hello [%d], %s<%d> %lx (keepcaps=%d vs. want=%d)\n",
-	   getpid(), title, n, pthread_self(), keeper, kept);
+    thread_ptr tp;
+    tp.pt = pthread_self();
+
+    printf("hello [%d], %s<%d> %llx (keepcaps=%d vs. want=%d)\n",
+	   getpid(), title, n, tp.raw, keeper, kept);
     if (keeper != kept) {
-	printf("--> FAILURE %s thread=%lx has wrong keepcaps: got=%d want=%d\n",
-	       title, pthread_self(), keeper, kept);
+	printf("--> FAILURE %s thread=%llx has wrong keepcaps: got=%d want=%d\n",
+	       title, tp.raw, keeper, kept);
 	exit(1);
     }
 }
@@ -69,6 +77,7 @@ int main(int argc, char **argv) {
     char * const stop_argv[3] = { argv[0], strdup("stop"), NULL };
 
     if (argc != 1) {
+	printf("child %d starting\n", getpid());
 	usleep(2000);
 	printf("child %d exiting\n", getpid());
 	exit(0);
@@ -111,16 +120,7 @@ int main(int argc, char **argv) {
 		}
 	    }
 	    launched++;
-	    if (i == 1) {
-		/* Confirm this works whether or not we are WRAPPING. */
-		psx_pthread_create(&tid[i], NULL, say_hello, NULL);
-	    } else if (i < 3) {
-#ifdef NOWRAP
-		psx_pthread_create(&tid[i], NULL, say_hello, NULL);
-#else
-		pthread_create(&tid[i], NULL, say_hello, NULL);
-#endif
-	    }
+	    pthread_create(&tid[i], NULL, say_hello, NULL);
 	    /* Confirm that the thread is started. */
 	    pthread_mutex_lock(&mu);
 	    while (started < launched) {
@@ -148,7 +148,3 @@ int main(int argc, char **argv) {
     printf("%s PASSED\n", argv[0]);
     exit(0);
 }
-
-#ifdef NOWRAP
-PSX_NO_LINKER_WRAPPING
-#endif

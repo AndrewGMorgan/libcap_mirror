@@ -54,6 +54,7 @@ typedef struct registered_thread_s {
     pthread_t thread;
     pthread_mutex_t mu;
     int pending;
+    int gone;
 } registered_thread_t;
 
 static pthread_once_t psx_tracker_initialized = PTHREAD_ONCE_INIT;
@@ -63,7 +64,8 @@ typedef enum {
     _PSX_SETUP = 1,
     _PSX_SYSCALL = 2,
     _PSX_CREATE = 3,
-    _PSX_INFORK = 4
+    _PSX_INFORK = 4,
+    _PSX_EXITING = 5,
 } psx_tracker_state_t;
 
 /*
@@ -102,7 +104,7 @@ pthread_key_t psx_action_key;
  * the current thread with a TLS specific key pointing at the threads
  * specific tracker.
  */
-static void psx_do_registration(void) {
+static void *psx_do_registration(void) {
     registered_thread_t *node = calloc(1, sizeof(registered_thread_t));
     pthread_mutex_init(&node->mu, NULL);
     node->thread = pthread_self();
@@ -112,6 +114,7 @@ static void psx_do_registration(void) {
 	node->next->prev = node;
     }
     psx_tracker.root = node;
+    return node;
 }
 
 /*
@@ -314,17 +317,6 @@ static void psx_do_unregister(registered_thread_t *node) {
     free(node);
 }
 
-/*
- * psx_register can be used to explicitly register a thread once
- * created. In general, it shouldn't be needed. Further, it should
- * never be used to register the main thread.
- */
-void psx_register(void) {
-    psx_lock();
-    psx_do_registration();
-    psx_unlock();
-}
-
 typedef struct {
     void *(*fn)(void *);
     void *arg;
@@ -332,28 +324,54 @@ typedef struct {
 } psx_starter_t;
 
 /*
+ * _psx_exiting is used to cleanup the node for the thread on its exit
+ * path. This is needed for musl libc:
+ *
+ *    https://bugzilla.kernel.org/show_bug.cgi?id=208477
+ *
+ * and likely wise for glibc too:
+ *
+ *    https://sourceware.org/bugzilla/show_bug.cgi?id=12889
+ */
+static void _psx_exiting(void *node) {
+    psx_new_state(_PSX_IDLE, _PSX_EXITING);
+    registered_thread_t *ref = node;
+    pthread_mutex_lock(&ref->mu);
+    ref->gone = 1;
+    pthread_mutex_unlock(&ref->mu);
+    psx_new_state(_PSX_EXITING, _PSX_IDLE);
+}
+
+/*
  * _psx_start_fn is a trampolene for the intended start function, it
- * is called both blocked and locked, but releases the (b)lock before
- * calling starter->fn. Before releasing the (b)lock the TLS specific
- * attribute(s) are initialized for use by the interrupt handler under
+ * is called blocked (_PSX_CREATE), but releases the block before
+ * calling starter->fn. Before releasing the block, the TLS specific
+ * attributes are initialized for use by the interrupt handler under
  * the psx mutex, so it doesn't race with an interrupt received by
  * this thread and the interrupt handler does not need to poll for
  * that specific attribute to be present (which is problematic during
  * thread shutdown).
  */
 static void *_psx_start_fn(void *data) {
-    psx_do_registration();
+    void *node = psx_do_registration();
+
     psx_new_state(_PSX_CREATE, _PSX_IDLE);
 
     psx_starter_t *starter = data;
     pthread_sigmask(SIG_SETMASK, &starter->sigbits, NULL);
-
     void *(*fn)(void *) = starter->fn;
     void *arg = starter->arg;
+
     memset(data, 0, sizeof(*starter));
     free(data);
 
-    return fn(arg);
+    void *ret;
+
+    pthread_cleanup_push(_psx_exiting, node);
+    ret = fn(arg);
+    pthread_cleanup_pop(1);
+
+    return ret;
 }
 
 /*
@@ -502,8 +520,12 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	}
 	pthread_mutex_lock(&ref->mu);
 	ref->pending = 1;
+	int gone = ref->gone;
+	if (!gone) {
+	    gone = pthread_kill(ref->thread, psx_tracker.psx_sig) != 0;
+	}
 	pthread_mutex_unlock(&ref->mu);
-	if (pthread_kill(ref->thread, psx_tracker.psx_sig) == 0) {
+	if (!gone) {
 	    continue;
 	}
 	/*
@@ -524,8 +546,12 @@ long int __psx_syscall(long int syscall_nr, ...) {
 
 	    pthread_mutex_lock(&ref->mu);
 	    int pending = ref->pending;
+	    int gone = ref->gone;
+	    if (pending && !gone) {
+		gone = (pthread_kill(ref->thread, 0) != 0);
+	    }
 	    pthread_mutex_unlock(&ref->mu);
-	    if (!pending || pthread_kill(ref->thread, 0) == 0) {
+	    if (!gone) {
 		waiting += pending;
 		continue;
 	    }

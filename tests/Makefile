@@ -18,14 +18,10 @@ sudotest: test run_libcap_launch_test run_libcap_launch_test
 
 install: all
 
-run_psx_test: psx_test psx_test_wrap
+run_psx_test: psx_test
 	./psx_test
-	./psx_test_wrap
 
 psx_test: psx_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(IPATH) -DNOWRAP $< -o $@ $(LIBPSXLIB)
-
-psx_test_wrap: psx_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LIBPSXLIB) -Wl,-wrap,pthread_create
 
 run_libcap_psx_test: libcap_psx_test
@@ -51,5 +47,5 @@ noop: noop.c
 	$(CC) $(CFLAGS) $< -o $@ --static
 
 clean:
-	rm -f psx_test psx_test_wrap libcap_psx_test libcap_launch_test *~
+	rm -f psx_test libcap_psx_test libcap_launch_test *~
 	rm -f libcap_launch_test libcap_psx_launch_test core noop

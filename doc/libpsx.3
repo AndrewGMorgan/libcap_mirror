@@ -40,10 +40,6 @@ the
 call with a psx thread registration function is used to allow
 .B libpsx
 to keep track of all pthreads. If that trick is not usable by your application, then the much more cumbersome and fragile
-.BR psx_register ( pthread_t " thread)"
-function is provided to register threads manually with the library. To
-successfully use this approach an explanation of how to code for it is
-provided at the top of the
 .B <sys/psx_syscall.h>
 header file.
 .PP

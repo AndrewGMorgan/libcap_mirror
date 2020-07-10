@@ -14,25 +14,6 @@
  * mechanism is limited to 9 specific set*() syscalls that do not
  * support the syscall6 API (needed for prctl functions and the ambient
  * capabilities set for example).
- *
- * This psx library API also includes explicit registration of threads
- * if implicit wrapping the pthread_create() function is problematic
- * for your application via the psx_pthread_create() function. To use
- * the library in that way, you should include this line in the file
- * containing your main() function:
- *
- * -----------
- * #include <sys/psx_syscall.h>
- *
- * int main(...) {
- *
- *   ....
- *
- * }
- * PSX_NO_LINKER_WRAPPING
- * -----------
- *
- * This will ensure that your binary can link.
  */
 
 #ifndef _SYS_PSX_SYSCALL_H
@@ -51,12 +32,6 @@ extern "C" {
  */
 int __real_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 			  void *(*start_routine) (void *), void *arg);
-
-#define PSX_NO_LINKER_WRAPPING  int                                      \
-    __real_pthread_create(pthread_t *thread, const pthread_attr_t *attr, \
-			  void *(*start_routine) (void *), void *arg) {  \
-      return -1;                                                         \
-    }
 
 /*
  * psx_syscall performs the specified syscall on all psx registered
@@ -83,14 +58,6 @@ long int psx_syscall3(long int syscall_nr,
 long int psx_syscall6(long int syscall_nr,
 		      long int arg1, long int arg2, long int arg3,
 		      long int arg4, long int arg5, long int arg6);
-
-/*
- * psx_register registers the current pthread with the psx abstraction
- * of system calls. Typically, there is never any need to call this
- * explicitly because the way the library is linked it is implicitly
- * called when pthread_create() is called.
- */
-void psx_register(void);
 
 /*
  * psx_pthread_create() wraps the -lpthread pthread_create() function
