@@ -133,7 +133,8 @@ func (c *Set) ClearFlag(vec Flag) error {
 
 // Compare returns 0 if c and d are identical in content. Otherwise,
 // this function returns a non-zero value of 3 independent bits:
-// (differE ? 1:0) | (differP ? 2:0) | (differI ? 4:0).
+// (differE ? 1:0) | (differP ? 2:0) | (differI ? 4:0). The Differs()
+// function can be used to test for a difference in a specific Flag.
 func (c *Set) Compare(d *Set) (uint, error) {
 	if c == nil || len(c.flat) == 0 || d == nil || len(d.flat) == 0 {
 		return 0, ErrBadSet

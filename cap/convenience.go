@@ -172,8 +172,10 @@ func (sc *syscaller) setMode(m Mode) error {
 // the desired mode.
 //
 // This function will raise cap.SETPCAP in order to achieve this
-// operation, and will completely lower the Effective vector of the
-// process before returning.
+// operation, and will completely lower the Effective dimension of
+// the process's Set before returning. This function may fail
+// for lack of permission or because (some of) the Secbits are
+// already locked for the current process.
 func (m Mode) Set() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -226,7 +228,11 @@ func (sc *syscaller) setUID(uid int) error {
 // all other variants of UID (EUID etc) to the specified value without
 // dropping the privilege of the current process. This function will
 // raise cap.SETUID in order to achieve this operation, and will
-// completely lower the Effective vector of the process before returning.
+// completely lower the Effective vector of the process before
+// returning. Unlike the traditional method of dropping privilege
+// when changing from [e]uid=0 to some other uid, this function only
+// performs a change of uid cap.SETUID is available, and the action
+// does not alter the Permitted dimension of the process' Set.
 func SetUID(uid int) error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -273,7 +279,8 @@ func (sc *syscaller) setGroups(gid int, suppl []int) error {
 // and all other variants of GID (EGID etc) to the specified value, as
 // well as setting all of the supplementary groups. This function will
 // raise cap.SETGID in order to achieve this operation, and will
-// completely lower the Effective vector of the process before returning.
+// completely lower the Effective dimension of the process Set before
+// returning.
 func SetGroups(gid int, suppl ...int) error {
 	scwMu.Lock()
 	defer scwMu.Unlock()

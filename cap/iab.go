@@ -173,7 +173,10 @@ func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 }
 
 // SetProc attempts to change the Inheritable, Ambient and Bounding
-// capabilty vectors of the current process.
+// capabilty vectors of the current process. The Bounding vector strongly
+// affects the potential for setting other bits, so this function
+// carefully performs the the combined operation in the most flexible
+// order.
 func (iab *IAB) SetProc() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()

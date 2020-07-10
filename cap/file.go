@@ -204,7 +204,7 @@ func (c *Set) packFileCap() ([]byte, error) {
 // (*os.File).Fd(). This function can also be used to delete a file's
 // capabilities, by calling with c = nil.
 //
-// Note, Linux does not store the full Effective Value vector in the
+// Note, Linux does not store the full Effective Value dimension in the
 // metadata for the file. Only a single Effective bit is stored in
 // this metadata. This single bit is non-zero if the Permitted vector
 // has any overlapping bits with the Effective or Inheritable vector
@@ -217,9 +217,9 @@ func (c *Set) packFileCap() ([]byte, error) {
 // this was the only way for Go programs to make use of capabilities.
 //
 // The preferred way a binary will actually manipulate its
-// file-acquired capabilities is carefully and deliberately using this
-// package (or libcap, assisted by libpsx, for threaded C/C++ family
-// code).
+// file-acquired capabilities is to carefully and deliberately using
+// this package (or libcap, assisted by libpsx, for threaded C/C++
+// family code).
 func (c *Set) SetFd(file *os.File) error {
 	if c == nil {
 		if _, _, err := multisc.r6(syscall.SYS_FREMOVEXATTR, uintptr(file.Fd()), uintptr(unsafe.Pointer(xattrNameCaps)), 0, 0, 0, 0); err != 0 {

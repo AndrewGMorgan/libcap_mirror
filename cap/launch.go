@@ -11,6 +11,9 @@ import (
 // Launcher holds a configuration for launching a child process with
 // capability state different from (generally more restricted than)
 // the parent.
+//
+// Note, go1.10 is the earliest version of the Go toolchain that can
+// support this abstraction.
 type Launcher struct {
 	path string
 	args []string

@@ -13,8 +13,9 @@
 // described in that paper as well as supporting subsequent changes to
 // the kernel for other styles of inheritable Capability.
 //
-// See https://sites.google.com/site/fullycapable/ for recent updates
-// and information on how to file bugs.
+// See https://sites.google.com/site/fullycapable/ for recent updates,
+// some walk-through examples of ways of using 'cap.Set's etc and
+// information on how to file bugs.
 //
 // For CGo linked binaries, behind the scenes, the package
 // "kernel.org/pub/linux/libs/security/libcap/psx" is used to perform
@@ -45,10 +46,13 @@ import (
 // Value is the type of a single capability (or permission) bit.
 type Value uint
 
-// Flag is the type of one of the three Value vectors held in a Set.
+// Flag is the type of one of the three Value dimensions held in a Set.
+// It is also used in the API for changing the Bounding and Ambient Vectors.
+// For these, in addition to direct manipulation of these vectors see the
+// package supports an IAB abstraction.
 type Flag uint
 
-// Effective, Permitted, Inheritable are the three vectors of Values
+// Effective, Permitted, Inheritable are the three dimensions of Values
 // held in a Set.
 const (
 	Effective Flag = iota
@@ -90,7 +94,7 @@ var (
 	magic uint32
 
 	// words holds the number of uint32's associated with each
-	// capability vector for this session.
+	// capability dimension for this session.
 	words int
 
 	// maxValues holds the number of bit values that are named by
@@ -289,9 +293,10 @@ func (sc *syscaller) setProc(c *Set) error {
 	return sc.capwcall(syscall.SYS_CAPSET, &header{magic: magic}, c.flat)
 }
 
-// SetProc attempts to write the capability Set to the current
+// SetProc attempts to set the capability Set of the current
 // process. The kernel will perform permission checks and an error
-// will be returned if the attempt fails.
+// will be returned if the attempt fails. Should the attempt fail
+// no process capabilities will have been modified.
 func (c *Set) SetProc() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -329,11 +334,11 @@ func (sc *syscaller) dropBound(val ...Value) error {
 // never allow a bounding set Value bit to be raised once successfully
 // dropped. However, dropping requires the current process is
 // sufficiently capable (usually via cap.SETPCAP being raised in the
-// Effective flag vector). Note, the drops are performed in order and
-// if one bounding value cannot be dropped, the function returns
-// immediately with an error which may leave the system in an
+// Effective flag of the process' Set). Note, the drops are performed
+// in order and if one bounding value cannot be dropped, the function
+// returns immediately with an error which may leave the system in an
 // ill-defined state. The caller can determine where things went wrong
-// from on error using GetBound().
+// using GetBound().
 func DropBound(val ...Value) error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -400,8 +405,11 @@ func (sc *syscaller) resetAmbient() error {
 
 // ResetAmbient attempts to ensure the Ambient set is fully
 // cleared. It works by first reading the set and if it finds any bits
-// raised it will attempt a reset. This is a workaround for situations
-// where the Ambient API is locked.
+// raised it will attempt a reset. The test before attempting a reset
+// behavior is a workaround for situations where the Ambient API is
+// locked, but a reset is not actually needed. No Ambient bit not already
+// raised in both the Permitted and Inheritable Set is allowed by the
+// kernel.
 func ResetAmbient() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
