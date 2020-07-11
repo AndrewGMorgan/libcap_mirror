@@ -38,7 +38,7 @@ $(topdir)/libcap/cap_names.h: $(DEPS)
 	make -C $(topdir)/libcap all
 
 good-names.go: $(topdir)/libcap/cap_names.h src/$(IMPORTDIR)/cap  mknames.go
-	$(GO) run mknames.go --header=$< | gofmt > $@ || rm -f $@
+	$(GO) run mknames.go --header=$< --textdir=$(topdir)/doc/values | gofmt > $@ || rm -f $@
 	diff -u ../cap/names.go $@
 
 $(PSXGOPACKAGE): src/$(IMPORTDIR)/psx ../psx/*.go $(DEPS)

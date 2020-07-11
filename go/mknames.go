@@ -1,4 +1,6 @@
-// Program mknames parses the cap_names.h file and creates an equivalent names.go file.
+// Program mknames parses the cap_names.h file and creates an
+// equivalent names.go file including comments on each cap.Value from
+// the documentation directory.
 package main
 
 import (
@@ -13,6 +15,7 @@ import (
 
 var (
 	header = flag.String("header", "", "name of header file")
+	text = flag.String("textdir", "", "directory name for value txt files")
 )
 
 func main() {
@@ -52,14 +55,38 @@ func main() {
 // NamedCount holds the number of capabilities with official names.
 const NamedCount = `, len(list), `
 
-// CHOWN etc., are the named capability bits on this system. The
+// CHOWN etc., are the named capability values of the Linux kernel. The
 // canonical source for each name is the "uapi/linux/capabilities.h"
-// file, which is hard-coded into this package.
+// file, a snapshot (from kernel.org) is hard-coded into this package.
+// Some values may not be available (yet) where the kernel is older.
 const (
 `)
 	bits := make(map[string]string)
 	for i, name := range list {
+		doc := fmt.Sprintf("%s/%d.txt", *text, i)
+		content, err := ioutil.ReadFile(doc)
+		if err != nil {
+			log.Fatalf("filed to read %q: %v", doc, err)
+		}
+		detail := strings.Split(strings.ReplaceAll(string(content), "CAP_", "cap."), "\n")
+		if i != 0 {
+			fmt.Println()
+		}
 		v := strings.ToUpper(strings.TrimPrefix(name, "cap_"))
+		for j, line := range detail {
+			preamble := ""
+			offset := 0
+			if j == 0 {
+				if !strings.HasPrefix(line, "Allows ") {
+					log.Fatalf("line should begin \"Allows \": got %s:%d:%q", doc, j, line)
+				}
+				preamble = fmt.Sprint(v, " a")
+				offset = 1
+			}
+			if len(line) != 0 || j != len(detail)-1 {
+				fmt.Printf(" // %s%s\n", preamble, line[offset:])
+			}
+		}
 		bits[name] = v
 		if i == 0 {
 			fmt.Println(v, " Value =  iota")
