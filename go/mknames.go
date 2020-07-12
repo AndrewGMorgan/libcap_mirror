@@ -15,7 +15,7 @@ import (
 
 var (
 	header = flag.String("header", "", "name of header file")
-	text = flag.String("textdir", "", "directory name for value txt files")
+	text   = flag.String("textdir", "", "directory name for value txt files")
 )
 
 func main() {
@@ -68,7 +68,7 @@ const (
 		if err != nil {
 			log.Fatalf("filed to read %q: %v", doc, err)
 		}
-		detail := strings.Split(strings.ReplaceAll(string(content), "CAP_", "cap."), "\n")
+		detail := strings.Split(strings.Replace(string(content), "CAP_", "cap.", -1), "\n")
 		if i != 0 {
 			fmt.Println()
 		}
