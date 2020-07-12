@@ -1,10 +1,14 @@
 #!/bin/bash
 #
 # Handy script to rebuild the markdown version of the man pages.
-# This uses https://github.com/mle86/man-to-md if it is installed.
+# This uses pandoc if it is installed.
+#
+# For rendering the md, we can use a different command:
+#
+#   cd md; for x in *.md ; do pandoc -s $x --metadata pagetitle="${x%.md}" -o ${x%.md}.html --lua-filter=../md2html.lua ; done
 
-if [[ -z "$(which man-to-md)" ]]; then
-    echo "man-to-md not found - skipping conversion"
+if [[ -z "$(which pandoc)" ]]; then
+    echo "pandoc not found - skipping conversion"
     exit 0
 fi
 
@@ -37,7 +41,7 @@ function do_page () {
 	return
     fi
 
-    man-to-md -f < "${m}" | sed -e 's/^\*\*\([^\*]\+\)\*\*(\([138]\+\))/[\1(\2)](\1-\2.md)/' > "${outdir}/${base}-${sect}.md"
+    pandoc -f man -t markdown < "${m}" | sed 's/\*\*\([^*]\+\)\*\*(\([138]\+\))/[\1(\2)](\1-\2.md)/g' > "${outdir}/${base}-${sect}.md"
     echo "* [${base}(${sect})](${base}-${sect}.md)" >> "${index}"
 }
 
@@ -69,7 +73,7 @@ for libcap.
 
 ## MD page generation
 
-These official man pages for libcap were converted to markdown using
-[man-to-md](https://github.com/mle86/man-to-md).
+These official man pages for libcap and libpsx were converted to
+markdown using [pandoc](https://pandoc.org).
 
 EOF
