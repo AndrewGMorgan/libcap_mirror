@@ -31,8 +31,9 @@ clean-here:
 
 distclean: clean
 	$(DISTCLEAN)
-	@echo "CONFIRM Go package cap has right version dependency on psx:"
-	grep -F "require kernel.org/pub/linux/libs/security/libcap/psx v$(GOMAJOR).$(VERSION).$(MINOR)" cap/go.mod
+	@echo "CONFIRM Go package cap has right version dependency on cap/psx:"
+	for x in $$(find . -name go.mod); do grep -F "require kernel.org/pub/linux/libs/security/libcap" $$x || continue ; grep -F "v$(GOMAJOR).$(VERSION).$(MINOR)" $$x && continue ; echo "$$x is not updated to v$(GOMAJOR).$(VERSION).$(MINOR)" ; exit 1 ; done
+	@echo "ALL go.mod files updated"
 
 release: distclean
 	cd .. && ln -s libcap libcap-$(VERSION).$(MINOR) && tar cvf libcap-$(VERSION).$(MINOR).tar --exclude patches libcap-$(VERSION).$(MINOR)/* && rm libcap-$(VERSION).$(MINOR)
