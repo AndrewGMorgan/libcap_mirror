@@ -224,7 +224,7 @@ abort:
 }
 
 // Launch performs a new program launch with security state specified
-// in the supplied launcher.
+// in the supplied attr settings.
 func (attr *Launcher) Launch(data interface{}) (int, error) {
 	if attr.path == "" || len(attr.args) == 0 {
 		return -1, ErrLaunchFailed

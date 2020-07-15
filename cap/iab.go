@@ -9,11 +9,11 @@ func omask(c Value) (uint, uint32) {
 }
 
 // IAB holds a summary of all of the inheritable capability vectors:
-// Inheritable, Ambient and Bounding sets. The Bounding set entries
-// are inverted insofar as a raised bit here implies that when applied
-// to the current process, the capability is dropped - think of this
-// as synonymous with Blocked. This convention is used to support the
-// empty IAB as being mostly harmless.
+// Inh, Amb and Bound. The Bound vector is the logical inverse (two's
+// complement) of the process' Bounding set. That is, raising a Value
+// in the Bound (think blocked) vector is equivalent to dropping that
+// Value from the process' Bounding set. This convention is used to
+// support the empty IAB as being mostly harmless.
 type IAB struct {
 	a, i, nb []uint32
 }
@@ -41,8 +41,8 @@ func IABInit() *IAB {
 	}
 }
 
-// IABGetProc summarizes the Inheritable, Ambient and Bounding
-// capabilty vectors of the current process.
+// IABGetProc summarizes the Inh, Amb and Bound capabilty vectors of
+// the current process.
 func IABGetProc() *IAB {
 	iab := IABInit()
 	current := GetProc()
@@ -60,7 +60,7 @@ func IABGetProc() *IAB {
 	return iab
 }
 
-// IABFromText parses a string representing an IAB set, as generated
+// IABFromText parses a string representing an IAB, as generated
 // by IAB.String(), to generate an IAB.
 func IABFromText(text string) (*IAB, error) {
 	iab := IABInit()
@@ -173,10 +173,10 @@ func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 }
 
 // SetProc attempts to change the Inheritable, Ambient and Bounding
-// capabilty vectors of the current process. The Bounding vector strongly
-// affects the potential for setting other bits, so this function
-// carefully performs the the combined operation in the most flexible
-// order.
+// capabilty vectors of the current process using the content,
+// iab. The Bounding vector strongly affects the potential for setting
+// other bits, so this function carefully performs the the combined
+// operation in the most flexible manner.
 func (iab *IAB) SetProc() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -203,10 +203,12 @@ func (iab *IAB) GetVector(vec Vector, val Value) (bool, error) {
 }
 
 // SetVector sets all of the vals in the specified vector to the
-// raised value.  Note, the A vector cannot contain values not raised
-// in the I vector, so setting values directly in one vector may have
+// raised value.  Note, the Ambient vector cannot contain values not raised
+// in the Inh vector, so setting values directly in one vector may have
 // the side effect of mirroring the value in the other vector to
-// maintain this constraint.
+// maintain this constraint. Note, raising a Bound vector bit is
+// equivalent to lowering the Bounding vector of the process (when
+// successfully applied with (*IAB).SetProc()).
 func (iab *IAB) SetVector(vec Vector, raised bool, vals ...Value) error {
 	for _, val := range vals {
 		if val >= Value(maxValues) {
@@ -241,12 +243,12 @@ func (iab *IAB) SetVector(vec Vector, raised bool, vals ...Value) error {
 	return nil
 }
 
-// Fill fills one of the Inheritable, Ambient and Bounding
-// capability vectors from one of the flag vectors of a Set.  Note,
-// filling the I vector will mask the A vector, and filling the A
-// vector may raise entries in the I vector. Further, when filling the
-// Bounding vector, the bits are inverted - that is lowered bits from
-// the Set will be raised in the Bounding vector.
+// Fill fills one of the Inh, Amb and Bound capability vectors from
+// one of the flag vectors of a Set.  Note, filling the Inh vector
+// will mask the Amb vector, and filling the Amb vector may raise
+// entries in the Inh vector. Further, when filling the Bound vector,
+// the bits are inverted from what you might expect - that is lowered
+// bits from the Set will be raised in the Bound vector.
 func (iab *IAB) Fill(vec Vector, c *Set, flag Flag) error {
 	if len(c.flat) != 0 || flag > Inheritable {
 		return ErrBadSet

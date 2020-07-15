@@ -18,14 +18,11 @@ import "syscall"
 //   https://github.com/golang/go/issues/20395
 //   https://github.com/golang/go/issues/20458
 //
-// A value of false for this constant causes cap.(*Launcher).Launch()
-// to park the go routine used to perform the launch indefinitely so
-// its kernel privilege state of the OS Thread locked to it does not
-// pollute the rest of the runtime - yes, it leaks an OSThread. If
-// this is a problem for your application you have two workarounds:
+// A value of false for this constant causes the Launch functionality
+// to fail with an error: cap.ErrNoLaunch.
 //
-// 1) don't use cap.(*Launcher).Launch()
-// 2) upgrade your Go toolchain to 1.10+
+//   1) don't use cap.(*Launcher).Launch()
+//   2) upgrade your Go toolchain to 1.10+ (ie., do this one).
 const LaunchSupported = false
 
 // validatePA confirms that the pa.Sys entry is not incompatible with

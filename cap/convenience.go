@@ -172,10 +172,10 @@ func (sc *syscaller) setMode(m Mode) error {
 // the desired mode.
 //
 // This function will raise cap.SETPCAP in order to achieve this
-// operation, and will completely lower the Effective dimension of
-// the process's Set before returning. This function may fail
-// for lack of permission or because (some of) the Secbits are
-// already locked for the current process.
+// operation, and will completely lower the Effective dimension of the
+// process' Set before returning. This function may fail for lack of
+// permission or because (some of) the Secbits are already locked for
+// the current process.
 func (m Mode) Set() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -230,8 +230,8 @@ func (sc *syscaller) setUID(uid int) error {
 // raise cap.SETUID in order to achieve this operation, and will
 // completely lower the Effective vector of the process before
 // returning. Unlike the traditional method of dropping privilege
-// when changing from [e]uid=0 to some other uid, this function only
-// performs a change of uid cap.SETUID is available, and the action
+// when changing from [E]UID=0 to some other UID, this function only
+// performs a change of UID cap.SETUID is available, and the action
 // does not alter the Permitted dimension of the process' Set.
 func SetUID(uid int) error {
 	scwMu.Lock()

@@ -46,10 +46,9 @@ import (
 // Value is the type of a single capability (or permission) bit.
 type Value uint
 
-// Flag is the type of one of the three Value dimensions held in a Set.
-// It is also used in the API for changing the Bounding and Ambient Vectors.
-// For these, in addition to direct manipulation of these vectors see the
-// package supports an IAB abstraction.
+// Flag is the type of one of the three Value dimensions held in a
+// Set.  It is also used in the (*IAB).Fill() method for changing the
+// Bounding and Ambient Vectors.
 type Flag uint
 
 // Effective, Permitted, Inheritable are the three dimensions of Values
@@ -378,11 +377,14 @@ func (sc *syscaller) setAmbient(enable bool, val ...Value) error {
 	return nil
 }
 
-// SetAmbient attempts to set a specific Value bit to the enable
-// state. This function will return an error if insufficient
+// SetAmbient attempts to set a specific Value bit to the state,
+// enable. This function will return an error if insufficient
 // permission is available to perform this task. The settings are
 // performed in order and the function returns immediately an error is
-// detected. Use GetAmbient() to unravel where things went wrong.
+// detected. Use GetAmbient() to unravel where things went
+// wrong. Note, the cap package manages an abstraction IAB that
+// captures all three inheritable vectors in a single type. Consider
+// using that.
 func SetAmbient(enable bool, val ...Value) error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
@@ -407,9 +409,9 @@ func (sc *syscaller) resetAmbient() error {
 // cleared. It works by first reading the set and if it finds any bits
 // raised it will attempt a reset. The test before attempting a reset
 // behavior is a workaround for situations where the Ambient API is
-// locked, but a reset is not actually needed. No Ambient bit not already
-// raised in both the Permitted and Inheritable Set is allowed by the
-// kernel.
+// locked, but a reset is not actually needed. No Ambient bit not
+// already raised in both the Permitted and Inheritable Set is allowed
+// to be raised by the kernel.
 func ResetAmbient() error {
 	scwMu.Lock()
 	defer scwMu.Unlock()
