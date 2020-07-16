@@ -75,7 +75,7 @@ static struct syscaller_s singlethread = {
 static int _libcap_overrode_syscalls = 1;
 
 /*
- * psx_load_syscalls() is weakly defined so we can have it overriden
+ * psx_load_syscalls() is weakly defined so we can have it overridden
  * by libpsx if that library is linked. Specifically, when libcap
  * calls psx_load_sycalls() it is prepared to override the default
  * values for the syscalls that libcap uses to change security state.
@@ -238,7 +238,7 @@ cap_t cap_get_pid(pid_t pid)
 
 /*
  * set the caps on a specific process/pg etc.. The kernel has long
- * since deprecated this asynchronus interface. DON'T EXPECT THIS TO
+ * since deprecated this asynchronous interface. DON'T EXPECT THIS TO
  * EVER WORK AGAIN.
  */
 
@@ -468,7 +468,7 @@ static int _cap_set_mode(struct syscaller_s *sc, cap_mode_t flavor)
  * set, these modes cannot be undone by the affected process tree and
  * can only be done by "cap_setpcap" permitted processes. Note, a side
  * effect of this function, whether it succeeds or fails, is to clear
- * atleast the CAP_EFFECTIVE flags for the current process.
+ * at least the CAP_EFFECTIVE flags for the current process.
  */
 int cap_set_mode(cap_mode_t flavor)
 {

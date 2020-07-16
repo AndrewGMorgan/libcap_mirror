@@ -29,7 +29,7 @@
 #include <sys/syscall.h>
 
 /*
- * psx_load_syscalls() is weakly defined so we can have it overriden
+ * psx_load_syscalls() is weakly defined so we can have it overridden
  * by libpsx if it is linked. Specifically, when libcap calls
  * psx_load_sycalls it will override their defaut values. As can be
  * seen here this present function is a no-op. However, if libpsx is
@@ -272,7 +272,7 @@ static void _psx_forked_child(void) {
      * The only way we can get here is if state is _PSX_INFORK and was
      * previously _PSX_IDLE. However, none of the registered threads
      * exist in this newly minted child process, so we have to reset
-     * the tracking structure to avoid any confusion. We also skuttle
+     * the tracking structure to avoid any confusion. We also scuttle
      * any chance of the PSX API working on more than one thread in
      * the child by leaving the state as _PSX_INFORK. We do support
      * all psx_syscall()s by reverting to them being direct in the
@@ -343,7 +343,7 @@ static void _psx_exiting(void *node) {
 }
 
 /*
- * _psx_start_fn is a trampolene for the intended start function, it
+ * _psx_start_fn is a trampoline for the intended start function, it
  * is called blocked (_PSX_CREATE), but releases the block before
  * calling starter->fn. Before releasing the block, the TLS specific
  * attributes are initialized for use by the interrupt handler under
