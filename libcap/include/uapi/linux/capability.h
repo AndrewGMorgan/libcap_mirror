@@ -368,7 +368,7 @@ struct vfs_ns_cap_data {
 
 #define CAP_AUDIT_READ       37
 
-/* Alow system performance and observability privileged operations using
+/* Allow system performance and observability privileged operations using
  * perf_events, i915_perf and other kernel subsystems. */
 
 #define CAP_PERFMON	     38
