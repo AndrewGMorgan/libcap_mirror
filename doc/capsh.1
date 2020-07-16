@@ -206,15 +206,13 @@ CapAmb:	0000000000000000
 
 .fi
 This option provides a quick way to decode a capability vector
-represented in this form. For example, the missing capability from
-this effective set is 0x0100. By running:
+represented in this hexadecimal form.
+Here's an example that decodes the two lowest capability bits:
+.IP
 .nf
-
- capsh \-\-decode=0x0100
-
+$ \fBcapsh \-\-decode=3\fP
+0x0000000000000003=cap_chown,cap_dac_override
 .fi
-we observe that the missing capability is:
-.BR cap_setpcap .
 .TP
 .BI \-\-supports= xxx
 As the kernel evolves, more capabilities are added. This option can be used
