@@ -251,7 +251,7 @@ or,
 When linked this way, due to linker magic, libcap uses
 .BR psx_syscall "(3) and " psx_syscall6 (3)
 to perform state setting system calls.
-.PP
+.SS capgetp() and capsetp()
 The library also supports the deprecated functions:
 .PP
 .BI "int capgetp(pid_t " pid ", cap_t " cap_d );
@@ -264,14 +264,20 @@ capabilities in a pre-allocated
 .IR cap_d .
 See
 .BR cap_init ()
-for information on allocating an empty capability set. This function,
-.BR capgetp (),
-is deprecated, you should use
+for information on allocating an empty capability set. This function
+is deprecated; you should use
 .BR cap_get_pid ().
 .PP
 .BR capsetp ()
-attempts to set the capabilities of some other process(es),
-.IR pid . 
+attempts to set the capabilities of the calling porcess or of
+some other process(es),
+.IR pid .
+Note that setting capabilities of another process is only possible on older
+kernels that do not provide VFS support for setting file capabilities.
+See
+.BR capset (2)
+for information on which kernels provide such support.
+.PP
 If
 .I pid
 is positive it refers to a specific process;  if it is zero, it refers
@@ -280,29 +286,37 @@ calling process and process '1' (typically
 .BR init (8));
 other negative values refer to the
 .I \-pid
-process group.  In order to use this function, the kernel must support
+process group.
+.PP
+In order to use this function, the kernel must support
 it and the calling process must have
 .B CAP_SETPCAP
 raised in its Effective capability set. The capabilities set in the
 target process(es) are those contained in
 .IR cap_d .
+.PP
 Kernels that support filesystem capabilities redefine the semantics of
 .B CAP_SETPCAP
-and on such systems this function will always fail for any target not
+and on such systems,
+.BR capsetp ()
+will always fail for any target not
 equal to the calling process.
 .BR capsetp ()
 returns zero for success, and \-1 on failure.
-
-Where supported by the kernel, the function
+.PP
+On kernels where it is (was) supported,
 .BR capsetp ()
 should be used with care.  It existed, primarily, to overcome an early
 lack of support for capabilities in the filesystems supported by
-Linux.  Note that, by default, the only processes that have
+Linux.  Note that on older kernels where
+.BR capsetp ()
+could be used to set the capabilities of another process,
+the only processes that had
 .B CAP_SETPCAP
-available to them are processes started as a kernel thread.
+available to them by default were processes started as kernel threads.
 (Typically this includes
 .BR init (8),
-kflushd and kswapd.) You will need to recompile the kernel to modify
+kflushd and kswapd.) A kernel recompilation was needed to modify
 this default.
 .SH EXAMPLE
 The code segment below raises the
