@@ -10,7 +10,8 @@ this tool. This tool provides a handy wrapper for certain types
 of capability testing and environment creation. It also provides some
 debugging features useful for summarizing capability state.
 .SH OPTIONS
-The tool takes a number of optional arguments, acting on them in the
+.B capsh
+takes a number of optional arguments, acting on them in the
 order they are provided. They are as follows:
 .TP 22
 .B \-\-help
@@ -30,7 +31,7 @@ for specific commands.
 .B ==
 Execute
 .B capsh
-again with remaining arguments. Useful for testing
+again with the remaining arguments. Useful for testing
 .BR exec ()
 behavior.
 .TP
@@ -44,11 +45,12 @@ is a text-representation of capability state as per
 .TP
 .BI \-\-drop= cap-list
 Remove the listed capabilities from the prevailing bounding set. The
-capabilities are a comma separated list of capabilities as recognized
+capabilities are a comma-separated list of capabilities as recognized
 by the
 .BR cap_from_name (3)
-function. Use of this feature requires that the capsh program is
-operating with
+function. Use of this feature requires that
+.B capsh
+is operating with
 .B CAP_SETPCAP
 in its effective set.
 .TP
@@ -57,7 +59,9 @@ Set the inheritable set of capabilities for the current process to
 equal those provided in the comma separated list. For this action to
 succeed, the prevailing process should already have each of these
 capabilities in the union of the current inheritable and permitted
-capability sets, or the capsh program is operating with
+capability sets, or
+.B capsh
+should be operating with
 .B CAP_SETPCAP
 in its effective set.
 .TP
@@ -73,7 +77,7 @@ and set them all using
 and
 .BR cap_setgroups (3).
 Following this command, the effective capabilities will be cleared,
-but the permitted set will not be so the running program is still
+but the permitted set will not be, so the running program is still
 privileged.
 .TP
 .B \-\-modes
@@ -87,7 +91,9 @@ security mode. This is a set of securebits and prevailing capability
 arrangement recommended for its pre-determined security stance.
 .TP
 .BR \-\-inmode= <mode>
-Confirm that the prevailing mode is so named, or exit with a status 1.
+Confirm that the prevailing mode is that specified in
+.IR <mode> ,
+or exit with a status 1.
 .TP
 .BI \-\-uid= id
 Force all
@@ -156,9 +162,12 @@ is performed. See
 for ways to disable this feature.
 .TP
 .BI \-\-secbits= N
-Set the security-bits for the program, this is via
-.BR prctl "(2), " PR_SET_SECUREBITS
-API, and the list of supported bits and their meaning can be found in
+Set the security-bits for the program.
+This is done using the
+.BR prctl (2)
+.B PR_SET_SECUREBITS
+operation.
+The list of supported bits and their meaning can be found in
 the
 .B <sys/secbits.h>
 header file. The program will list these bits via the
@@ -221,7 +230,9 @@ $ \fBcapsh \-\-decode=3\fP
 As the kernel evolves, more capabilities are added. This option can be used
 to verify the existence of a capability on the system. For example,
 .BI \-\-supports= cap_syslog
-will cause capsh to promptly exit with a status of 1 when run on
+will cause
+.B capsh
+to promptly exit with a status of 1 when run on
 kernel 2.6.27.  However, when run on kernel 2.6.38 it will silently
 succeed.
 .TP
@@ -234,7 +245,9 @@ raised.
 .TP
 .B \-\-has\-ambient
 Performs a check to see if the running kernel supports ambient
-capabilities. If not, the capsh command exits with status 1.
+capabilities. If not,
+.B capsh
+exits with status 1.
 .TP
 .BI \-\-has\-a= xxx
 Exit with status 1 unless the
@@ -252,8 +265,12 @@ Removes the specified ambient capability from the running process.
 .B \-\-noamb
 Drops all ambient capabilities from the running process.
 .SH "EXIT STATUS"
-Following successful execution the tool exits with status 0. Following
-an error, the tool immediately exits with status 1.
+Following successful execution,
+.B capsh
+exits with status 0. Following
+an error,
+.B capsh
+immediately exits with status 1.
 .SH AUTHOR
 Written by Andrew G. Morgan <morgan@kernel.org>.
 .SH "REPORTING BUGS"
