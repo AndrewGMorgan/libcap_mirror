@@ -67,7 +67,7 @@ in its effective set.
 .TP
 .BI \-\-user= username
 Assume the identity of the named user. That is, look up the user's
-.IR uid " and " gid
+UID and GID
 with
 .BR getpwuid (3)
 and their group memberships with
@@ -97,7 +97,7 @@ or exit with a status 1.
 .TP
 .BI \-\-uid= id
 Force all
-.B uid
+UID
 values to equal
 .I id
 using the
@@ -108,18 +108,19 @@ effective set.
 .BR \-\-cap\-uid= <uid>
 use the
 .BR cap_setuid (3)
-function to set the uid of the current process. This performs all
-preparations for setting the uid without dropping capabilities in the
+function to set the UID of the current process. This performs all
+preparations for setting the UID without dropping capabilities in the
 process. Following this command the prevailing effective capabilities
 will be lowered.
 .TP
 .BI \-\-is\-uid= <id>
 Exit with status 1 unless the current
-.IR uid " equals " <id> .
+UID equals
+.IR <id> .
 .TP
 .BI \-\-gid= <id>
 Force all
-.B gid
+GID
 values to equal
 .I id
 using the
@@ -128,7 +129,8 @@ system call.
 .TP
 .BI \-\-is\-gid= <id>
 Exit with status 1 unless the current
-.IR gid " equals " <id> .
+GIQ equals
+.IR <id> .
 .TP
 .BI \-\-groups= <gid-list>
 Set the supplementary groups to the numerical list provided. The
@@ -142,7 +144,7 @@ for a more convenient way of doing this.
 In a non-pure capability mode, the kernel provides liberal privilege
 to the super-user. However, it is normally the case that when the
 super-user changes
-.I uid
+UID
 to some lesser user, then capabilities are dropped. For these
 situations, the kernel can permit the process to retain its
 capabilities after a
