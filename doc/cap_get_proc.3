@@ -242,11 +242,11 @@ is packaged with a separate POSIX semantics system call library:
 If your program uses POSIX threads, to achieve meaningful POSIX
 semantics capability manipulation, you should link your program with:
 .sp
-.B ld ... -lcap -lpsx -lpthread --wrap=pthread_create
+.B ld ... \-lcap \-lpsx \-lpthread \-\-wrap=pthread_create
 .sp
 or,
 .sp
-.B gcc ... -lcap -lpsx -lpthread -Wl,-wrap,pthread_create
+.B gcc ... \-lcap \-lpsx \-lpthread \-Wl,\-wrap,pthread_create
 .sp
 When linked this way, due to linker magic, libcap uses
 .BR psx_syscall "(3) and " psx_syscall6 (3)
@@ -362,10 +362,10 @@ Note, the above sequence can be performed by the
 .B capsh
 tool as follows:
 .sp
-.B sudo /sbin/capsh --user=nobody --mode=NOPRIV --print
+.B sudo /sbin/capsh \-\-user=nobody \-\-mode=NOPRIV \-\-print
 .sp
 where
-.B --print
+.B \-\-print
 displays the resulting privilege state.
 .SH "SEE ALSO"
 .BR libcap (3),

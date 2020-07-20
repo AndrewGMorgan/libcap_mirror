@@ -11,9 +11,9 @@ psx_syscall3, psx_syscall6 \- POSIX semantics for system calls
 .sp
 Link with one of these:
 .sp
-.I   ld ... -lpsx -lpthread --wrap=pthread_create
+.I   ld ... \-lpsx \-lpthread \-\-wrap=pthread_create
 .sp
-.I   gcc ... -lpsx -lpthread -Wl,-wrap,pthread_create
+.I   gcc ... \-lpsx \-lpthread \-Wl,\-wrap,pthread_create
 .SH DESCRIPTION
 The
 .B libpsx
@@ -58,7 +58,7 @@ and
 functions.
 .SH RETURN VALUE
 The return value for system call functions is generally the value
-returned by the kernel, or -1 in the case of an error. In such cases
+returned by the kernel, or \-1 in the case of an error. In such cases
 .BR errno (3)
 is set to the detailed error value. The
 .BR psx_syscall3 " and " psx_syscall6
