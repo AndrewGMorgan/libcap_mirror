@@ -107,7 +107,14 @@ func (c *Set) String() string {
 		x := strings.Join(list, ",")
 		var y, z string
 		if cf := i & ^m; cf != 0 {
-			y = "+" + combos[cf]
+			op := "+"
+			if len(vs) == 1 && vs[0] == "=" {
+				// Special case "= foo+..." == "foo=...".
+				// Prefer because it
+				vs = nil
+				op = "="
+			}
+			y = op + combos[cf]
 		}
 		if cf := m & ^i; cf != 0 {
 			z = "-" + combos[cf]
@@ -158,7 +165,11 @@ func FromText(text string) (*Set, error) {
 		}
 		var vs []Value
 		sep := t[i]
-		if vals := t[:i]; vals != "all" && vals != "" {
+		if vals := t[:i]; vals == "all" {
+			for v := Value(0); v < Value(maxValues); v++ {
+				vs = append(vs, v)
+			}
+		} else if vals != "" {
 			for _, name := range strings.Split(vals, ",") {
 				v, err := FromName(name)
 				if err != nil {

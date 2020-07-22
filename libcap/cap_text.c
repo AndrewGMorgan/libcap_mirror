@@ -353,7 +353,7 @@ static int getstateflags(cap_t caps, int capno)
 char *cap_to_text(cap_t caps, ssize_t *length_p)
 {
     char buf[CAP_TEXT_SIZE+CAP_TEXT_BUFFER_ZONE];
-    char *p;
+    char *p, *base;
     int histo[8];
     int m, t;
     unsigned n;
@@ -384,6 +384,7 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    m = t;
 
     /* blank is not a valid capability set */
+    base = buf;
     p = sprintf(buf, "=%s%s%s",
 		(m & LIBCAP_EFF) ? "e" : "",
 		(m & LIBCAP_INH) ? "i" : "",
@@ -409,7 +410,16 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	p--;
 	n = t & ~m;
 	if (n) {
-	    p += sprintf(p, "+%s%s%s",
+	    char op = '+';
+	    if (base[0] == '=' && base[1] == ' ') {
+		/*
+		 * Special case all lowered default "= foo,...+eip
+		 * ..." as "foo,...=eip ...". (Equivalent but shorter.)
+		 */
+		base += 2;
+		op = '=';
+	    }
+	    p += sprintf(p, "%c%s%s%s", op,
 			 (n & LIBCAP_EFF) ? "e" : "",
 			 (n & LIBCAP_INH) ? "i" : "",
 			 (n & LIBCAP_PER) ? "p" : "");
@@ -460,12 +470,12 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	}
     }
 
-    _cap_debug("%s", buf);
+    _cap_debug("%s", base);
     if (length_p) {
-	*length_p = p - buf;
+	*length_p = p - base;
     }
 
-    return (_libcap_strdup(buf));
+    return (_libcap_strdup(base));
 }
 
 /*

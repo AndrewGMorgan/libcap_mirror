@@ -57,8 +57,12 @@ func TestText(t *testing.T) {
 	}{
 		{"", "", ErrBadText},
 		{"=", "=", nil},
-		{"= cap_chown+iep cap_chown-i", "= cap_chown+ep", nil},
-		{"= cap_setfcap,cap_chown+iep cap_chown-i", "= cap_setfcap+eip cap_chown+ep", nil},
+		{"= cap_chown+iep cap_chown-i", "cap_chown=ep", nil},
+		{"= cap_setfcap,cap_chown+iep cap_chown-i", "cap_setfcap=eip cap_chown+ep", nil},
+		{"cap_setfcap,cap_chown=iep cap_chown-i", "cap_setfcap=eip cap_chown+ep", nil},
+		{"=i =p", "=p", nil},
+		{"all+pie", "=eip", nil},
+		{"all=p+ie-e", "=ip", nil},
 	}
 	for i, v := range vs {
 		c, err := FromText(v.from)

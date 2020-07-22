@@ -1,4 +1,4 @@
-// Package cap provides the Linux Capabilities userspace library API
+// Package cap provides all the Linux Capabilities userspace library API
 // bindings in native Go.
 //
 // Capabilities are a feature of the Linux kernel that allow fine
