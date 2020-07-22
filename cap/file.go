@@ -157,6 +157,21 @@ func (c *Set) GetNSOwner() (int, error) {
 	return c.nsRoot, nil
 }
 
+// SetNSOwner adds an explicit namespace owner UID to the capability
+// Set. This is only honored when generating file capabilities, and is
+// generally for use by a setup process when installing binaries that
+// use file capabilities to become capable inside a namespace to be
+// administered by that UID. If capability aware code within that
+// namespace writes file capabilities without explicitly setting such
+// a UID, the kernel will fixup the capabilities to be specific to
+// that owner. In this way, the kernel prevents filesystem
+// capabilities from leaking out of that restricted namespace.
+func (c *Set) SetNSOwner(uid int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.nsRoot = uid
+}
+
 // packFileCap transforms a system capability into a VFS form. Because
 // of the way Linux stores capabilities in the file extended
 // attributes, the process is a little lossy with respect to effective
