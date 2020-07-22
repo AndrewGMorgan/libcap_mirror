@@ -31,6 +31,21 @@ const (
 	Bound
 )
 
+// String identifies a Vector value by its conventional I A or B
+// string abbreviation.
+func (v Vector) String() string {
+	switch v {
+	case Inh:
+		return "I"
+	case Amb:
+		return "A"
+	case Bound:
+		return "B"
+	default:
+		return "<Error>"
+	}
+}
+
 // IABInit returns an empty IAB.
 func IABInit() *IAB {
 	startUp.Do(multisc.cInit)

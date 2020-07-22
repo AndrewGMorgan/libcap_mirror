@@ -182,7 +182,6 @@ func FromText(text string) (*Set, error) {
 			if keep {
 				continue
 			}
-
 		}
 		if fE {
 			c.SetFlag(Effective, sep != '-', vs...)
@@ -191,7 +190,7 @@ func FromText(text string) (*Set, error) {
 			c.SetFlag(Permitted, sep != '-', vs...)
 		}
 		if fI {
-			c.SetFlag(Inheritable, sep == '+', vs...)
+			c.SetFlag(Inheritable, sep != '-', vs...)
 		}
 	}
 	if chunks == 0 {

@@ -59,6 +59,21 @@ const (
 	Inheritable
 )
 
+// String identifies a Flag value by its conventional "e", "p" or "i"
+// string abbreviation.
+func (f Flag) String() string {
+	switch f {
+	case Effective:
+		return "e"
+	case Permitted:
+		return "p"
+	case Inheritable:
+		return "i"
+	default:
+		return "<Error>"
+	}
+}
+
 // data holds a 32-bit slice of the compressed bitmaps of capability
 // sets as understood by the kernel.
 type data [Inheritable + 1]uint32
