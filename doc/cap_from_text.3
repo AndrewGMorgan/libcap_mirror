@@ -139,9 +139,16 @@ capability list and one or more explicit trailing flags.  The `+'
 operator will raise all of the listed capabilities in the flagged
 capability sets.  The `\-' operator will lower all of the listed
 capabilities in the flagged capability sets.  For example:
-"all+p" will raise all of the Permitted capabilities; "cap_fowner+p\-i"
-will raise the override-file-ownership capability in the Permitted
-capability set and lower this Inheritable capability;
+"all+p" will raise all of the Permitted capabilities and
+"cap_fowner\-i" will lower the override-file-ownership in the Inheritable set.
+.PP
+The action list can consist of multiple
+.I operator flag
+pairs; the actions are performed in left-to-right order.
+Thus, for example,
+"cap_fowner+p\-i"
+is equivalent to "cap_fowner+p cap_fowner\-i".
+As another example,
 "cap_fowner+pe\-i" and "cap_fowner=+pe" are equivalent.
 .SH "RETURN VALUE"
 .BR cap_from_text (),
