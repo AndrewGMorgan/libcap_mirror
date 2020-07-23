@@ -2,7 +2,7 @@
 .SH NAME
 setcap \- set file capabilities
 .SH SYNOPSIS
-\fBsetcap\fP [\-q] [\-n <rootid>] [\-v] {\fIcapabilities|\-|\-r} filename\fP [ ... \fIcapabilitiesN\fP \fIfileN\fP ]
+\fBsetcap\fP [\-q] [\-n <rootuid>] [\-v] {\fIcapabilities|\-|\-r} filename\fP [ ... \fIcapabilitiesN\fP \fIfileN\fP ]
 .SH DESCRIPTION
 In the absence of the
 .B \-v
@@ -13,13 +13,13 @@ sets the capabilities of each specified
 to the
 .I capabilities
 specified.  The optional
-.B \-n <rootid>
+.B \-n <rootuid>
 argument can be used to set the file capability for use only in a
-user namespace with this rootid owner. The
+user namespace with this root user ID owner. The
 .B \-v
 option is used to verify that the specified capabilities are currently
 associated with the file. If \-v and \-n are supplied, the
-.B \-n <rootid>
+.B \-n <rootuid>
 argument is also verified.
 .PP
 The

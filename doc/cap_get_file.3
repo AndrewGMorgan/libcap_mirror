@@ -18,7 +18,7 @@ manipulation on files
 .sp
 .BI "uid_t cap_get_nsowner(cap_t " caps );
 .sp
-.BI "int cap_set_nsowner(cap_t " caps ", uid_t " rootid );
+.BI "int cap_set_nsowner(cap_t " caps ", uid_t " rootuid );
 .sp
 Link with \fI\-lcap\fP.
 .SH DESCRIPTION
@@ -66,13 +66,13 @@ capability in its effective capability set.  The effects of writing the
 capability state to any file type other than a regular file are
 undefined.
 .PP
-A capability set held in memory can be associated with the rootid in
+A capability set held in memory can be associated with the root user ID in
 use in a specific user namespace. It is possible to get and set this value
 (in the memory copy) with
 .BR cap_get_nsowner ()
 and
 .BR cap_set_nsowner ()
-respectively. The rootid is ignored by the libcap library in all cases
+respectively. The root user ID is ignored by the libcap library in all cases
 other than when the capability is written to a file. Only if the value
 is non-zero will the library attempt to include it in the written file
 capability set.
