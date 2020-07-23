@@ -281,6 +281,58 @@ func main() {
 		log.Fatalf("all decode failed in Go: got=%q, want=%q", got, want)
 	}
 
+	// Validate some random values stringify consistently between
+	// libcap.cap_to_text() and (*cap.Set).String().
+	mb := cap.MaxBits()
+	sample := cap.NewSet()
+	for c := cap.Value(0); c < 7*mb; c += 3 {
+		n := int(c)
+		raise, f := c%mb, cap.Flag(c/mb)%3
+		sample.SetFlag(f, true, raise)
+		if v, err := cap.FromText(sample.String()); err != nil {
+			log.Fatalf("[%d] cap to text for %q not reversible: %v", n, sample, err)
+		} else if cf, err := v.Compare(sample); err != nil {
+			log.Fatalf("[%d] FromText generated bad capability from %q: %v", n, sample, err)
+		} else if cf != 0 {
+			log.Fatalf("[%d] text import got=%q want=%q", n, v, sample)
+		}
+		e, err := sample.Export()
+		if err != nil {
+			log.Fatalf("[%d] failed to export %q: %v", n, sample, err)
+		}
+		i, err := cap.Import(e)
+		if err != nil {
+			log.Fatalf("[%d] failed to import %q: %v", n, sample, err)
+		}
+		if cf, err := i.Compare(sample); err != nil {
+			log.Fatalf("[%d] failed to compare %q vs original:%q", n, i, sample)
+		} else if cf != 0 {
+			log.Fatalf("[%d] import got=%q want=%q", n, i, sample)
+		}
+		// Confirm that importing this portable binary
+		// representation in libcap and converting to text,
+		// generates the same text as Go generates. This was
+		// broken prior to v0.2.41.
+		cCap := C.cap_copy_int(unsafe.Pointer(&e[0]))
+		if cCap == nil {
+			log.Fatalf("[%d] C import failed for %q export", n, sample)
+		}
+		var tCLen C.ssize_t
+		tC := C.cap_to_text(cCap, &tCLen)
+		if tC == nil {
+			log.Fatalf("[%d] basic c init caps -> text failure", n)
+		}
+		C.cap_free(unsafe.Pointer(cCap))
+		importT := C.GoString(tC)
+		C.cap_free(unsafe.Pointer(tC))
+		if got, want := len(importT), int(tCLen); got != want {
+			log.Fatalf("[%d] C text generated wrong length: Go=%d, C=%d", n, got, want)
+		}
+		if got, want := importT, sample.String(); got != want {
+			log.Fatalf("[%d] C and Go text rep disparity: C=%q Go=%q", n, got, want)
+		}
+	}
+
 	iab, err := cap.IABFromText("cap_chown,!cap_setuid,^cap_setgid")
 	if err != nil {
 		log.Fatalf("failed to initialize iab from text: %v", err)

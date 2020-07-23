@@ -48,7 +48,7 @@ const (
 var combos = []string{"", "e", "p", "ep", "i", "ei", "ip", "eip"}
 
 // histo generates a histogram of flag state combinations.
-func (c *Set) histo(m uint, bins []int, patterns []uint, from, limit Value) uint {
+func (c *Set) histo(bins []int, patterns []uint, from, limit Value) uint {
 	for v := from; v < limit; v++ {
 		b := uint(v & 31)
 		u, bit, err := bitOf(0, v)
@@ -60,8 +60,15 @@ func (c *Set) histo(m uint, bins []int, patterns []uint, from, limit Value) uint
 		x |= uint((c.flat[u][Inheritable]&bit)>>b) * iBin
 		bins[x]++
 		patterns[uint(v)] = x
-		if bins[m] <= bins[x] {
-			m = x
+	}
+	// Note, in the loop, we use >= to pick the smallest value for
+	// m with the highest bin value. That is ties break towards
+	// m=0.
+	m := uint(7)
+	for t := m; t > 0; {
+		t--
+		if bins[t] >= bins[m] {
+			m = t
 		}
 	}
 	return m
@@ -74,14 +81,14 @@ func (c *Set) String() string {
 		return "<invalid>"
 	}
 	bins := make([]int, 8)
-	patterns := make([]uint, 32*words)
+	patterns := make([]uint, maxValues)
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	// Note, in order to have a *Set pointer, startUp.Do(cInit)
 	// must have been called which sets maxValues.
-	m := c.histo(0, bins, patterns, 0, Value(maxValues))
+	m := c.histo(bins, patterns, 0, Value(maxValues))
 
 	// Background state is the most popular of the named bits.
 	vs := []string{"=" + combos[m]}
@@ -97,19 +104,22 @@ func (c *Set) String() string {
 			}
 			list = append(list, Value(j).String())
 		}
+		x := strings.Join(list, ",")
+		var y, z string
 		if cf := i & ^m; cf != 0 {
-			vs = append(vs, strings.Join(list, ",")+"+"+combos[cf])
+			y = "+" + combos[cf]
 		}
 		if cf := m & ^i; cf != 0 {
-			vs = append(vs, strings.Join(list, ",")+"-"+combos[cf])
+			z = "-" + combos[cf]
 		}
+		vs = append(vs, x+y+z)
 	}
 
 	// The unnamed bits can only add to the above named ones since
 	// unnamed ones are always defaulted to lowered.
 	uBins := make([]int, 8)
 	uPatterns := make([]uint, 32*words)
-	c.histo(0, uBins, uPatterns, Value(maxValues), 32*Value(words))
+	c.histo(uBins, uPatterns, Value(maxValues), 32*Value(words))
 	for i := uint(7); i > 0; i-- {
 		if uBins[i] == 0 {
 			continue
@@ -139,7 +149,8 @@ func FromText(text string) (*Set, error) {
 	chunks := 0
 	for scanner.Scan() {
 		chunks++
-		// Parsing for xxx[-+=][eip]+
+
+		// Parsing for xxx([-+=][eip]+)+
 		t := scanner.Text()
 		i := strings.IndexAny(t, "=+-")
 		if i < 0 {
@@ -155,42 +166,100 @@ func FromText(text string) (*Set, error) {
 				}
 				vs = append(vs, v)
 			}
-		} else if sep != '=' && vals == "" {
-			return nil, ErrBadText // Only "=" supports ""=="all".
+		} else if sep != '=' {
+			if vals == "" {
+				return nil, ErrBadText // Only "=" supports ""=="all".
+			}
+		} else if j := i + 1; j+1 < len(t) {
+			switch t[j] {
+			case '+':
+				sep = 'P'
+				i++
+			case '-':
+				sep = 'M'
+				i++
+			}
 		}
-		sets := t[i+1:]
-		var fE, fP, fI bool
-		for j := 0; j < len(sets); j++ {
-			switch sets[j] {
-			case 'e':
-				fE = true
-			case 'p':
-				fP = true
-			case 'i':
-				fI = true
+		i++
+
+		// There are 5 ways to set: =, =+, =-, +, -. We call
+		// the 2nd and 3rd of these 'P' and 'M'.
+
+		for {
+			// read [eip]+ setting flags.
+			var fE, fP, fI bool
+			for ok := true; ok && i < len(t); i++ {
+				switch t[i] {
+				case 'e':
+					fE = true
+				case 'i':
+					fI = true
+				case 'p':
+					fP = true
+				default:
+					ok = false
+				}
+				if !ok {
+					break
+				}
+			}
+
+			if !(fE || fI || fP) {
+				if sep != '=' {
+					return nil, ErrBadText
+				}
+			}
+
+			switch sep {
+			case '=', 'P', 'M', '+':
+				if sep != '+' {
+					c.Clear()
+					if sep == 'M' {
+						break
+					}
+				}
+				if keep := len(vs) == 0; keep {
+					if sep != '=' {
+						return nil, ErrBadText
+					}
+					c.forceFlag(Effective, fE)
+					c.forceFlag(Permitted, fP)
+					c.forceFlag(Inheritable, fI)
+					break
+				}
+				// =, + and P for specific values are left.
+				if fE {
+					c.SetFlag(Effective, true, vs...)
+				}
+				if fP {
+					c.SetFlag(Permitted, true, vs...)
+				}
+				if fI {
+					c.SetFlag(Inheritable, true, vs...)
+				}
+			case '-':
+				if fE {
+					c.SetFlag(Effective, false, vs...)
+				}
+				if fP {
+					c.SetFlag(Permitted, false, vs...)
+				}
+				if fI {
+					c.SetFlag(Inheritable, false, vs...)
+				}
+			}
+
+			if i == len(t) {
+				break
+			}
+
+			switch t[i] {
+			case '+', '-':
+				sep = t[i]
+				i++
 			default:
 				return nil, ErrBadText
 			}
-		}
-		if sep == '=' {
-			// '=' means default to off for all named flags.
-			// '=ep' means default on for named e & p.
-			keep := len(vs) == 0
-			c.forceFlag(Effective, fE && keep)
-			c.forceFlag(Permitted, fP && keep)
-			c.forceFlag(Inheritable, fI && keep)
-			if keep {
-				continue
-			}
-		}
-		if fE {
-			c.SetFlag(Effective, sep != '-', vs...)
-		}
-		if fP {
-			c.SetFlag(Permitted, sep != '-', vs...)
-		}
-		if fI {
-			c.SetFlag(Inheritable, sep != '-', vs...)
 		}
 	}
 	if chunks == 0 {
