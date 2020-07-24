@@ -340,9 +340,9 @@ int cap_set_file(const char *filename, cap_t cap_d)
  * Set rootid for the file capability sets.
  */
 
-int cap_set_nsowner(cap_t cap_d, uid_t rootid)
+int cap_set_nsowner(cap_t cap_d, uid_t rootuid)
 {
-	cap_d->rootid = rootid;
+	cap_d->rootid = rootuid;
 	return 0;
 }
 
@@ -378,7 +378,7 @@ int cap_set_file(const char *filename, cap_t cap_d)
     return -1;
 }
 
-int cap_set_nsowner(cap_t cap_d, uid_t rootid)
+int cap_set_nsowner(cap_t cap_d, uid_t rootuid)
 {
 	errno = EINVAL;
 	return -1;
