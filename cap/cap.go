@@ -13,9 +13,28 @@
 // described in that paper as well as supporting subsequent changes to
 // the kernel for other styles of inheritable Capability.
 //
+// Some simple things you can do with this package are:
+//
+//   // Read and display the capabilities of the running process
+//   c := cap.GetProc()
+//   log.Printf("this process has these caps:", c)
+//
+//   // Drop any privilege a process might have (including for root,
+//   // but note root 'owns' a lot of system files so a cap-limited
+//   // root can still do considerable damage to a running system).
+//   old := cap.GetProc()
+//   empty := cap.NewSet()
+//   if err := empty.SetProc(); err != nil {
+//       log.Fatalf("failed to drop privilege: %q -> %q: %v", old, empty, err)
+//   }
+//   now := cap.GetProc()
+//   if cap.Differs(now.Compare(empty)) {
+//       log.Fatalf("failed to fully drop privilege: have=%q, wanted=%q", now, empty)
+//   }
+//
 // See https://sites.google.com/site/fullycapable/ for recent updates,
-// some walk-through examples of ways of using 'cap.Set's etc and
-// information on how to file bugs.
+// some more complete walk-through examples of ways of using
+// 'cap.Set's etc and information on how to file bugs.
 //
 // For CGo linked binaries, behind the scenes, the package
 // "kernel.org/pub/linux/libs/security/libcap/psx" is used to perform
@@ -23,16 +42,20 @@
 // uniformly over the whole Go (and CGo linked) process runtime.
 //
 // Note, if the Go runtime syscall interface contains the linux
-// variant syscall.AllThreadsSyscall() API (it is not in go1.15beta1
+// variant syscall.AllThreadsSyscall() API (it is not in go1.15rc1
 // for example, but see https://github.com/golang/go/issues/1435 for
 // current status) then this present package can use that to invoke
-// Capability setting system calls for pure Go binaries. In such an
+// Capability setting system calls in pure Go binaries. In such an
 // enhanced Go runtime, to force this behavior, use the CGO_ENABLED=0
 // environment variable and, for now, a build tag:
 //
 //   CGO_ENABLED=0 go build -tags allthreadssyscall ...
 //
+// ------------------------------------------------------------------
 // Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
+//
+// The cap and psx packages are licensed with a (you choose) BSD
+// 3-clause or GPL2. See LICENSE file for details.
 package cap // import "kernel.org/pub/linux/libs/security/libcap/cap"
 
 import (
@@ -51,7 +74,7 @@ type Value uint
 // Bounding and Ambient Vectors.
 type Flag uint
 
-// Effective, Permitted, Inheritable are the three dimensions of Values
+// Effective, Permitted, Inheritable are the three Flags of Values
 // held in a Set.
 const (
 	Effective Flag = iota
@@ -79,7 +102,14 @@ func (f Flag) String() string {
 type data [Inheritable + 1]uint32
 
 // Set is an opaque capabilities container for a set of system
-// capbilities.
+// capbilities. It holds individually addressable capability Value's
+// for the three capability Flag's. See GetFlag() and SetFlag() for
+// how to adjust them individually, and Clear() and ClearFlag() for
+// how to do bulk operations.
+//
+// For admin tasks associated with managing namespace specific file
+// capabilities, Set can also support a namespace-root-UID value which
+// defaults to zero. See GetNSOwner() and SetNSOwner().
 type Set struct {
 	// mu protects all other members of a Set.
 	mu sync.RWMutex
@@ -108,7 +138,7 @@ var (
 	magic uint32
 
 	// words holds the number of uint32's associated with each
-	// capability dimension for this session.
+	// capability Flag for this session.
 	words int
 
 	// maxValues holds the number of bit values that are named by

@@ -52,11 +52,18 @@ type vfsCaps3 struct {
 
 // ErrBadSize indicates the the loaded file capability has
 // an invalid number of bytes in it.
-var (
-	ErrBadSize  = errors.New("filecap bad size")
-	ErrBadMagic = errors.New("unsupported magic")
-	ErrBadPath  = errors.New("file is not a regular executable")
-)
+var ErrBadSize = errors.New("filecap bad size")
+
+// ErrBadMagic indicates that the kernel preferred magic number for
+// capability Set values is not supported by this package. This
+// generally implies you are using an exceptionally old
+// "../libcap/cap" package. An upgrade is needed, or failing that see
+// https://sites.google.com/site/fullycapable/ for how to file a bug.
+var ErrBadMagic = errors.New("unsupported magic")
+
+// ErrBadPath indicates a failed attempt to set a file capability on
+// an irregular (non-executable) file.
+var ErrBadPath = errors.New("file is not a regular executable")
 
 // digestFileCap unpacks a file capability and returns it in a *Set
 // form.
@@ -219,7 +226,7 @@ func (c *Set) packFileCap() ([]byte, error) {
 // (*os.File).Fd(). This function can also be used to delete a file's
 // capabilities, by calling with c = nil.
 //
-// Note, Linux does not store the full Effective Value dimension in the
+// Note, Linux does not store the full Effective Value Flag in the
 // metadata for the file. Only a single Effective bit is stored in
 // this metadata. This single bit is non-zero if the Permitted vector
 // has any overlapping bits with the Effective or Inheritable vector
@@ -228,8 +235,9 @@ func (c *Set) packFileCap() ([]byte, error) {
 // capabability unaware binaries that will only work if they magically
 // launch with the needed bits already raised (this bit is sometimes
 // referred to simply as the 'legacy' bit). Without *full* support for
-// capability manipulation, as it is provided in this cap package,
-// this was the only way for Go programs to make use of capabilities.
+// capability manipulation, as it is provided in this "../libcap/cap"
+// package, this was the only way for Go programs to make use of
+// capabilities.
 //
 // The preferred way a binary will actually manipulate its
 // file-acquired capabilities is to carefully and deliberately using

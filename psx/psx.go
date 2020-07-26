@@ -35,7 +35,11 @@
 //
 //    export CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
 //
+// ------------------------------------------------------------------
 // Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
+//
+// The psx package is licensed with a (you choose) BSD 3-clause or
+// GPL2. See LICENSE file for details.
 package psx // import "kernel.org/pub/linux/libs/security/libcap/psx"
 
 import (
