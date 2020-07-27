@@ -9,19 +9,34 @@
 // The package works via CGo wrappers for system call functions that
 // call the C [lib]psx functions of these names. This ensures that the
 // system calls execute simultaneously on all the pthreads of the Go
-// (and CGo) combined runtime. Since Go's runtime freely migrates code
-// execution between pthreads, support of this type is required for
-// any successful attempt to fully drop or modify user privilege of a
-// Go program under Linux. More info on how privilege works can be
-// found here:
+// (and CGo) combined runtime.
+//
+// The psx support works in the following way: the pthread that is
+// first asked to execute the syscall does so, and determines if it
+// succeeds or fails. If it fails, it returns immediately without
+// attempting the syscall on other pthreads. If the initial attempt
+// succeeds, however, then the runtime is stopped in order for the
+// same system call to be performed on all the remaining pthreads of
+// the runtime. Once all pthreads have completed the syscall, the
+// return codes are those obtained by the first pthread's invocation
+// of the syscall.
+//
+// Note, there is no need to use this variant of syscall where the
+// syscalls only read state from the kernel. However, since Go's
+// runtime freely migrates code execution between pthreads, support of
+// this type is required for any successful attempt to fully drop or
+// modify the privilege of a running Go program under Linux.
+//
+// More info on how Linux privilege works can be found here:
 //
 //    https://sites.google.com/site/fullycapable
 //
-// Correct compilation of this package may require an extra step:
+// WARNING: Correct compilation of this package may require an extra
+// step:
 //
 // If your Go compiler is older than go1.15, a workaround may be
 // required to be able to link this package. In order to do what it
-// needs to, this package employs some unusual linking flags. You will
+// needs to this package employs some unusual linking flags. You will
 // need to do this for any Go toolchain that that does not include
 // this patch:
 //
@@ -35,7 +50,7 @@
 //
 //    export CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
 //
-// ------------------------------------------------------------------
+//
 // Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
 //
 // The psx package is licensed with a (you choose) BSD 3-clause or
