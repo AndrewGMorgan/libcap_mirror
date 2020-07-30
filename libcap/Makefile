@@ -22,7 +22,9 @@ MAJLIBNAME=$(LIBNAME).$(VERSION)
 MINLIBNAME=$(MAJLIBNAME).$(MINOR)
 GPERF_OUTPUT = _caps_output.gperf
 
-all: $(MINLIBNAME) $(STACAPLIBNAME) libcap.pc libpsx.pc $(STAPSXLIBNAME)
+all: $(MINLIBNAME) $(STACAPLIBNAME) pcs $(STAPSXLIBNAME)
+
+pcs: libcap.pc libpsx.pc
 
 ifeq ($(BUILD_GPERF),yes)
 USE_GPERF_OUTPUT = $(GPERF_OUTPUT)
@@ -93,7 +95,7 @@ test: cap_test
 
 install: install-shared install-static
 
-install-common:
+install-common: pcs
 	mkdir -p -m 0755 $(FAKEROOT)$(INCDIR)/sys
 	install -m 0644 include/sys/capability.h $(FAKEROOT)$(INCDIR)/sys
 	install -m 0644 include/sys/psx_syscall.h $(FAKEROOT)$(INCDIR)/sys
