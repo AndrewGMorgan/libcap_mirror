@@ -54,20 +54,20 @@ GOMAJOR=0
 KERNEL_HEADERS := $(topdir)/libcap/include/uapi
 IPATH += -fPIC -I$(KERNEL_HEADERS) -I$(topdir)/libcap/include
 
-CC := $(CROSS_COMPILE)gcc
+CC ?= $(CROSS_COMPILE)gcc
 DEFINES := -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-CFLAGS := -O2 $(DEFINES)
-BUILD_CC := $(CC)
-BUILD_CFLAGS := -O2 $(DEFINES) $(IPATH)
-AR := $(CROSS_COMPILE)ar
-RANLIB := $(CROSS_COMPILE)ranlib
+CFLAGS ?= -O2 $(DEFINES)
+BUILD_CC ?= $(CC)
+BUILD_CFLAGS ?= -O2 $(DEFINES) $(IPATH)
+AR ?= $(CROSS_COMPILE)ar
+RANLIB ?= $(CROSS_COMPILE)ranlib
 DEBUG = -g #-DDEBUG
 WARNINGS=-Wall -Wwrite-strings \
         -Wpointer-arith -Wcast-qual -Wcast-align \
         -Wstrict-prototypes -Wmissing-prototypes \
         -Wnested-externs -Winline -Wshadow
 LD=$(CC) -Wl,-x -shared
-LDFLAGS := #-g
+LDFLAGS ?= #-g
 LIBCAPLIB := -L$(topdir)/libcap -lcap
 LIBPSXLIB := -L$(topdir)/libcap -lpsx -lpthread
 
@@ -77,7 +77,7 @@ SYSTEM_HEADERS = /usr/include
 INCS=$(topdir)/libcap/include/sys/capability.h
 LDFLAGS += -L$(topdir)/libcap
 CFLAGS += -Dlinux $(WARNINGS) $(DEBUG)
-PAM_CAP := $(shell if [ -f /usr/include/security/pam_modules.h ]; then echo yes ; else echo no ; fi)
+PAM_CAP ?= $(shell if [ -f /usr/include/security/pam_modules.h ]; then echo yes ; else echo no ; fi)
 INDENT := $(shell if [ -n "$$(which indent 2>/dev/null)" ]; then echo "| indent -kr" ; fi)
 DYNAMIC := $(shell if [ ! -d "$(topdir)/.git" ]; then echo yes; fi)
 
