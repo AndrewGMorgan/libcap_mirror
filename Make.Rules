@@ -41,7 +41,7 @@ GOPKGDIR=$(prefix)/share/gocode/src
 # Common version number defines for libcap
 LIBTITLE=libcap
 VERSION=2
-MINOR=41
+MINOR=42
 
 # Go modules have their own semantics. I plan to leave this value at 0
 # and keep it there. The Go packages should always remain backwardly
