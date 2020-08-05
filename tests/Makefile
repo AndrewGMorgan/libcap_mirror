@@ -7,7 +7,7 @@ include ../Make.Rules
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
-all: psx_test psx_test_wrap libcap_psx_test libcap_launch_test
+all: psx_test libcap_psx_test libcap_launch_test
 
 $(DEPS):
 	make -C ../libcap all
