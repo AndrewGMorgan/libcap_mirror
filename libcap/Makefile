@@ -102,9 +102,9 @@ install-common: pcs
 	mkdir -p -m 0755 $(FAKEROOT)$(PKGCONFIGDIR)
 	install -m 0644 libcap.pc $(FAKEROOT)$(PKGCONFIGDIR)/libcap.pc
 	install -m 0644 libpsx.pc $(FAKEROOT)$(PKGCONFIGDIR)/libpsx.pc
+	mkdir -p -m 0755 $(FAKEROOT)$(LIBDIR)
 
 install-static: $(STACAPLIBNAME) $(STAPSXLIBNAME) install-common
-	mkdir -p -m 0755 $(FAKEROOT)$(LIBDIR)
 	install -m 0644 $(STACAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STACAPLIBNAME)
 	install -m 0644 $(STAPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STAPSXLIBNAME)
 
