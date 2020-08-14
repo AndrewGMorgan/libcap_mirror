@@ -78,8 +78,6 @@ static struct psx_tracker_s {
     pthread_mutex_t state_mu;
     pthread_cond_t cond; /* this is only used to wait on 'state' changes */
     psx_tracker_state_t state;
-    int (*creator)(pthread_t *thread, const pthread_attr_t *attr,
-		   void *(*start_routine) (void *), void *arg);
     int initialized;
     int psx_sig;
 
@@ -170,6 +168,12 @@ int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 			  void *(*start_routine) (void *), void *arg);
 
 /*
+ * psx requires this function to be provided by the linkage wrapping.
+ */
+extern int __real_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+				 void *(*start_routine) (void *), void *arg);
+
+/*
  * psx_syscall_start initializes the subsystem including initializing
  * the mutex.
  */
@@ -177,8 +181,6 @@ static void psx_syscall_start(void) {
     pthread_mutex_init(&psx_tracker.state_mu, NULL);
     pthread_cond_init(&psx_tracker.cond, NULL);
     pthread_key_create(&psx_action_key, NULL);
-    psx_tracker.creator = (pthread_create == __wrap_pthread_create ?
-			   __real_pthread_create : pthread_create);
     pthread_atfork(_psx_prepare_fork, _psx_fork_completed, _psx_forked_child);
 
     /*
@@ -404,7 +406,7 @@ int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
      */
     pthread_sigmask(SIG_BLOCK, &sigbit, NULL);
 
-    int ret = psx_tracker.creator(thread, attr, _psx_start_fn, starter);
+    int ret = __real_pthread_create(thread, attr, _psx_start_fn, starter);
     if (ret == -1) {
 	psx_new_state(_PSX_CREATE, _PSX_IDLE);
 	memset(starter, 0, sizeof(*starter));
