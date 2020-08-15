@@ -36,14 +36,7 @@
 //
 // If your Go compiler is older than go1.15, a workaround may be
 // required to be able to link this package. In order to do what it
-// needs to this package employs some unusual linking flags. You will
-// need to do this for any Go toolchain that that does not include
-// this patch:
-//
-//    https://go-review.googlesource.com/c/go/+/236139/
-//
-// As of the time of writing, that is all release tags prior to
-// go1.15rc1 .
+// needs to this package employs some unusual linking flags.
 //
 // The workaround is to build with the following CGO_LDFLAGS_ALLOW
 // in effect:

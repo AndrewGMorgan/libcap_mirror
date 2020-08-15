@@ -42,7 +42,7 @@
 // uniformly over the whole Go (and CGo linked) process runtime.
 //
 // Note, if the Go runtime syscall interface contains the Linux
-// variant syscall.AllThreadsSyscall() API (it is not in go1.15rc1
+// variant syscall.AllThreadsSyscall() API (it is not in go1.15
 // for example, but see https://github.com/golang/go/issues/1435 for
 // current status) then this present package can use that to invoke
 // Capability setting system calls in pure Go binaries. In such an
