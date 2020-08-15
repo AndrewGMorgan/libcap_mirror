@@ -1,3 +1,8 @@
+# Common version number defines for libcap
+LIBTITLE=libcap
+VERSION=2
+MINOR=43
+
 #
 ## Optional prefixes:
 #
@@ -37,11 +42,6 @@ INCDIR=$(inc_prefix)/include
 LIBDIR=$(lib_prefix)/$(lib)
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
 GOPKGDIR=$(prefix)/share/gocode/src
-
-# Common version number defines for libcap
-LIBTITLE=libcap
-VERSION=2
-MINOR=42
 
 # Go modules have their own semantics. I plan to leave this value at 0
 # and keep it there. The Go packages should always remain backwardly
