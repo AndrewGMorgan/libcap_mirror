@@ -16,7 +16,7 @@ endif
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
-all: $(BUILD) tcapsh-static
+all: $(BUILD)
 
 $(DEPS):
 	make -C ../libcap all

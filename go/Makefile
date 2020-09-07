@@ -70,16 +70,16 @@ ifeq ($(CGO_REQUIRED),0)
 	CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
 endif
 
-test: all ../progs/tcapsh-static
+test: all
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/psx
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
+
+sudotest: test ../progs/tcapsh-static
 	./try-launching
 ifeq ($(CGO_REQUIRED),0)
 	./try-launching-cgo
 endif
-
-sudotest: test
 	sudo ./try-launching
 ifeq ($(CGO_REQUIRED),0)
 	sudo ./try-launching-cgo
