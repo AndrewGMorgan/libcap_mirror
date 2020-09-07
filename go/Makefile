@@ -23,8 +23,8 @@ all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap try-launching
 $(DEPS):
 	make -C ../libcap all
 
-../progs/capsh:
-	make -C ../progs capsh
+../progs/tcapsh-static:
+	make -C ../progs tcapsh-static
 
 src/$(IMPORTDIR)/psx:
 	mkdir -p "src/$(IMPORTDIR)"
@@ -70,7 +70,7 @@ ifeq ($(CGO_REQUIRED),0)
 	CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
 endif
 
-test: all ../progs/capsh
+test: all ../progs/tcapsh-static
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/psx
 	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap

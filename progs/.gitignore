@@ -1,4 +1,5 @@
 capsh
+tcapsh-static
 getcap
 getpcaps
 setcap

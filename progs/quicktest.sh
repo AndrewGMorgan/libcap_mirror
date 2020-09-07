@@ -45,7 +45,7 @@ pass_capsh () {
 pass_capsh --print
 
 # Make a local non-setuid-0 version of capsh and call it privileged
-cp ./capsh ./privileged && /bin/chmod -s ./privileged
+cp ./tcapsh-static ./privileged && /bin/chmod -s ./privileged
 if [ $? -ne 0 ]; then
     echo "Failed to copy capsh for capability manipulation"
     exit 1
@@ -77,7 +77,7 @@ pass_capsh --mode=PURE1E --iab='!%cap_chown,cap_sys_admin'
 pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 
 /bin/rm -f tcapsh
-/bin/cp capsh tcapsh
+/bin/cp tcapsh-static tcapsh
 /bin/chown root.root tcapsh
 /bin/chmod u+s tcapsh
 /bin/ls -l tcapsh
@@ -166,7 +166,7 @@ pass_capsh --keep=1 --uid=$nouid --caps=cap_setpcap=ep \
 
 # Verify we can chroot
 pass_capsh --chroot=$(/bin/pwd)
-pass_capsh --chroot=$(/bin/pwd) ==
+pass_capsh -- -c "./tcapsh-static --chroot=$(/bin/pwd) =="
 fail_capsh --chroot=$(/bin/pwd) -- -c "echo oops"
 
 ./capsh --has-ambient
@@ -216,7 +216,7 @@ echo "testing namespaced file caps"
 # nsprivileged capsh will have an ns rootid value (this is
 # the same setup as an earlier test but with a ns file cap).
 rm -f nsprivileged
-cp ./capsh ./nsprivileged && /bin/chmod -s ./nsprivileged
+cp ./tcapsh-static ./nsprivileged && /bin/chmod -s ./nsprivileged
 ./setcap -n 1 all=ep ./nsprivileged
 if [ $? -eq 0 ]; then
     ./getcap -n ./nsprivileged | fgrep "[rootid=1]"

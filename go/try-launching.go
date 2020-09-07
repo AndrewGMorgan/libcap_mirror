@@ -32,7 +32,7 @@ func tryLaunching() {
 	}{
 		{args: []string{root + "/go/ok"}},
 		{
-			args:   []string{root + "/progs/capsh", "--dropped=cap_chown", "--is-uid=123", "--is-gid=456", "--has-a=cap_setuid"},
+			args:   []string{root + "/progs/tcapsh-static", "--dropped=cap_chown", "--is-uid=123", "--is-gid=456", "--has-a=cap_setuid"},
 			iab:    "!cap_chown,^cap_setuid,cap_sys_admin",
 			uid:    123,
 			gid:    456,
