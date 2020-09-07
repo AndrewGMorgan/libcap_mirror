@@ -93,28 +93,42 @@ cap_test: cap_test.c libcap.h
 test: cap_test
 	./cap_test
 
-install: install-shared install-static
+install: install-static install-shared
 
-install-common: pcs
-	mkdir -p -m 0755 $(FAKEROOT)$(INCDIR)/sys
-	install -m 0644 include/sys/capability.h $(FAKEROOT)$(INCDIR)/sys
-	install -m 0644 include/sys/psx_syscall.h $(FAKEROOT)$(INCDIR)/sys
-	mkdir -p -m 0755 $(FAKEROOT)$(PKGCONFIGDIR)
-	install -m 0644 libcap.pc $(FAKEROOT)$(PKGCONFIGDIR)/libcap.pc
-	install -m 0644 libpsx.pc $(FAKEROOT)$(PKGCONFIGDIR)/libpsx.pc
-	mkdir -p -m 0755 $(FAKEROOT)$(LIBDIR)
+install-static: install-static-cap install-static-psx
 
-install-static: $(STACAPLIBNAME) $(STAPSXLIBNAME) install-common
+install-shared: install-shared-cap
+
+install-cap: install-static-cap install-shared-cap
+
+install-psx: install-static-psx
+
+install-static-cap: install-common-cap $(STACAPLIBNAME)
 	install -m 0644 $(STACAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STACAPLIBNAME)
-	install -m 0644 $(STAPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STAPSXLIBNAME)
 
-install-shared: $(MINLIBNAME) install-common
+install-shared-cap: install-common-cap $(MINLIBNAME)
 	install -m 0644 $(MINLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MINLIBNAME)
 	ln -sf $(MINLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MAJLIBNAME)
 	ln -sf $(MAJLIBNAME) $(FAKEROOT)$(LIBDIR)/$(LIBNAME)
 ifeq ($(FAKEROOT),)
 	-/sbin/ldconfig
 endif
+
+install-static-psx: install-common-psx $(STAPSXLIBNAME)
+	install -m 0644 $(STAPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STAPSXLIBNAME)
+
+install-common-cap: install-common libcap.pc
+	install -m 0644 include/sys/capability.h $(FAKEROOT)$(INCDIR)/sys
+	install -m 0644 libcap.pc $(FAKEROOT)$(PKGCONFIGDIR)/libcap.pc
+
+install-common-psx: install-common libpsx.pc
+	install -m 0644 include/sys/psx_syscall.h $(FAKEROOT)$(INCDIR)/sys
+	install -m 0644 libpsx.pc $(FAKEROOT)$(PKGCONFIGDIR)/libpsx.pc
+
+install-common:
+	mkdir -p -m 0755 $(FAKEROOT)$(INCDIR)/sys
+	mkdir -p -m 0755 $(FAKEROOT)$(PKGCONFIGDIR)
+	mkdir -p -m 0755 $(FAKEROOT)$(LIBDIR)
 
 clean:
 	$(LOCALCLEAN)
