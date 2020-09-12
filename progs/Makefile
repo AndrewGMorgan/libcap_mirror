@@ -10,16 +10,18 @@ BUILD=$(PROGS)
 
 ifeq ($(DYNAMIC),yes)
 LDPATH = LD_LIBRARY_PATH=../libcap
+DEPSBUILD = all
 else
 LDFLAGS += --static
+DEPSBUILD = libcap.a
 endif
 
-DEPS=../libcap/libcap.a ../libcap/libpsx.a
+DEPS=../libcap/libcap.a
 
 all: $(BUILD)
 
 $(DEPS):
-	make -C ../libcap all
+	make -C ../libcap $(DEPSBUILD)
 
 $(BUILD): %: %.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)

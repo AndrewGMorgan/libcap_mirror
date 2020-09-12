@@ -9,14 +9,16 @@ DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
 ifeq ($(DYNAMIC),yes)
 LDPATH = LD_LIBRARY_PATH=../libcap
+DEPSBUILD = all
 else
 LDFLAGS += --static
+DEPSBUILD = libcap.a libpsx.a
 endif
 
 all: psx_test libcap_psx_test libcap_launch_test
 
 $(DEPS):
-	make -C ../libcap all
+	make -C ../libcap $(DEPSBUILD)
 
 test: run_psx_test run_libcap_psx_test
 
