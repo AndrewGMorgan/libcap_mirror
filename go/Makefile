@@ -43,18 +43,18 @@ good-names.go: $(topdir)/libcap/cap_names.h src/$(IMPORTDIR)/cap  mknames.go
 
 $(PSXGOPACKAGE): src/$(IMPORTDIR)/psx ../psx/*.go $(DEPS)
 	mkdir -p pkg
-	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) install $(IMPORTDIR)/psx
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) install $(IMPORTDIR)/psx
 
 $(CAPGOPACKAGE): src/$(IMPORTDIR)/cap ../cap/*.go good-names.go $(PSXGOPACKAGE)
-	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) install $(IMPORTDIR)/cap
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) install $(IMPORTDIR)/cap
 
 # Compiles something with this package to compare it to libcap. This
 # tests more when run under sudotest (see ../progs/quicktest.sh for that).
 compare-cap: compare-cap.go $(CAPGOPACKAGE)
-	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
 
 web: ../goapps/web/web.go $(CAPGOPACKAGE)
-	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@ $(GOBUILDTAG) $<
+	GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@ $(GOBUILDTAG) $<
 ifeq ($(RAISE_GO_FILECAP),yes)
 	make -C ../progs setcap
 	sudo ../progs/setcap cap_setpcap,cap_net_bind_service=p web
@@ -62,17 +62,17 @@ ifeq ($(RAISE_GO_FILECAP),yes)
 endif
 
 ok: ok.go
-	CGO_ENABLED=0 GOPATH=$(GOPATH) $(GO) build $<
+	GO111MODULE=off CGO_ENABLED=0 GOPATH=$(GOPATH) $(GO) build $<
 
 try-launching: try-launching.go $(CAPGOPACKAGE) ok
-	CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build $(GOBUILDTAG) $<
+	GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build $(GOBUILDTAG) $<
 ifeq ($(CGO_REQUIRED),0)
-	CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
+	GO111MODULE=off CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
 endif
 
 test: all
-	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/psx
-	CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/psx
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 
 sudotest: test ../progs/tcapsh-static
