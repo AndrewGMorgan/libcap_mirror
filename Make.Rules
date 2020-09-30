@@ -54,15 +54,15 @@ GOMAJOR=0
 KERNEL_HEADERS := $(topdir)/libcap/include/uapi
 IPATH += -fPIC -I$(KERNEL_HEADERS) -I$(topdir)/libcap/include
 
-CC ?= $(CROSS_COMPILE)gcc
+CC := $(CROSS_COMPILE)gcc
 DEFINES := -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 COPTS ?= -O2
 CFLAGS ?= $(COPTS) $(DEFINES)
 BUILD_CC ?= $(CC)
 BUILD_COPTS ?= -O2
 BUILD_CFLAGS ?= $(BUILD_COPTS) $(DEFINES) $(IPATH)
-AR ?= $(CROSS_COMPILE)ar
-RANLIB ?= $(CROSS_COMPILE)ranlib
+AR := $(CROSS_COMPILE)ar
+RANLIB := $(CROSS_COMPILE)ranlib
 DEBUG = -g #-DDEBUG
 WARNINGS=-Wall -Wwrite-strings \
         -Wpointer-arith -Wcast-qual -Wcast-align \
