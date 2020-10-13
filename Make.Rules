@@ -71,7 +71,8 @@ WARNINGS=-Wall -Wwrite-strings \
 LD=$(CC) -Wl,-x -shared
 LDFLAGS ?= #-g
 LIBCAPLIB := -L$(topdir)/libcap -lcap
-LIBPSXLIB := -L$(topdir)/libcap -lpsx -lpthread -Wl,-wrap,pthread_create
+PSXLINKFLAGS :=  -lpthread -Wl,-wrap,pthread_create
+LIBPSXLIB := -L$(topdir)/libcap -lpsx $(PSXLINKFLAGS)
 
 BUILD_GPERF := $(shell which gperf >/dev/null 2>/dev/null && echo yes)
 

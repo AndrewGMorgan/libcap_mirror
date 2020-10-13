@@ -6,23 +6,27 @@ include ../Make.Rules
 #
 # Library version
 #
-LIBNAME=$(LIBTITLE).so
+CAPLIBNAME=$(LIBTITLE).so
 STACAPLIBNAME=$(LIBTITLE).a
 #
+PSXLIBNAME=libpsx.so
 STAPSXLIBNAME=libpsx.a
 
 CAPFILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file
 PSXFILES=../psx/psx
 
 INCLS=libcap.h cap_names.h $(INCS)
-CAPOBJS=$(addsuffix .o, $(CAPFILES))
-PSXOBJS=$(addsuffix .o, $(PSXFILES))
-
-MAJLIBNAME=$(LIBNAME).$(VERSION)
-MINLIBNAME=$(MAJLIBNAME).$(MINOR)
 GPERF_OUTPUT = _caps_output.gperf
 
-all: $(MINLIBNAME) $(STACAPLIBNAME) pcs $(STAPSXLIBNAME)
+CAPOBJS=$(addsuffix .o, $(CAPFILES))
+MAJCAPLIBNAME=$(CAPLIBNAME).$(VERSION)
+MINCAPLIBNAME=$(MAJCAPLIBNAME).$(MINOR)
+
+PSXOBJS=$(addsuffix .o, $(PSXFILES))
+MAJPSXLIBNAME=$(PSXLIBNAME).$(VERSION)
+MINPSXLIBNAME=$(MAJPSXLIBNAME).$(MINOR)
+
+all: pcs $(MINCAPLIBNAME) $(STACAPLIBNAME) $(MINPSXLIBNAME) $(STAPSXLIBNAME)
 
 pcs: libcap.pc libpsx.pc
 
@@ -76,10 +80,15 @@ $(STAPSXLIBNAME): $(PSXOBJS)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
-$(MINLIBNAME): $(CAPOBJS)
-	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJLIBNAME) -o $@ $^
-	ln -sf $(MINLIBNAME) $(MAJLIBNAME)
-	ln -sf $(MAJLIBNAME) $(LIBNAME)
+$(MINCAPLIBNAME): $(CAPOBJS)
+	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $@ $^
+	ln -sf $(MINCAPLIBNAME) $(MAJCAPLIBNAME)
+	ln -sf $(MAJCAPLIBNAME) $(CAPLIBNAME)
+
+$(MINPSXLIBNAME): $(PSXOBJS)
+	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -o $@ $^ $(PSXLINKFLAGS)
+	ln -sf $(MINPSXLIBNAME) $(MAJPSXLIBNAME)
+	ln -sf $(MAJPSXLIBNAME) $(PSXLIBNAME)
 
 %.o: %.c $(INCLS)
 	$(CC) $(CFLAGS) $(IPATH) -c $< -o $@
@@ -97,25 +106,33 @@ install: install-static install-shared
 
 install-static: install-static-cap install-static-psx
 
-install-shared: install-shared-cap
+install-shared: install-shared-cap install-shared-psx
 
 install-cap: install-static-cap install-shared-cap
 
-install-psx: install-static-psx
+install-psx: install-static-psx install-shared-psx
 
 install-static-cap: install-common-cap $(STACAPLIBNAME)
 	install -m 0644 $(STACAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STACAPLIBNAME)
 
-install-shared-cap: install-common-cap $(MINLIBNAME)
-	install -m 0644 $(MINLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MINLIBNAME)
-	ln -sf $(MINLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MAJLIBNAME)
-	ln -sf $(MAJLIBNAME) $(FAKEROOT)$(LIBDIR)/$(LIBNAME)
+install-shared-cap: install-common-cap $(MINCAPLIBNAME)
+	install -m 0644 $(MINCAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MINCAPLIBNAME)
+	ln -sf $(MINCAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MAJCAPLIBNAME)
+	ln -sf $(MAJCAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(CAPLIBNAME)
 ifeq ($(FAKEROOT),)
 	-/sbin/ldconfig
 endif
 
 install-static-psx: install-common-psx $(STAPSXLIBNAME)
 	install -m 0644 $(STAPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STAPSXLIBNAME)
+
+install-shared-psx: install-common-psx $(MINPSXLIBNAME)
+	install -m 0644 $(MINPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MINPSXLIBNAME)
+	ln -sf $(MINPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(MAJPSXLIBNAME)
+	ln -sf $(MAJPSXLIBNAME) $(FAKEROOT)$(LIBDIR)/$(PSXLIBNAME)
+ifeq ($(FAKEROOT),)
+	-/sbin/ldconfig
+endif
 
 install-common-cap: install-common libcap.pc
 	install -m 0644 include/sys/capability.h $(FAKEROOT)$(INCDIR)/sys
@@ -132,7 +149,7 @@ install-common:
 
 clean:
 	$(LOCALCLEAN)
-	rm -f $(CAPOBJS) $(LIBNAME)* $(STACAPLIBNAME) libcap.pc libpsx.pc
-	rm -f $(PSXOBJS) $(STAPSXLIBNAME)
+	rm -f $(CAPOBJS) $(CAPLIBNAME)* $(STACAPLIBNAME) libcap.pc
+	rm -f $(PSXOBJS) $(PSXLIBNAME)* $(STAPSXLIBNAME) libpsx.pc
 	rm -f cap_names.h cap_names.list.h _makenames $(GPERF_OUTPUT) cap_test
 	cd include/sys && $(LOCALCLEAN)
