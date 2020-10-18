@@ -64,6 +64,7 @@ endif
 
 distcheck:
 	./distcheck.sh
+	make DYNAMIC=yes clean all test sudotest
 	make CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
 	make clean all test sudotest
 	make distclean

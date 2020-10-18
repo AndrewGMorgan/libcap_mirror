@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/capability.h>
 #include <sys/types.h>
@@ -34,20 +35,20 @@ struct test_case_s {
 int main(int argc, char **argv) {
     static struct test_case_s vs[] = {
 	{
-	    .args = { "../progs/capsh", "--", "-c", "echo hello" },
+	    .args = { "../progs/tcapsh-static", "--", "-c", "echo hello" },
 	    .result = 0
 	},
 	{
-	    .args = { "../progs/capsh", "--is-uid=123" },
+	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
 	    .result = 256
 	},
 	{
-	    .args = { "../progs/capsh", "--is-uid=123" },
+	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
 	    .result = 0,
 	    .uid = 123,
 	},
 	{
-	    .args = { "../progs/capsh", "--is-gid=123" },
+	    .args = { "../progs/tcapsh-static", "--is-gid=123" },
 	    .result = 0,
 	    .gid = 123,
 	    .ngroups = 1,
@@ -55,13 +56,13 @@ int main(int argc, char **argv) {
 	    .iab = "",
 	},
 	{
-	    .args = { "../progs/capsh", "--dropped=cap_chown",
+	    .args = { "../progs/tcapsh-static", "--dropped=cap_chown",
 		      "--has-i=cap_chown" },
 	    .result = 0,
 	    .iab = "!%cap_chown"
 	},
 	{
-	    .args = { "../progs/capsh", "--dropped=cap_chown",
+	    .args = { "../progs/tcapsh-static", "--dropped=cap_chown",
 		      "--has-i=cap_chown", "--is-uid=234",
 		      "--has-a=cap_chown", "--has-p=cap_chown" },
 	    .uid = 234,
@@ -69,7 +70,7 @@ int main(int argc, char **argv) {
 	    .iab = "!^cap_chown"
 	},
 	{
-	    .args = { "../progs/capsh", "--inmode=NOPRIV" },
+	    .args = { "../progs/tcapsh-static", "--inmode=NOPRIV" },
 	    .result = 0,
 	    .mode = CAP_MODE_NOPRIV
 	},
@@ -166,5 +167,6 @@ int main(int argc, char **argv) {
 	printf("cap_launch_test: PASSED\n");
     } else {
 	printf("cap_launch_test: FAILED\n");
+	exit(1);
     }
 }

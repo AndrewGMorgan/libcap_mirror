@@ -8,19 +8,21 @@ include ../Make.Rules
 #
 
 ifeq ($(DYNAMIC),yes)
+LDPATH = LD_LIBRARY_PATH=../libcap
 DEPSBUILD = all
-DEPS=../libcap/libcap.so ../libcap/libpsx.so
+DEPS=../libcap/libcap.so ../libcap/libpsx.so ../progs/tcapsh-static
 LINKEXTRA=-Wl,-rpath,../libcap
 else
 LDFLAGS += --static
 DEPSBUILD = libcap.a libpsx.a
-DEPS=../libcap/libcap.a ../libcap/libpsx.a
+DEPS=../libcap/libcap.a ../libcap/libpsx.a ../progs/tcapsh-static
 endif
 
 all: psx_test libcap_psx_test libcap_launch_test
 
 $(DEPS):
 	make -C ../libcap $(DEPSBUILD)
+	make -C ../progs tcapsh-static
 
 test: run_libcap_psx_test
 
