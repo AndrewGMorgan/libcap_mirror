@@ -53,9 +53,9 @@ libcap_launch_test: libcap_launch_test.c $(DEPS)
 # that link against libcap.
 run_exploit_test: exploit noexploit
 	@echo exploit should succeed
-	sudo ./exploit ; if [[ $$? -ne 0 ]]; then exit 0; else exit 1 ; fi
+	sudo ./exploit ; if [ $$? -ne 0 ]; then exit 0; else exit 1 ; fi
 	@echo exploit should fail
-	sudo ./noexploit ; if [[ $$? -eq 0 ]]; then exit 0; else exit 1 ; fi
+	sudo ./noexploit ; if [ $$? -eq 0 ]; then exit 0; else exit 1 ; fi
 
 exploit.o: exploit.c
 	$(CC) $(CFLAGS) $(IPATH) -c $<
