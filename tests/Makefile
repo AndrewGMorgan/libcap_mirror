@@ -26,7 +26,7 @@ $(DEPS):
 
 test: run_libcap_psx_test
 
-sudotest: test run_psx_test run_libcap_launch_test run_libcap_psx_test
+sudotest: test run_psx_test run_libcap_launch_test run_libcap_psx_test run_exploit_test
 
 install: all
 
@@ -49,6 +49,25 @@ run_libcap_launch_test: libcap_launch_test libcap_psx_launch_test noop
 libcap_launch_test: libcap_launch_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LDFLAGS)
 
+# This test demonstrates that libpsx is needed to secure multithreaded programs
+# that link against libcap.
+run_exploit_test: exploit noexploit
+	@echo exploit should succeed
+	sudo ./exploit ; if [[ $$? -ne 0 ]]; then exit 0; else exit 1 ; fi
+	@echo exploit should fail
+	sudo ./noexploit ; if [[ $$? -eq 0 ]]; then exit 0; else exit 1 ; fi
+
+exploit.o: exploit.c
+	$(CC) $(CFLAGS) $(IPATH) -c $<
+
+exploit: exploit.o $(DEPS)
+	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) -lpthread $(LDFLAGS)
+
+# Note, for some reason, the order of libraries is important to avoid the exploit working
+# for dynamic linking.
+noexploit: exploit.o $(DEPS)
+	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB) $(LDFLAGS)
+
 # this varies only slightly from the above insofar as it currently
 # only links in the pthreads fork support. TODO() we need to change
 # the source to do something interesting with pthreads.
@@ -62,3 +81,4 @@ noop: noop.c
 clean:
 	rm -f psx_test libcap_psx_test libcap_launch_test *~
 	rm -f libcap_launch_test libcap_psx_launch_test core noop
+	rm -f exploit noexploit exploit.o
