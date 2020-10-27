@@ -44,6 +44,13 @@ pass_capsh () {
 
 pass_capsh --print
 
+# Validate that PATH expansion works
+PATH=$(/bin/pwd)/junk:$(/bin/pwd) capsh == == == --modes
+if [ $? -ne 0 ]; then
+    echo "Failed to execute capsh consecutively for capability manipulation"
+    exit 1
+fi
+
 # Make a local non-setuid-0 version of capsh and call it privileged
 cp ./tcapsh-static ./privileged && /bin/chmod -s ./privileged
 if [ $? -ne 0 ]; then

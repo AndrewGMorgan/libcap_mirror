@@ -1,4 +1,4 @@
-.TH CAPSH 1 "2020-01-07" "libcap 2" "User Commands"
+.TH CAPSH 1 "2020-10-27" "libcap 2" "User Commands"
 .SH NAME
 capsh \- capability shell wrapper
 .SH SYNOPSIS
@@ -33,7 +33,15 @@ Execute
 .B capsh
 again with the remaining arguments. Useful for testing
 .BR exec ()
-behavior.
+behavior. Note, PATH is searched when the running
+.B capsh
+was found via the shell's PATH searching. If the
+.B exec
+occurs after a
+.BI \-\-chroot= /some/path
+argument the PATH located binary may not be resolve to the same binary
+as that running initially. This behavior is an intented feature as it
+can complete the chroot transition.
 .TP
 .BI \-\-caps= cap-set
 Set the prevailing process capabilities to those specified by
@@ -179,7 +187,7 @@ The argument is expressed as a numeric bitmask,
 in any of the formats permitted by
 .BR strtoul (3).
 .TP
-.BI \-\-chroot= path
+.BI \-\-chroot= /some/path
 Execute the
 .BR chroot (2)
 system call with the new root-directory (/) equal to

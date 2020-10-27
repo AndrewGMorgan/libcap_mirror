@@ -324,6 +324,49 @@ static void arg_change_amb(const char *arg_names, cap_flag_value_t set)
     free(names);
 }
 
+/*
+ * find_self locates and returns the full pathname of the named binary
+ * that is running. Importantly, it looks in the context of the
+ * prevailing CHROOT. Further, it does not fail over to invoking a
+ * shell if the target binary looks like something other than a
+ * executable. If an executable is not found, the function terminates
+ * the program with an error.
+ */
+static char *find_self(const char *arg0)
+{
+    int i;
+    char *parts, *dir, *scratch;
+    const char *path;
+
+    for (i = strlen(arg0)-1; i >= 0 && arg0[i] != '/'; i--);
+    if (i >= 0) {
+        return strdup(arg0);
+    }
+
+    path = getenv("PATH");
+    if (path == NULL) {
+        fprintf(stderr, "no PATH environment variable found for re-execing\n");
+	exit(1);
+    }
+
+    parts = strdup(path);
+    scratch = malloc(1+strlen(path));
+    if (parts == NULL || scratch == NULL) {
+        fprintf(stderr, "insufficient memory for path building\n");
+	exit(1);
+    }
+
+    for (i=0; (dir = strtok(parts, ":")); parts = NULL) {
+        sprintf(scratch, "%s/%s", dir, arg0);
+	if (access(scratch, X_OK) == 0) {
+            return scratch;
+	}
+    }
+
+    fprintf(stderr, "unable to find executable '%s' in PATH\n", arg0);
+    exit(1);
+}
+
 int main(int argc, char *argv[], char *envp[])
 {
     pid_t child;
@@ -782,10 +825,14 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strcmp("--print", argv[i])) {
 	    arg_print();
 	} else if ((!strcmp("--", argv[i])) || (!strcmp("==", argv[i]))) {
-	    argv[i] = strdup(argv[i][0] == '-' ? shell : argv[0]);
+	    if (argv[i][0] == '=') {
+	        argv[i] = find_self(argv[0]);
+	    } else {
+	        argv[i] = strdup(shell);
+	    }
 	    argv[argc] = NULL;
 	    execve(argv[i], argv+i, envp);
-	    fprintf(stderr, "execve '%s' failed!\n", shell);
+	    fprintf(stderr, "execve '%s' failed!\n", argv[i]);
 	    exit(1);
 	} else if (!strncmp("--shell=", argv[i], 8)) {
 	    shell = argv[i]+8;
