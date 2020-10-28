@@ -26,7 +26,11 @@ PSXOBJS=$(addsuffix .o, $(PSXFILES))
 MAJPSXLIBNAME=$(PSXLIBNAME).$(VERSION)
 MINPSXLIBNAME=$(MAJPSXLIBNAME).$(MINOR)
 
-all: pcs $(MINCAPLIBNAME) $(STACAPLIBNAME) $(MINPSXLIBNAME) $(STAPSXLIBNAME)
+all: pcs
+	make $(CAPLIBNAME) $(STACAPLIBNAME)
+ifeq ($(PTHREADS),yes)
+	make $(PSXLIBNAME) $(STAPSXLIBNAME)
+endif
 
 pcs: libcap.pc libpsx.pc
 
@@ -80,13 +84,13 @@ $(STAPSXLIBNAME): $(PSXOBJS)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
-$(MINCAPLIBNAME): $(CAPOBJS)
-	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $@ $^
+$(CAPLIBNAME) $(MAJCAPLIBNAME) $(MINCAPLIBNAME): $(CAPOBJS)
+	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $(MINCAPLIBNAME) $^
 	ln -sf $(MINCAPLIBNAME) $(MAJCAPLIBNAME)
 	ln -sf $(MAJCAPLIBNAME) $(CAPLIBNAME)
 
-$(MINPSXLIBNAME): $(PSXOBJS)
-	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -o $@ $^ $(PSXLINKFLAGS)
+$(PSXLIBNAME) $(MAJPSXLIBNAME) $(MINPSXLIBNAME): $(PSXOBJS)
+	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -o $(MINPSXLIBNAME) $^ $(PSXLINKFLAGS)
 	ln -sf $(MINPSXLIBNAME) $(MAJPSXLIBNAME)
 	ln -sf $(MAJPSXLIBNAME) $(PSXLIBNAME)
 
@@ -104,9 +108,15 @@ test: cap_test
 
 install: install-static install-shared
 
-install-static: install-static-cap install-static-psx
+install-static: install-static-cap
+ifeq ($(PTHREADS),yes)
+	make install-static-psx
+endif
 
-install-shared: install-shared-cap install-shared-psx
+install-shared: install-shared-cap
+ifeq ($(PTHREADS),yes)
+	make install-shared-psx
+endif
 
 install-cap: install-static-cap install-shared-cap
 

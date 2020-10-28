@@ -84,6 +84,18 @@ PAM_CAP ?= $(shell if [ -f /usr/include/security/pam_modules.h ]; then echo yes 
 INDENT := $(shell if [ -n "$$(which indent 2>/dev/null)" ]; then echo "| indent -kr" ; fi)
 DYNAMIC := $(shell if [ ! -d "$(topdir)/.git" ]; then echo yes; fi)
 
+# If your system does not support pthreads, override this as "no".
+#
+#    make PTHREADS=no ...
+#
+# This implies no Go support and no C/C++ libpsx build. Why might you
+# need libpsx for non-Go use? Tl;dr for POSIX semantics security:
+#
+#    https://sites.google.com/site/fullycapable/who-ordered-libpsx
+#
+PTHREADS ?= yes
+
+ifeq ($(PTHREADS),yes)
 GO := go
 GOLANG := $(shell if [ -n "$(shell $(GO) version 2>/dev/null)" ]; then echo yes ; else echo no ; fi)
 ifeq ($(GOLANG),yes)
@@ -97,6 +109,7 @@ CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh)
 ifeq ($(CGO_REQUIRED),0)
 # Hopefully this will not be needed at some point.
 GOBUILDTAG=-tags allthreadssyscall
+endif
 endif
 endif
 

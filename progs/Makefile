@@ -8,20 +8,21 @@ PROGS=getpcaps capsh getcap setcap
 
 BUILD=$(PROGS)
 
-ifeq ($(DYNAMIC),yes)
-LDPATH = LD_LIBRARY_PATH=../libcap
-DEPSBUILD = all
-else
-LDFLAGS += --static
-DEPSBUILD = libcap.a
-endif
-
-DEPS=../libcap/libcap.a
-
 all: $(BUILD)
 
-$(DEPS):
-	make -C ../libcap $(DEPSBUILD)
+ifeq ($(DYNAMIC),yes)
+LDPATH = LD_LIBRARY_PATH=../libcap
+DEPS = ../libcap/libcap.so
+else
+LDFLAGS += --static
+DEPS = ../libcap/libcap.a
+endif
+
+../libcap/libcap.a:
+	make -C ../libcap libcap.a
+
+../libcap/libcap.so:
+	make -C ../libcap libcap.so
 
 $(BUILD): %: %.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
