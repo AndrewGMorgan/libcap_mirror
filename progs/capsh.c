@@ -350,7 +350,7 @@ static char *find_self(const char *arg0)
     }
 
     parts = strdup(path);
-    scratch = malloc(1+strlen(path));
+    scratch = malloc(2+strlen(path)+strlen(arg0));
     if (parts == NULL || scratch == NULL) {
         fprintf(stderr, "insufficient memory for path building\n");
 	exit(1);
