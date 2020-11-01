@@ -26,13 +26,21 @@ PSXOBJS=$(addsuffix .o, $(PSXFILES))
 MAJPSXLIBNAME=$(PSXLIBNAME).$(VERSION)
 MINPSXLIBNAME=$(MAJPSXLIBNAME).$(MINOR)
 
-all: pcs
-	make $(CAPLIBNAME) $(STACAPLIBNAME)
+all: pcs $(STACAPLIBNAME)
+ifeq ($(SHARED),yes)
+	make $(CAPLIBNAME)
+endif
 ifeq ($(PTHREADS),yes)
-	make $(PSXLIBNAME) $(STAPSXLIBNAME)
+	make $(STAPSXLIBNAME)
+ifeq ($(SHARED),yes)
+	make $(PSXLIBNAME)
+endif
 endif
 
-pcs: libcap.pc libpsx.pc
+pcs: libcap.pc
+ifeq ($(PTHREADS),yes)
+	make libpsx.pc
+endif
 
 ifeq ($(BUILD_GPERF),yes)
 USE_GPERF_OUTPUT = $(GPERF_OUTPUT)
@@ -84,6 +92,7 @@ $(STAPSXLIBNAME): $(PSXOBJS)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
+ifeq ($(SHARED),yes)
 $(CAPLIBNAME) $(MAJCAPLIBNAME) $(MINCAPLIBNAME): $(CAPOBJS)
 	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $(MINCAPLIBNAME) $^
 	ln -sf $(MINCAPLIBNAME) $(MAJCAPLIBNAME)
@@ -93,6 +102,7 @@ $(PSXLIBNAME) $(MAJPSXLIBNAME) $(MINPSXLIBNAME): $(PSXOBJS)
 	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -o $(MINPSXLIBNAME) $^ $(PSXLINKFLAGS)
 	ln -sf $(MINPSXLIBNAME) $(MAJPSXLIBNAME)
 	ln -sf $(MAJPSXLIBNAME) $(PSXLIBNAME)
+endif
 
 %.o: %.c $(INCLS)
 	$(CC) $(CFLAGS) $(IPATH) -c $< -o $@
@@ -106,7 +116,10 @@ cap_test: cap_test.c libcap.h
 test: cap_test
 	./cap_test
 
-install: install-static install-shared
+install: install-static
+ifeq ($(SHARED),yes)
+	make install-shared
+endif
 
 install-static: install-static-cap
 ifeq ($(PTHREADS),yes)
@@ -118,9 +131,15 @@ ifeq ($(PTHREADS),yes)
 	make install-shared-psx
 endif
 
-install-cap: install-static-cap install-shared-cap
+install-cap: install-static-cap
+ifeq ($(SHARED),yes)
+	make install-shared-cap
+endif
 
-install-psx: install-static-psx install-shared-psx
+install-psx: install-static-psx
+ifeq ($(SHARED),yes)
+	make install-shared-psx
+endif
 
 install-static-cap: install-common-cap $(STACAPLIBNAME)
 	install -m 0644 $(STACAPLIBNAME) $(FAKEROOT)$(LIBDIR)/$(STACAPLIBNAME)
