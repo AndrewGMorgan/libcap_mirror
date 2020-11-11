@@ -17,13 +17,13 @@ install: all
 
 ifeq ($(DYNAMIC),yes)
 LINKEXTRA=-Wl,-rpath,../libcap
-DEPS=../libcap/libcap.so ../progs/tcapsh-static
+DEPS=../libcap/libcap.so
 ifeq ($(PTHREADS),yes)
 DEPS += ../libcap/libpsx.so
 endif
 else
 LDFLAGS += --static
-DEPS=../libcap/libcap.a ../progs/tcapsh-static
+DEPS=../libcap/libcap.a
 ifeq ($(PTHREADS),yes)
 DEPS +=  ../libcap/libpsx.a
 endif
@@ -71,10 +71,10 @@ libcap_psx_test: libcap_psx_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB) $(LDFLAGS)
 
 # privileged
-run_libcap_launch_test: libcap_launch_test noop
+run_libcap_launch_test: libcap_launch_test noop ../progs/tcapsh-static
 	sudo ./libcap_launch_test
 
-run_libcap_psx_launch_test: libcap_psx_launch_test
+run_libcap_psx_launch_test: libcap_psx_launch_test ../progs/tcapsh-static
 	sudo ./libcap_psx_launch_test
 
 libcap_launch_test: libcap_launch_test.c $(DEPS)
