@@ -336,11 +336,45 @@ typedef struct {
  *    https://sourceware.org/bugzilla/show_bug.cgi?id=12889
  */
 static void _psx_exiting(void *node) {
+    /*
+     * Until we are in the _PSX_EXITING state, we must not block the
+     * psx_sig interrupt for this dying thread. That is, until this
+     * exiting thread can set ref->gone to 1, this dying thread is
+     * still participating in the psx syscall distribution.
+     *
+     * See https://github.com/golang/go/issues/42494 for a situation
+     * where this code is called with psx_tracker.psx_sig blocked.
+     */
+    sigset_t sigbit, orig_sigbits;
+    sigemptyset(&sigbit);
+    pthread_sigmask(SIG_UNBLOCK, &sigbit, &orig_sigbits);
+    sigaddset(&sigbit, psx_tracker.psx_sig);
+    pthread_sigmask(SIG_UNBLOCK, &sigbit, NULL);
+
+    /*
+     * With psx_tracker.psx_sig unblocked we can wait until this
+     * thread can enter the _PSX_EXITING state.
+     */
     psx_new_state(_PSX_IDLE, _PSX_EXITING);
+
+    /*
+     * We now indicate that this thread is no longer participating in
+     * the psx mechanism.
+     */
     registered_thread_t *ref = node;
     pthread_mutex_lock(&ref->mu);
     ref->gone = 1;
     pthread_mutex_unlock(&ref->mu);
+
+    /*
+     * At this point, we can restore the calling sigmask to whatever
+     * the caller thought was appropriate for a dying thread to have.
+     */
+    pthread_sigmask(SIG_SETMASK, &orig_sigbits, NULL);
+
+    /*
+     * Allow the rest of the psx system carry on as per normal.
+     */
     psx_new_state(_PSX_EXITING, _PSX_IDLE);
 }
 
