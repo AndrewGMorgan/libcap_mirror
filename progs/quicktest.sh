@@ -255,6 +255,8 @@ if [ -f ../go/compare-cap ]; then
     fi
     echo "PASSED"
 else
-    echo "no Go support compiled"
+    echo "no Go support compiled, so skipping Go tests"
 fi
 rm -f compare-cap
+
+echo "ALL TESTS PASSED!"
