@@ -24,20 +24,56 @@ type nsDetail struct {
 }
 
 var (
-	cmd = flag.String("cmd", "/bin/bash", "simple space separated command")
-
 	uid  = flag.Int("uid", -1, "uid of the hosting user")
 	gid  = flag.Int("gid", -1, "gid of the hosting user")
 	iab  = flag.String("iab", "", "IAB string for inheritable capabilities")
 	mode = flag.String("mode", "", "force a libcap mode (capsh --modes for list)")
 
-	ns      = flag.Bool("ns", false, "enable namespace features")
-	uidBase = flag.Int("uid-base", 65536, "base for mapped NS UIDs 1...")
-	uids    = flag.Int("uids", 100, "number of UIDs to map (req. CAP_SETUID)")
-	gidBase = flag.Int("gid-base", 65536, "base for mapped NS GIDs 1...")
-	gids    = flag.Int("gids", 100, "number of GIDs to map (req. CAP_SETGID)")
-	debug   = flag.Bool("verbose", false, "more verbose output")
+	ns   = flag.Bool("ns", false, "enable user namespace features")
+	uids = flag.String("uids", "", "comma separated UID ranges to map contiguously (req. CAP_SETUID)")
+	gids = flag.String("gids", "", "comma separated GID ranges to map contiguously (req. CAP_SETGID)")
+
+	shell = flag.String("shell", "/bin/bash", "shell to be launched")
+	debug = flag.Bool("verbose", false, "more verbose output")
 )
+
+// r holds a base and count for a contiguous range.
+type r struct {
+	base, count int
+}
+
+// ranges unpacks numerical ranges.
+func ranges(s string) []r {
+	if s == "" {
+		return nil
+	}
+	var rs []r
+	for _, n := range strings.Split(s, ",") {
+		var base, upper int
+		if _, err := fmt.Sscanf(n, "%d-%d", &base, &upper); err == nil {
+			if upper < base {
+				log.Fatalf("invalid range: [%d-%d]", base, upper)
+			}
+			rs = append(rs, r{
+				base:  base,
+				count: 1 + upper - base,
+			})
+		} else if _, err := fmt.Sscanf(n, "%d", &base); err == nil {
+			rs = append(rs, r{
+				base:  base,
+				count: 1,
+			})
+		} else {
+			log.Fatalf("unable to parse range [%s]", n)
+		}
+	}
+	return rs
+}
+
+// restart launches the program again with the remaining arguments.
+func restart() {
+	log.Fatalf("failed to restart: flags: %q %q", os.Args[0], flag.Args()[1:])
+}
 
 // errUnableToSetup is how nsSetup fails.
 var errUnableToSetup = errors.New("data was not in supported format")
@@ -65,13 +101,17 @@ func nsSetup(pa *syscall.ProcAttr, data interface{}) error {
 		})
 	if able, err := have.GetFlag(cap.Effective, cap.SETUID); err != nil {
 		log.Fatalf("cap package SETUID error: %v", err)
-	} else if able && *uids > 1 {
-		sys.UidMappings = append(pa.Sys.UidMappings,
-			syscall.SysProcIDMap{
-				ContainerID: 1,
-				HostID:      *uidBase,
-				Size:        *uids - 1,
-			})
+	} else if able {
+		base := 1
+		for _, next := range ranges(*uids) {
+			sys.UidMappings = append(pa.Sys.UidMappings,
+				syscall.SysProcIDMap{
+					ContainerID: base,
+					HostID:      next.base,
+					Size:        next.count,
+				})
+			base += next.count
+		}
 	}
 
 	sys.GidMappings = append(pa.Sys.GidMappings,
@@ -82,13 +122,17 @@ func nsSetup(pa *syscall.ProcAttr, data interface{}) error {
 		})
 	if able, err := have.GetFlag(cap.Effective, cap.SETGID); err != nil {
 		log.Fatalf("cap package SETGID error: %v", err)
-	} else if able && *gids > 1 {
-		sys.GidMappings = append(pa.Sys.GidMappings,
-			syscall.SysProcIDMap{
-				ContainerID: 1,
-				HostID:      *gidBase,
-				Size:        *gids - 1,
-			})
+	} else if able {
+		base := 1
+		for _, next := range ranges(*gids) {
+			sys.GidMappings = append(pa.Sys.GidMappings,
+				syscall.SysProcIDMap{
+					ContainerID: base,
+					HostID:      next.base,
+					Size:        next.count,
+				})
+			base += next.count
+		}
 	}
 	return nil
 }
@@ -101,12 +145,22 @@ func main() {
 		gid: syscall.Getgid(),
 	}
 
-	args := strings.Split(*cmd, " ")
-	if len(args) == 0 {
-		log.Fatal("--cmd cannot be empty")
+	unparsed := flag.Args()
+
+	arg0 := *shell
+	skip := 0
+	var w *cap.Launcher
+	if len(unparsed) > 0 {
+		switch unparsed[0] {
+		case "==":
+			arg0 = os.Args[0]
+			skip++
+		}
 	}
-	w := cap.NewLauncher(args[0], args, nil)
+
+	w = cap.NewLauncher(arg0, append([]string{arg0}, unparsed[skip:]...), nil)
 	if *ns {
+		// Include the namespace setup callback with the launcher.
 		w.Callback(nsSetup)
 	}
 
@@ -154,8 +208,12 @@ func main() {
 		log.Fatalf("privilege assertion failed: %v", err)
 	}
 
-	if *ns && *debug {
-		fmt.Println("launching:", detail.uid, "-> root ...")
+	if *debug {
+		if *ns {
+			fmt.Println("launching:", detail.uid, "-> root ...")
+		} else {
+			fmt.Println("launching without namespace")
+		}
 	}
 
 	pid, err := w.Launch(detail)
