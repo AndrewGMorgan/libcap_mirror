@@ -1,1 +1,1 @@
-../../../psx/include/sys/psx_syscall.h
+../../../psx/psx_syscall.h

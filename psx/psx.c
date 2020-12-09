@@ -25,8 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/psx_syscall.h>
 #include <sys/syscall.h>
+
+#include "psx_syscall.h"
 
 /*
  * psx_load_syscalls() is weakly defined so we can have it overridden
@@ -484,16 +485,6 @@ int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     pthread_sigmask(SIG_SETMASK, &orig_sigbits, NULL);
 
     return ret;
-}
-
-/*
- * psx_pthread_create is a wrapper for pthread_create() that registers
- * the newly created thread. If your threads are created already, they
- * can be individually registered with psx_register().
- */
-int psx_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
-		       void *(*start_routine) (void *), void *arg) {
-    return __wrap_pthread_create(thread, attr, start_routine, arg);
 }
 
 /*

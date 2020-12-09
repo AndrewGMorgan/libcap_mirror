@@ -55,11 +55,10 @@ import (
 	"syscall"
 )
 
-// #cgo CFLAGS: -I${SRCDIR}/include
 // #cgo LDFLAGS: -lpthread -Wl,-wrap,pthread_create
 //
 // #include <errno.h>
-// #include <sys/psx_syscall.h>
+// #include "psx_syscall.h"
 //
 // long __errno_too(long set_errno) {
 //     long v = errno;

@@ -104,9 +104,8 @@ endif
 
 install: all
 	rm -rf $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
-	mkdir -p $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx/include/sys
-	for x in src/$(IMPORTDIR)/psx/* ; do if [ -d $$x ]; then continue; fi; install -m 0644 $$x $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx; done
-	install -m 0644 src/$(IMPORTDIR)/psx/include/sys/psx_syscall.h $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx/include/sys/psx_syscall.h
+	mkdir -p $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
+	install -m 0644 src/$(IMPORTDIR)/psx/* $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
 	mkdir -p $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap
 	rm -rf $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap/*
 	install -m 0644 src/$(IMPORTDIR)/cap/* $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap
