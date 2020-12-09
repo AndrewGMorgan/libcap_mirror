@@ -2,6 +2,7 @@ good-names.go
 compare-cap
 try-launching
 try-launching-cgo
+psx-signals
 mknames
 web
 ok

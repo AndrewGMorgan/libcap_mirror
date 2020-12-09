@@ -89,6 +89,7 @@ static struct psx_tracker_s {
     } cmd;
 
     struct sigaction sig_action;
+    struct sigaction chained_action;
     registered_thread_t *root;
 } psx_tracker;
 
@@ -123,6 +124,9 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
     /* bail early if this isn't something we recognize */
     if (signum != psx_tracker.psx_sig || !psx_tracker.cmd.active ||
 	info == NULL || info->si_code != SI_TKILL || info->si_pid != getpid()) {
+	if (psx_tracker.chained_action.sa_sigaction != 0) {
+	    psx_tracker.chained_action.sa_sigaction(signum, info, ignore);
+	}
 	return;
     }
 
@@ -174,6 +178,34 @@ extern int __real_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 				 void *(*start_routine) (void *), void *arg);
 
 /*
+ * psx_confirm_sigaction reconfirms that the psx handler is the first
+ * handler to respond to the psx signal. It assumes that
+ * psx_tracker.psx_sig has been set.
+ */
+static void psx_confirm_sigaction(void) {
+    sigset_t mask, orig;
+    struct sigaction existing_sa;
+
+    /*
+     * Block interrupts while potentially rewriting the handler.
+     */
+    sigemptyset(&mask);
+    sigaddset(&mask, psx_tracker.psx_sig);
+    sigprocmask(SIG_BLOCK, &mask, &orig);
+
+    sigaction(psx_tracker.psx_sig, NULL, &existing_sa);
+    if (existing_sa.sa_sigaction != psx_posix_syscall_actor) {
+	memcpy(&psx_tracker.chained_action, &existing_sa, sizeof(struct sigaction));
+	psx_tracker.sig_action.sa_sigaction = psx_posix_syscall_actor;
+	sigemptyset(&psx_tracker.sig_action.sa_mask);
+	psx_tracker.sig_action.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESTART;
+	sigaction(psx_tracker.psx_sig, &psx_tracker.sig_action, NULL);
+    }
+
+    sigprocmask(SIG_SETMASK, &orig, NULL);
+}
+
+/*
  * psx_syscall_start initializes the subsystem including initializing
  * the mutex.
  */
@@ -184,15 +216,15 @@ static void psx_syscall_start(void) {
     pthread_atfork(_psx_prepare_fork, _psx_fork_completed, _psx_forked_child);
 
     /*
-     * glibc nptl picks from the SIGRTMIN end, so we pick from the
-     * SIGRTMAX end
+     * All sorts of things are assumed by Linux and glibc and/or musl
+     * about signal handlers and which can be blocked. Go has its own
+     * idiosyncrasies too. We tried SIGRTMAX until
+     * https://bugzilla.kernel.org/show_bug.cgi?id=210533, so this is
+     * our current strategy: to intercept SIGSYS.
      */
-    psx_tracker.psx_sig = SIGRTMAX;
-    psx_tracker.sig_action.sa_sigaction = psx_posix_syscall_actor;
-    sigemptyset(&psx_tracker.sig_action.sa_mask);
-    psx_tracker.sig_action.sa_flags = SA_SIGINFO | SA_RESTART;;
-    sigaction(psx_tracker.psx_sig, &psx_tracker.sig_action, NULL);
+    psx_tracker.psx_sig = SIGSYS;
 
+    psx_confirm_sigaction();
     psx_do_registration(); // register the main thread.
 
     psx_tracker.initialized = 1;
@@ -201,7 +233,8 @@ static void psx_syscall_start(void) {
 /*
  * This is the only way this library globally locks. Note, this is not
  * to be confused with psx_sig (interrupt) blocking - which is
- * performed around thread creation.
+ * performed around thread creation and when the signal handler is
+ * being confirmed.
  */
 static void psx_lock(void)
 {
@@ -531,6 +564,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
     }
 
     psx_new_state(_PSX_IDLE, _PSX_SETUP);
+    psx_confirm_sigaction();
 
     long int ret;
 

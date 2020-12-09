@@ -18,7 +18,7 @@ CAPGOPACKAGE=$(PKGDIR)/cap.a
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
-all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap try-launching
+all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap try-launching psx-signals
 
 $(DEPS):
 	make -C ../libcap all
@@ -70,10 +70,15 @@ ifeq ($(CGO_REQUIRED),0)
 	GO111MODULE=off CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
 endif
 
+# Bug reported issues:
+psx-signals: psx-signals.go  $(PSXGOPACKAGE)
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
+
 test: all
 	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/psx
 	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
+	./psx-signals
 
 sudotest: test ../progs/tcapsh-static
 	./try-launching
@@ -98,4 +103,5 @@ clean:
 	rm -f *.o *.so *~ mknames web ok good-names.go
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
+	rm -f psx-signals
 	rm -fr pkg src
