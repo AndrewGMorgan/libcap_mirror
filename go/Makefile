@@ -18,7 +18,7 @@ CAPGOPACKAGE=$(PKGDIR)/cap.a
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
-all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web compare-cap try-launching psx-signals
+all: $(PSXGOPACKAGE) $(CAPGOPACKAGE) web setid gowns compare-cap try-launching psx-signals
 
 $(DEPS):
 	make -C ../libcap all
@@ -61,6 +61,12 @@ ifeq ($(RAISE_GO_FILECAP),yes)
 	@echo "NOTE: RAISED cap_setpcap,cap_net_bind_service ON web binary"
 endif
 
+setid: ../goapps/setid/setid.go $(CAPGOPACKAGE)
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@ $(GOBUILDTAG) $<
+
+gowns: ../goapps/gowns/gowns.go $(CAPGOPACKAGE)
+	GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@ $(GOBUILDTAG) $<
+
 ok: ok.go
 	GO111MODULE=off CGO_ENABLED=0 GOPATH=$(GOPATH) $(GO) build $<
 
@@ -79,8 +85,14 @@ test: all
 	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals
+	./setid --caps=false
+	./gowns -- -c "echo gowns runs"
 
+# Note, the user namespace doesn't require sudo, but I wanted to avoid
+# requiring that the hosting kernel supports user namespaces for the
+# regular test case.
 sudotest: test ../progs/tcapsh-static
+	./gowns --ns -- -c "echo gowns runs with user namespace"
 	./try-launching
 ifeq ($(CGO_REQUIRED),0)
 	./try-launching-cgo
@@ -100,7 +112,8 @@ install: all
 	install -m 0644 src/$(IMPORTDIR)/cap/* $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap
 
 clean:
-	rm -f *.o *.so *~ mknames web ok good-names.go
+	rm -f *.o *.so *~ mknames ok good-names.go
+	rm -f web setid gowns
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
 	rm -f psx-signals
