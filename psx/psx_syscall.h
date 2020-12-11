@@ -43,7 +43,9 @@ extern "C" {
  * and psx_syscall6().
  */
 #define psx_syscall(syscall_nr, ...) \
-    __psx_syscall(syscall_nr, __VA_ARGS__, 6, 5, 4, 3, 2, 1, 0)
+    __psx_syscall(syscall_nr, __VA_ARGS__, (long int) 6, (long int) 5, \
+		  (long int) 4, (long int) 3, (long int) 2, \
+		  (long int) 1, (long int) 0)
 long int __psx_syscall(long int syscall_nr, ...);
 long int psx_syscall3(long int syscall_nr,
 		      long int arg1, long int arg2, long int arg3);

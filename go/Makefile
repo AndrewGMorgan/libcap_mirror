@@ -80,6 +80,9 @@ endif
 psx-signals: psx-signals.go  $(PSXGOPACKAGE)
 	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
 
+b210613: b210613.go $(CAPGOPACKAGE)
+	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
+
 test: all
 	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/psx
 	GO111MODULE=off CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
@@ -91,7 +94,7 @@ test: all
 # Note, the user namespace doesn't require sudo, but I wanted to avoid
 # requiring that the hosting kernel supports user namespaces for the
 # regular test case.
-sudotest: test ../progs/tcapsh-static
+sudotest: test ../progs/tcapsh-static b210613
 	./gowns --ns -- -c "echo gowns runs with user namespace"
 	./try-launching
 ifeq ($(CGO_REQUIRED),0)
@@ -101,6 +104,7 @@ endif
 ifeq ($(CGO_REQUIRED),0)
 	sudo ./try-launching-cgo
 endif
+	sudo ../progs/tcapsh-static --cap-uid=$$(id -u) --caps="cap_setpcap=ep" --iab="^cap_setpcap" -- -c ./b210613
 
 install: all
 	rm -rf $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
@@ -115,5 +119,5 @@ clean:
 	rm -f web setid gowns
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
-	rm -f psx-signals
+	rm -f psx-signals b210613
 	rm -fr pkg src

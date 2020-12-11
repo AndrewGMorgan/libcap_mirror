@@ -220,8 +220,10 @@ static void psx_syscall_start(void) {
      * All sorts of things are assumed by Linux and glibc and/or musl
      * about signal handlers and which can be blocked. Go has its own
      * idiosyncrasies too. We tried SIGRTMAX until
-     * https://bugzilla.kernel.org/show_bug.cgi?id=210533, so this is
-     * our current strategy: to intercept SIGSYS.
+     *
+     *   https://bugzilla.kernel.org/show_bug.cgi?id=210533
+     *
+     * Our current strategy is to aggressively intercept SIGSYS.
      */
     psx_tracker.psx_sig = SIGSYS;
 
@@ -500,9 +502,9 @@ static long int __psx_immediate_syscall(long int syscall_nr,
 
     if (count > 3) {
 	psx_tracker.cmd.six = 1;
-	psx_tracker.cmd.arg1 = arg[3];
-	psx_tracker.cmd.arg2 = count > 4 ? arg[4] : 0;
-	psx_tracker.cmd.arg3 = count > 5 ? arg[5] : 0;
+	psx_tracker.cmd.arg4 = arg[3];
+	psx_tracker.cmd.arg5 = count > 4 ? arg[4] : 0;
+	psx_tracker.cmd.arg6 = count > 5 ? arg[5] : 0;
 	return syscall(syscall_nr,
 		      psx_tracker.cmd.arg1,
 		      psx_tracker.cmd.arg2,
@@ -559,7 +561,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
 
     long int ret;
 
-    ret = __psx_immediate_syscall(syscall_nr, count, arg);;
+    ret = __psx_immediate_syscall(syscall_nr, count, arg);
     if (ret == -1 || !psx_tracker.initialized) {
 	psx_new_state(_PSX_SETUP, _PSX_IDLE);
 	goto defer;
