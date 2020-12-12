@@ -35,7 +35,7 @@ distclean: clean
 	for x in $$(find . -name go.mod); do grep -F -v "module" $$x | fgrep "kernel.org/pub/linux/libs/security/libcap" > /dev/null || continue ; grep -F "v$(GOMAJOR).$(VERSION).$(MINOR)" $$x  > /dev/null && continue ; echo "$$x is not updated to v$(GOMAJOR).$(VERSION).$(MINOR)" ; exit 1 ; done
 	@echo "ALL go.mod files updated"
 	@echo "Now validate that everything is checked in to a clean tree.."
-	test -z "$$(git status -s)"
+	test -z "$$(git status --ignored -s)"
 	@echo "All good!"
 
 release: distclean
