@@ -18,10 +18,10 @@ static void usage(int exiter)
 "  This program displays the capabilities on the queried process(es).\n"
 "  The capabilities are displayed in the cap_from_text(3) format.\n\n"
 "  Optional arguments:\n"
-"     --help or --usage     display this message.\n"
+"     --help, -h or --usage display this message.\n"
 "     --verbose             use a more verbose output format.\n"
 "     --ugly or --legacy    use the archaic legacy output format.\n\n"
-"[Copyright (c) 1997-8,2007,2019 Andrew G. Morgan  <morgan@kernel.org>]\n"
+"[Copyright (c) 1997-8,2007,2019 Andrew G. Morgan <morgan@kernel.org>]\n"
 	);
     exit(exiter);
 }
@@ -40,7 +40,8 @@ int main(int argc, char **argv)
 	int pid;
 	cap_t cap_d;
 
-	if (!strcmp(argv[0], "--help") || !strcmp(argv[0], "--usage")) {
+	if (!strcmp(argv[0], "--help") || !strcmp(argv[0], "--usage") ||
+	    !strcmp(argv[0], "-h")) {
 	    usage(0);
 	} else if (!strcmp(argv[0], "--verbose")) {
 	    verbose = 1;

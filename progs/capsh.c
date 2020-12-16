@@ -912,7 +912,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
-		   "  --help         this message (or try 'man capsh')\n"
+		   "  --help, -h     this message (or try 'man capsh')\n"
 		   "  --print        display capability relevant state\n"
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
@@ -948,8 +948,10 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --             remaining arguments are for " SHELL "\n"
 		   "                 (without -- [%s] will simply exit(0))\n",
 		   argv[0], argv[0]);
-
-	    exit(strcmp("--help", argv[i]) != 0);
+	    if (strcmp("--help", argv[1]) && strcmp("-h", argv[1])) {
+		exit(1);
+	    }
+	    exit(0);
 	}
     }
 
