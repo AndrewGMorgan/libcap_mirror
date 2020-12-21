@@ -11,15 +11,23 @@
 #include <sys/capability.h>
 #include <unistd.h>
 
-static void usage(void)
+static void usage(int status)
 {
     fprintf(stderr,
-	    "usage: setcap [-q] [-v] [-n <rootid>] (-r|-|<caps>) <filename> "
+	    "usage: setcap [-h] [-q] [-v] [-n <rootid>] (-r|-|<caps>) <filename> "
 	    "[ ... (-r|-|<capsN>) <filenameN> ]\n"
 	    "\n"
 	    " Note <filename> must be a regular (non-symlink) file.\n"
+	    " -r          remove capability from file\n"
+	    " -           read capability text from stdin\n"
+	    " <capsN>     cap_from_text(3) formatted file capability\n"
+	    "\n"
+	    " -h          this message and exit status 0\n"
+	    " -q          quietly\n"
+	    " -v          validate supplied capability matches file\n"
+	    " -n <rootid> write a user namespace limited capability\n"
 	);
-    exit(1);
+    exit(status);
 }
 
 #define MAXCAP  2048
@@ -65,8 +73,8 @@ int main(int argc, char **argv)
     cap_value_t capflag;
     uid_t rootid = 0, f_rootid;
 
-    if (argc < 3) {
-	usage();
+    if (argc < 2) {
+	usage(1);
     }
 
     mycaps = cap_get_proc();
@@ -82,6 +90,9 @@ int main(int argc, char **argv)
 	if (!strcmp(*++argv, "-q")) {
 	    quiet = 1;
 	    continue;
+	}
+	if (!strcmp(*argv, "-h")) {
+	    usage(0);
 	}
 	if (!strcmp(*argv, "-v")) {
 	    verify = 1;
@@ -107,7 +118,7 @@ int main(int argc, char **argv)
 	    if (!strcmp(*argv,"-")) {
 		retval = read_caps(quiet, *argv, buffer);
 		if (retval)
-		    usage();
+		    usage(1);
 		text = buffer;
 	    } else {
 		text = *argv;
@@ -116,7 +127,7 @@ int main(int argc, char **argv)
 	    cap_d = cap_from_text(text);
 	    if (cap_d == NULL) {
 		perror("fatal error");
-		usage();
+		usage(1);
 	    }
 	    if (cap_set_nsowner(cap_d, rootid)) {
 		perror("unable to set nsowner");
@@ -134,7 +145,7 @@ int main(int argc, char **argv)
 	}
 
 	if (--argc <= 0)
-	    usage();
+	    usage(1);
 	/*
 	 * Set the filesystem capability for this file.
 	 */
@@ -194,6 +205,7 @@ int main(int argc, char **argv)
 	    if (retval != 0) {
 		int explained = 0;
 		int oerrno = errno;
+		int somebits = 0;
 #ifdef linux
 		cap_value_t cap;
 		cap_flag_value_t per_state;
@@ -201,24 +213,28 @@ int main(int argc, char **argv)
 		for (cap = 0;
 		     cap_get_flag(cap_d, cap, CAP_PERMITTED, &per_state) != -1;
 		     cap++) {
-		    cap_flag_value_t inh_state, eff_state;
+		    cap_flag_value_t inh_state, eff_state, combined;
 
 		    cap_get_flag(cap_d, cap, CAP_INHERITABLE, &inh_state);
 		    cap_get_flag(cap_d, cap, CAP_EFFECTIVE, &eff_state);
-		    if ((inh_state | per_state) != eff_state) {
-			fprintf(stderr, "NOTE: Under Linux, effective file capabilities must either be empty, or\n"
-				"      exactly match the union of selected permitted and inheritable bits.\n");
+		    combined = (inh_state | per_state);
+		    somebits |= !!eff_state;
+		    if (combined != eff_state) {
 			explained = 1;
 			break;
 		    }
 		}
+		if (somebits && explained) {
+		    fprintf(stderr, "NOTE: Under Linux, effective file capabilities must either be empty, or\n"
+			    "      exactly match the union of selected permitted and inheritable bits.\n");
+		}
 #endif /* def linux */
-		
+
 		fprintf(stderr,
 			"Failed to set capabilities on file `%s' (%s)\n",
 			argv[0], strerror(oerrno));
 		if (!explained) {
-		    usage();
+		    usage(1);
 		}
 	    }
 	}
