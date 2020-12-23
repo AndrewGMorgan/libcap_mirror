@@ -113,10 +113,6 @@ CGO_CFLAGS := -I$(topdir)/libcap/include
 CGO_LDFLAGS := -L$(topdir)/libcap
 CGO_LDFLAGS_ALLOW := -Wl,-?-wrap[=,][^-.@][^,]*
 CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh)
-ifeq ($(CGO_REQUIRED),0)
-# Hopefully this will not be needed at some point.
-GOBUILDTAG=-tags allthreadssyscall
-endif
 endif
 endif
 

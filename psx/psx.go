@@ -1,5 +1,5 @@
 // +build linux,!cgo
-// +build go1.16 allthreadssyscall
+// +build go1.16
 
 package psx // import "kernel.org/pub/linux/libs/security/libcap/psx"
 

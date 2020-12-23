@@ -42,14 +42,11 @@
 // uniformly over the whole Go (and CGo linked) process runtime.
 //
 // Note, if the Go runtime syscall interface contains the Linux
-// variant syscall.AllThreadsSyscall() API (it is not in go1.15
-// for example, but see https://github.com/golang/go/issues/1435 for
-// current status) then this present package can use that to invoke
-// Capability setting system calls in pure Go binaries. In such an
-// enhanced Go runtime, to force this behavior, use the CGO_ENABLED=0
-// environment variable and, for now, a build tag:
-//
-//   CGO_ENABLED=0 go build -tags allthreadssyscall ...
+// variant syscall.AllThreadsSyscall() API (it debuted in go1.16 see
+// https://github.com/golang/go/issues/1435 for actual status) then
+// the "psx" package will use that to invoke Capability setting system
+// calls in pure Go binaries. In such an enhanced Go runtime, to force
+// this behavior, use the CGO_ENABLED=0 environment variable.
 //
 //
 // Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
