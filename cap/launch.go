@@ -106,18 +106,18 @@ var ErrLaunchFailed = errors.New("launch failed")
 var ErrNoLaunch = errors.New("launch not supported")
 
 // ErrAmbiguousChroot indicates that the Launcher is being used in
-// addition to callback supplied Chroot. The former should be used
+// addition to a callback supplied Chroot. The former should be used
 // exclusively for this.
 var ErrAmbiguousChroot = errors.New("use Launcher for chroot")
 
 // ErrAmbiguousIDs indicates that the Launcher is being used in
-// addition to callback supplied Credentials. The former should be
+// addition to a callback supplied Credentials. The former should be
 // used exclusively for this.
 var ErrAmbiguousIDs = errors.New("use Launcher for uids and gids")
 
 // ErrAmbiguousAmbient indicates that the Launcher is being used in
-// addition callback supplied ambient set and the former should be
-// used exclusively in a Launch call.
+// addition to a callback supplied ambient set and the former should
+// be used exclusively in a Launch call.
 var ErrAmbiguousAmbient = errors.New("use Launcher for ambient caps")
 
 // lName is the name we temporarily give to the launcher thread. Note,
