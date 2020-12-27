@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997,2007-8 Andrew G. Morgan  <morgan@kernel.org>
+ * Copyright (c) 1997,2007-8,2020 Andrew G. Morgan <morgan@kernel.org>
  *
  * This sets/verifies the capabilities of a given file.
  */
@@ -26,6 +26,7 @@ static void usage(int status)
 	    " -q          quietly\n"
 	    " -v          validate supplied capability matches file\n"
 	    " -n <rootid> write a user namespace limited capability\n"
+	    " --license   display the license info\n"
 	);
     exit(status);
 }
@@ -90,6 +91,13 @@ int main(int argc, char **argv)
 	if (!strcmp(*++argv, "-q")) {
 	    quiet = 1;
 	    continue;
+	}
+	if (!strcmp("--license", *argv)) {
+	    printf(
+		"%s has a you choose license: BSD 3-clause or GPL2\n"
+		"Copyright (c) 1997,2007-8,2020 Andrew G. Morgan"
+		" <morgan@kernel.org>\n", argv[0]);
+	    exit(0);
 	}
 	if (!strcmp(*argv, "-h")) {
 	    usage(0);

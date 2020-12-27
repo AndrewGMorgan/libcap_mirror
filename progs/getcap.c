@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997,2007 Andrew G. Morgan  <morgan@kernel.org>
+ * Copyright (c) 1997,2007 Andrew G. Morgan <morgan@kernel.org>
  *
  * This displays the capabilities of a given file.
  */
@@ -26,9 +26,9 @@ static int namespace = 0;
 static void usage(int code)
 {
     fprintf(stderr,
-	    "usage: getcap [-v] [-r] [-h] [-n] <filename> [<filename> ...]\n"
-	    "\n"
-	    "\tdisplays the capabilities on the queried file(s).\n"
+    "usage: getcap [-h] [-l] [-n] [-r] [-v] <filename> [<filename> ...]\n"
+    "\n"
+    "\tdisplays the capabilities on the queried file(s).\n"
 	);
     exit(code);
 }
@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 {
     int i, c;
 
-    while ((c = getopt(argc, argv, "rvhn")) > 0) {
+    while ((c = getopt(argc, argv, "rvhnl")) > 0) {
 	switch(c) {
 	case 'r':
 	    recursive = 1;
@@ -95,6 +95,11 @@ int main(int argc, char **argv)
 	    break;
 	case 'h':
 	    usage(0);
+	case 'l':
+	    printf("%s has a you choose license: BSD 3-clause or GPL2\n"
+		"Copyright (c) 1997,2007 Andrew G. Morgan"
+		" <morgan@kernel.org>\n", argv[0]);
+	    exit(0);
 	default:
 	    usage(1);
 	}

@@ -1,9 +1,10 @@
 /*
  * Copyright (c) 2008-11,16,19,2020 Andrew G. Morgan <morgan@kernel.org>
  *
- * This is a simple 'bash' (-DSHELL) wrapper program that can be used
- * to raise and lower both the bset and pI capabilities before
- * invoking /bin/bash.
+ * This is a multifunction shell wrapper tool that can be used to
+ * launch capable files in various ways with a variety of settings. It
+ * also supports some testing modes, which are used extensively as
+ * part of the libcap build system.
  *
  * The --print option can be used as a quick test whether various
  * capability manipulations work as expected (or not).
@@ -909,41 +910,46 @@ int main(int argc, char *argv[], char *envp[])
 		exit(1);
 	    }
 	    cap_free(iab);
+	} else if (!strcmp("--license", argv[i])) {
+	    printf(
+		"%s has a you choose license: BSD 3-clause or GPL2\n"
+		"Copyright (c) 2008-11,16,19,2020 Andrew G. Morgan"
+		" <morgan@kernel.org>\n", argv[0]);
+	    exit(0);
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
-		   "  --help, -h     this message (or try 'man capsh')\n"
-		   "  --print        display capability relevant state\n"
+		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
+		   "  --has-ambient  exit 1 unless ambient vector supported\n"
+		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
+		   "  --cap-uid=<n>  use libcap cap_setuid() to change uid\n"
+		   "  --caps=xxx     set caps as per cap_from_text()\n"
+		   "  --chroot=path  chroot(2) to this path\n"
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
-		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
+		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
+		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
+		   "  --gid=<n>      set gid to <n> (hint: id <username>)\n"
+		   "  --groups=g,... set the supplemental groups\n"
 		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"
 		   "  --has-i=xxx    exit 1 if capability xxx not inheritable\n"
-		   "  --drop=xxx     remove xxx,.. capabilities from bset\n"
-		   "  --dropped=xxx  exit 1 unless bounding cap xxx dropped\n"
-		   "  --has-ambient  exit 1 unless ambient vector supported\n"
-		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
-		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
-		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
-		   "  --noamb        reset (drop) all ambient capabilities\n"
-		   "  --caps=xxx     set caps as per cap_from_text()\n"
-		   "  --inh=xxx      set xxx,.. inheritable set\n"
-		   "  --secbits=<n>  write a new value for securebits\n"
+		   "  --help, -h     this message (or try 'man capsh')\n"
 		   "  --iab=...      use cap_iab_from_text() to set iab\n"
-		   "  --keep=<n>     set keep-capability bit to <n>\n"
-		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
-		   "  --cap-uid=<n>  libcap cap_setuid() to change uid\n"
+		   "  --inh=xxx      set xxx,.. inheritable set\n"
+		   "  --inmode=<xxx> exit 1 if current mode is not <xxx>\n"
 		   "  --is-uid=<n>   exit 1 if uid != <n>\n"
-		   "  --gid=<n>      set gid to <n> (hint: id <username>)\n"
 		   "  --is-gid=<n>   exit 1 if gid != <n>\n"
-		   "  --groups=g,... set the supplemental groups\n"
-                   "  --user=<name>  set uid,gid and groups to that of user\n"
-		   "  --chroot=path  chroot(2) to this path\n"
+		   "  --keep=<n>     set keep-capability bit to <n>\n"
+		   "  --killit=<n>   send signal(n) to child\n"
+		   "  --license      display license info\n"
 		   "  --modes        list libcap named capability modes\n"
 		   "  --mode=<xxx>   set capability mode to <xxx>\n"
-		   "  --inmode=<xxx> exit 1 if current mode is not <xxx>\n"
-		   "  --killit=<n>   send signal(n) to child\n"
-		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
+		   "  --noamb        reset (drop) all ambient capabilities\n"
+		   "  --print        display capability relevant state\n"
+		   "  --secbits=<n>  write a new value for securebits\n"
 		   "  --shell=/xx/yy use /xx/yy instead of " SHELL " for --\n"
+		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
+		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
+                   "  --user=<name>  set uid,gid and groups to that of user\n"
 		   "  ==             re-exec(capsh) with args as for --\n"
 		   "  --             remaining arguments are for " SHELL "\n"
 		   "                 (without -- [%s] will simply exit(0))\n",

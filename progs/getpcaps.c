@@ -11,19 +11,19 @@
 #include <stdlib.h>
 #include <sys/capability.h>
 
-static void usage(int exiter)
+static void usage(int code)
 {
     fprintf(stderr,
 "usage: getcaps <pid> [<pid> ...]\n\n"
 "  This program displays the capabilities on the queried process(es).\n"
-"  The capabilities are displayed in the cap_from_text(3) format.\n\n"
-"  Optional arguments:\n"
-"     --help, -h or --usage display this message.\n"
-"     --verbose             use a more verbose output format.\n"
-"     --ugly or --legacy    use the archaic legacy output format.\n\n"
-"[Copyright (c) 1997-8,2007,2019 Andrew G. Morgan <morgan@kernel.org>]\n"
-	);
-    exit(exiter);
+	    "  The capabilities are displayed in the cap_from_text(3) format.\n"
+	    "\n"
+	    "  Optional arguments:\n"
+	    "     --help, -h or --usage display this message.\n"
+	    "     --verbose             use a more verbose output format.\n"
+	    "     --ugly or --legacy    use the archaic legacy output format.\n"
+	    "     --license             display license info\n");
+    exit(code);
 }
 
 int main(int argc, char **argv)
@@ -43,6 +43,11 @@ int main(int argc, char **argv)
 	if (!strcmp(argv[0], "--help") || !strcmp(argv[0], "--usage") ||
 	    !strcmp(argv[0], "-h")) {
 	    usage(0);
+	} else if (!strcmp(argv[0], "--license")) {
+	    printf("%s has a you choose license: BSD 3-clause or GPL2\n"
+"[Copyright (c) 1997-8,2007,2019 Andrew G. Morgan <morgan@kernel.org>]\n",
+		   argv[0]);
+	    exit(0);
 	} else if (!strcmp(argv[0], "--verbose")) {
 	    verbose = 1;
 	    continue;
