@@ -23,14 +23,14 @@ static int verbose = 0;
 static int recursive = 0;
 static int namespace = 0;
 
-static void usage(int ok)
+static void usage(int code)
 {
     fprintf(stderr,
 	    "usage: getcap [-v] [-r] [-h] [-n] <filename> [<filename> ...]\n"
 	    "\n"
 	    "\tdisplays the capabilities on the queried file(s).\n"
 	);
-    exit(!ok);
+    exit(code);
 }
 
 static int do_getcap(const char *fname, const struct stat *stbuf,
@@ -94,14 +94,14 @@ int main(int argc, char **argv)
 	    namespace = 1;
 	    break;
 	case 'h':
-	    usage(1);
-	default:
 	    usage(0);
+	default:
+	    usage(1);
 	}
     }
 
     if (!argv[optind])
-	usage(0);
+	usage(1);
 
     for (i=optind; argv[i] != NULL; i++) {
 	struct stat stbuf;
