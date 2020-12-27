@@ -108,8 +108,9 @@ static void arg_print(void)
     set = cap_get_secbits();
     if (set >= 0) {
 	const char *b = binary(set);  /* verilog convention for binary string */
-	printf("Securebits: 0%lo/0x%lx/%u'b%s\n", set, set,
-	       (unsigned) strlen(b), b);
+	printf("Securebits: 0%lo/0x%lx/%u'b%s (no-new-privs=%d)\n", set, set,
+	       (unsigned) strlen(b), b,
+	       prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0, 0));
 	printf(" secure-noroot: %s (%s)\n",
 	       (set & SECBIT_NOROOT) ? "yes":"no",
 	       (set & SECBIT_NOROOT_LOCKED) ? "locked":"unlocked");
@@ -910,6 +911,16 @@ int main(int argc, char *argv[], char *envp[])
 		exit(1);
 	    }
 	    cap_free(iab);
+	} else if (!strcmp("--no-new-privs", argv[i])) {
+	    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0, 0) != 0) {
+		perror("unable to set no-new-privs");
+		exit(1);
+	    }
+	} else if (!strcmp("--has-no-new-privs", argv[i])) {
+	    if (prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0, 0) != 1) {
+		fprintf(stderr, "no-new-privs not set\n");
+		exit(1);
+	    }
 	} else if (!strcmp("--license", argv[i])) {
 	    printf(
 		"%s has a you choose license: BSD 3-clause or GPL2\n"
@@ -932,6 +943,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --groups=g,... set the supplemental groups\n"
 		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"
 		   "  --has-i=xxx    exit 1 if capability xxx not inheritable\n"
+		   "  --has-no-new-privs  exit 1 if privs not limited\n"
 		   "  --help, -h     this message (or try 'man capsh')\n"
 		   "  --iab=...      use cap_iab_from_text() to set iab\n"
 		   "  --inh=xxx      set xxx,.. inheritable set\n"
@@ -943,6 +955,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --license      display license info\n"
 		   "  --modes        list libcap named capability modes\n"
 		   "  --mode=<xxx>   set capability mode to <xxx>\n"
+		   "  --no-new-privs set sticky process privilege limiter\n"
 		   "  --noamb        reset (drop) all ambient capabilities\n"
 		   "  --print        display capability relevant state\n"
 		   "  --secbits=<n>  write a new value for securebits\n"

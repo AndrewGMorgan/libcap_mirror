@@ -390,11 +390,19 @@ static int _cap_set_secbits(struct syscaller_s *sc, unsigned bits)
 }
 
 /*
- * Set the security mode of the current process.
+ * Set the secbits of the current process.
  */
 int cap_set_secbits(unsigned bits)
 {
     return _cap_set_secbits(&multithread, bits);
+}
+
+/*
+ * Attempt to raise the no new privs prctl value.
+ */
+static void _cap_set_no_new_privs(struct syscaller_s *sc)
+{
+    (void) _libcap_wprctl6(sc, PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0, 0);
 }
 
 /*
@@ -448,7 +456,11 @@ static int _cap_set_mode(struct syscaller_s *sc, cap_mode_t flavor)
 		(void) _cap_drop_bound(sc, c);
 	    }
 	    (void) cap_clear_flag(working, CAP_PERMITTED);
+
+	    /* for good measure */
+	    _cap_set_no_new_privs(sc);
 	    break;
+
 	default:
 	    errno = EINVAL;
 	    ret = -1;

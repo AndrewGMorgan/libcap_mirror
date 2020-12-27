@@ -70,7 +70,8 @@ int main(int argc, char **argv) {
 	    .iab = "!^cap_chown"
 	},
 	{
-	    .args = { "../progs/tcapsh-static", "--inmode=NOPRIV" },
+	    .args = { "../progs/tcapsh-static", "--inmode=NOPRIV",
+		      "--has-no-new-privs" },
 	    .result = 0,
 	    .mode = CAP_MODE_NOPRIV
 	},

@@ -36,6 +36,7 @@ const (
 	prSetKeepCaps   = 8
 	prGetSecureBits = 27
 	prSetSecureBits = 28
+	prSetNoNewPrivs = 38
 )
 
 // GetSecbits returns the current setting of the process' Secbits.
@@ -162,6 +163,9 @@ func (sc *syscaller) setMode(m Mode) error {
 	for c := Value(0); sc.dropBound(c) == nil; c++ {
 	}
 	w.ClearFlag(Permitted)
+
+	// For good measure.
+	sc.prctlwcall6(prSetNoNewPrivs, 1, 0, 0, 0, 0)
 
 	return nil
 }
