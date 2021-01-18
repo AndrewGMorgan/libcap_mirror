@@ -1,5 +1,5 @@
 // Program gowns is a small program to explore and demonstrate using
-// GO to Wrap a child in a NameSpace under Linux.
+// Go to Wrap a child in a NameSpace under Linux.
 package main
 
 import (
@@ -17,17 +17,25 @@ import (
 // nsDetail is how we summarize the type of namespace we want to
 // enter.
 type nsDetail struct {
-	// uid holds the uid for "root" in this namespace.
+	// uid holds the uid for the base user in this namespace (defaults to getuid).
 	uid int
-	// gid holds the gid for "root" in this namespace.
+
+	// uidMap holds the namespace mapping of uid values.
+	uidMap []syscall.SysProcIDMap
+
+	// gid holds the gid for the base user in this namespace (defaults to getgid).
 	gid int
+
+	// uidMap holds the namespace mapping of gid values.
+	gidMap []syscall.SysProcIDMap
 }
 
 var (
-	uid  = flag.Int("uid", -1, "uid of the hosting user")
-	gid  = flag.Int("gid", -1, "gid of the hosting user")
-	iab  = flag.String("iab", "", "IAB string for inheritable capabilities")
-	mode = flag.String("mode", "", "force a libcap mode (capsh --modes for list)")
+	baseID = flag.Int("base", -1, "base id for uids and gids (-1 = invoker's uid)")
+	uid    = flag.Int("uid", -1, "uid of the hosting user")
+	gid    = flag.Int("gid", -1, "gid of the hosting user")
+	iab    = flag.String("iab", "", "IAB string for inheritable capabilities")
+	mode   = flag.String("mode", "", "force a libcap mode (capsh --modes for list)")
 
 	ns   = flag.Bool("ns", false, "enable user namespace features")
 	uids = flag.String("uids", "", "comma separated UID ranges to map contiguously (req. CAP_SETUID)")
@@ -81,69 +89,72 @@ var errUnableToSetup = errors.New("data was not in supported format")
 // nsSetup is the callback used to enter the namespace for the user
 // via callback in the cap.Launcher mechanism.
 func nsSetup(pa *syscall.ProcAttr, data interface{}) error {
-	have := cap.GetProc()
 	nsD, ok := data.(nsDetail)
 	if !ok {
 		return errUnableToSetup
 	}
 
-	sys := pa.Sys
-	if sys == nil {
-		sys = &syscall.SysProcAttr{}
-		pa.Sys = sys
+	if pa.Sys == nil {
+		pa.Sys = &syscall.SysProcAttr{}
 	}
-	sys.Cloneflags |= syscall.CLONE_NEWUSER
-	sys.UidMappings = append(pa.Sys.UidMappings,
-		syscall.SysProcIDMap{
-			ContainerID: 0,
-			HostID:      nsD.uid,
-			Size:        1,
-		})
-	if able, err := have.GetFlag(cap.Effective, cap.SETUID); err != nil {
-		log.Fatalf("cap package SETUID error: %v", err)
-	} else if able {
-		base := 1
-		for _, next := range ranges(*uids) {
-			sys.UidMappings = append(pa.Sys.UidMappings,
-				syscall.SysProcIDMap{
-					ContainerID: base,
-					HostID:      next.base,
-					Size:        next.count,
-				})
-			base += next.count
-		}
+	pa.Sys.Cloneflags |= syscall.CLONE_NEWUSER
+	pa.Sys.UidMappings = nsD.uidMap
+	pa.Sys.GidMappings = nsD.gidMap
+	return nil
+}
+
+func parseRanges(detail *nsDetail, ids string, id int) []syscall.SysProcIDMap {
+	base := *baseID
+	if base < 0 {
+		base = detail.uid
 	}
 
-	sys.GidMappings = append(pa.Sys.GidMappings,
+	list := []syscall.SysProcIDMap{
 		syscall.SysProcIDMap{
-			ContainerID: 0,
-			HostID:      nsD.gid,
+			ContainerID: base,
+			HostID:      id,
 			Size:        1,
-		})
-	if able, err := have.GetFlag(cap.Effective, cap.SETGID); err != nil {
-		log.Fatalf("cap package SETGID error: %v", err)
-	} else if able {
-		base := 1
-		for _, next := range ranges(*gids) {
-			sys.GidMappings = append(pa.Sys.GidMappings,
-				syscall.SysProcIDMap{
-					ContainerID: base,
-					HostID:      next.base,
-					Size:        next.count,
-				})
-			base += next.count
-		}
+		},
 	}
-	return nil
+
+	base++
+	for _, next := range ranges(ids) {
+		fmt.Println("next:", next)
+		list = append(list,
+			syscall.SysProcIDMap{
+				ContainerID: base,
+				HostID:      next.base,
+				Size:        next.count,
+			})
+		base += next.count
+	}
+	return list
 }
 
 func main() {
 	flag.Parse()
 
 	detail := nsDetail{
-		uid: syscall.Getuid(),
 		gid: syscall.Getgid(),
 	}
+
+	thisUID := syscall.Getuid()
+	switch *uid {
+	case -1:
+		detail.uid = thisUID
+	default:
+		detail.uid = *uid
+	}
+	detail.uidMap = parseRanges(&detail, *uids, detail.uid)
+
+	thisGID := syscall.Getgid()
+	switch *gid {
+	case -1:
+		detail.gid = thisGID
+	default:
+		detail.gid = *gid
+	}
+	detail.gidMap = parseRanges(&detail, *gids, detail.gid)
 
 	unparsed := flag.Args()
 
@@ -164,13 +175,11 @@ func main() {
 		w.Callback(nsSetup)
 	}
 
-	have := cap.GetProc()
-	if *uid >= 0 {
-		detail.uid = *uid
-		cap.SetUID(detail.uid)
+	if thisUID != detail.uid {
+		w.SetUID(detail.uid)
 	}
-	if *gid >= 0 {
-		detail.gid = *gid
+
+	if thisGID != detail.gid {
 		w.SetGroups(detail.gid, nil)
 	}
 
@@ -195,6 +204,7 @@ func main() {
 
 	// The launcher can enable more functionality if involked with
 	// effective capabilities.
+	have := cap.GetProc()
 	for _, c := range []cap.Value{cap.SETUID, cap.SETGID} {
 		if canDo, err := have.GetFlag(cap.Permitted, c); err != nil {
 			log.Fatalf("failed to explore process capabilities, %q for %q", have, c)
@@ -205,12 +215,12 @@ func main() {
 		}
 	}
 	if err := have.SetProc(); err != nil {
-		log.Fatalf("privilege assertion failed: %v", err)
+		log.Fatalf("privilege assertion %q failed: %v", have, err)
 	}
 
 	if *debug {
 		if *ns {
-			fmt.Println("launching:", detail.uid, "-> root ...")
+			fmt.Println("launching namespace")
 		} else {
 			fmt.Println("launching without namespace")
 		}
