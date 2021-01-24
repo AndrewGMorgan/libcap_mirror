@@ -43,13 +43,13 @@
 //
 // Note, if the Go runtime syscall interface contains the Linux
 // variant syscall.AllThreadsSyscall() API (it debuted in go1.16 see
-// https://github.com/golang/go/issues/1435 for actual status) then
+// https://github.com/golang/go/issues/1435 for its history) then
 // the "psx" package will use that to invoke Capability setting system
 // calls in pure Go binaries. In such an enhanced Go runtime, to force
 // this behavior, use the CGO_ENABLED=0 environment variable.
 //
 //
-// Copyright (c) 2019,20 Andrew G. Morgan <morgan@kernel.org>
+// Copyright (c) 2019-21 Andrew G. Morgan <morgan@kernel.org>
 //
 // The cap and psx packages are licensed with a (you choose) BSD
 // 3-clause or GPL2. See LICENSE file for details.
