@@ -28,18 +28,18 @@ MINPSXLIBNAME=$(MAJPSXLIBNAME).$(MINOR)
 
 all: pcs $(STACAPLIBNAME)
 ifeq ($(SHARED),yes)
-	make $(CAPLIBNAME)
+	$(MAKE) $(CAPLIBNAME)
 endif
 ifeq ($(PTHREADS),yes)
-	make $(STAPSXLIBNAME)
+	$(MAKE) $(STAPSXLIBNAME)
 ifeq ($(SHARED),yes)
-	make $(PSXLIBNAME)
+	$(MAKE) $(PSXLIBNAME)
 endif
 endif
 
 pcs: libcap.pc
 ifeq ($(PTHREADS),yes)
-	make libpsx.pc
+	$(MAKE) libpsx.pc
 endif
 
 ifeq ($(BUILD_GPERF),yes)
@@ -118,27 +118,27 @@ test: cap_test
 
 install: install-static
 ifeq ($(SHARED),yes)
-	make install-shared
+	$(MAKE) install-shared
 endif
 
 install-static: install-static-cap
 ifeq ($(PTHREADS),yes)
-	make install-static-psx
+	$(MAKE) install-static-psx
 endif
 
 install-shared: install-shared-cap
 ifeq ($(PTHREADS),yes)
-	make install-shared-psx
+	$(MAKE) install-shared-psx
 endif
 
 install-cap: install-static-cap
 ifeq ($(SHARED),yes)
-	make install-shared-cap
+	$(MAKE) install-shared-cap
 endif
 
 install-psx: install-static-psx
 ifeq ($(SHARED),yes)
-	make install-shared-psx
+	$(MAKE) install-shared-psx
 endif
 
 install-static-cap: install-common-cap $(STACAPLIBNAME)

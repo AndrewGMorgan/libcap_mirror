@@ -42,32 +42,32 @@ release: distclean
 	cd .. && ln -s libcap libcap-$(VERSION).$(MINOR) && tar cvf libcap-$(VERSION).$(MINOR).tar --exclude patches libcap-$(VERSION).$(MINOR)/* && rm libcap-$(VERSION).$(MINOR)
 
 test: all
-	make -C libcap $@
-	make -C tests $@
+	$(MAKE) -C libcap $@
+	$(MAKE) -C tests $@
 ifneq ($(PAM_CAP),no)
 	$(MAKE) -C pam_cap $@
 endif
 ifeq ($(GOLANG),yes)
-	make -C go $@
+	$(MAKE) -C go $@
 endif
-	make -C progs $@
+	$(MAKE) -C progs $@
 
 sudotest: all
-	make -C tests $@
+	$(MAKE) -C tests $@
 ifneq ($(PAM_CAP),no)
 	$(MAKE) -C pam_cap $@
 endif
 ifeq ($(GOLANG),yes)
-	make -C go $@
+	$(MAKE) -C go $@
 endif
-	make -C progs $@
+	$(MAKE) -C progs $@
 
 distcheck:
 	./distcheck.sh
-	make DYNAMIC=yes clean all test sudotest
-	make CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
-	make clean all test sudotest
-	make distclean
+	$(MAKE) DYNAMIC=yes clean all test sudotest
+	$(MAKE) CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
+	$(MAKE) clean all test sudotest
+	$(MAKE) distclean
 
 morgangodoc:
 	@echo "Now the release is made, you want to remember to run:"
@@ -84,7 +84,7 @@ morganrelease: distcheck
 	git tag -u D41A6DF2 -s v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'libcap' Go base directory associated with libcap-$(VERSION).$(MINOR)."
 	git tag -u D41A6DF2 -s psx/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'psx' Go package associated with libcap-$(VERSION).$(MINOR)."
 	git tag -u D41A6DF2 -s cap/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'cap' Go package associated with libcap-$(VERSION).$(MINOR)."
-	make release
+	$(MAKE) release
 	@echo "sign the tar file using korg key"
 	cd .. && gpg -sba -u E2CCF3F4 libcap-$(VERSION).$(MINOR).tar
-	make morgangodoc
+	$(MAKE) morgangodoc
