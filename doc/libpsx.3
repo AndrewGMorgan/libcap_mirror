@@ -1,4 +1,4 @@
-.TH LIBPSX 3 "2020-10-13" "" "Linux Programmer's Manual"
+.TH LIBPSX 3 "2021-01-31" "" "Linux Programmer's Manual"
 .SH NAME
 psx_syscall3, psx_syscall6 \- POSIX semantics for system calls
 .SH SYNOPSIS
@@ -36,7 +36,9 @@ signal. Whereas the
 mechanism uses signo=33 (which is hidden by glibc below a redefined
 SIGRTMIN),
 .B libpsx
-usurps SIGRTMAX for this process.
+inserts itself in the SIGSYS handler stack. It goes to great length to
+be the first such handler but acts as a pass-through for other SIGSYS
+uses.
 .PP
 A linker trick of
 .I wrapping
@@ -73,7 +75,10 @@ threads of the process.
 .SH CONFORMING TO
 The needs of
 .BR libcap (3)
-for POSIX semantics of capability manipulation.
+for POSIX semantics of capability manipulation. You can read more
+about why this is needed here:
+.TP
+https://sites.google.com/site/fullycapable/who-ordered-libpsx
 .SH "REPORTING BUGS"
 Please report bugs via:
 .TP
