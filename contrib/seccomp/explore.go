@@ -45,32 +45,32 @@ var (
 )
 
 const (
-	PR_SET_NO_NEW_PRIVS = 38
+	prSetNoNewPrivs = 38
 
-	SYS_SECCOMP               = 317        // x86_64 syscall number
-	SECCOMP_SET_MODE_FILTER   = 1          // uses user-supplied filter.
-	SECCOMP_FILTER_FLAG_TSYNC = (1 << 0)   // mirror filtering on all threads.
-	SECCOMP_RET_ERRNO         = 0x00050000 // returns an errno
-	SECCOMP_RET_DATA          = 0x0000ffff // mask for RET data payload (ex. errno)
-	SECCOMP_RET_KILL_PROCESS  = 0x80000000 // kill the whole process immediately
-	SECCOMP_RET_TRAP          = 0x00030000 // disallow and force a SIGSYS
-	SECCOMP_RET_ALLOW         = 0x7fff0000
+	sysSeccomp             = 317        // x86_64 syscall number
+	seccompSetModeFilter   = 1          // uses user-supplied filter.
+	seccompFilterFlagTsync = (1 << 0)   // mirror filtering on all threads.
+	seccompRetErrno        = 0x00050000 // returns an errno
+	seccompRetData         = 0x0000ffff // mask for RET data payload (ex. errno)
+	seccompRetKillProcess  = 0x80000000 // kill the whole process immediately
+	seccompRetTrap         = 0x00030000 // disallow and force a SIGSYS
+	seccompRetAllow        = 0x7fff0000
 
-	BPF_LD  = 0x00
-	BPF_JMP = 0x05
-	BPF_RET = 0x06
+	bpfLd  = 0x00
+	bpfJmp = 0x05
+	bpfRet = 0x06
 
-	BPF_W = 0x00
+	bpfW = 0x00
 
-	BPF_ABS = 0x20
-	BPF_JEQ = 0x10
+	bpfAbs = 0x20
+	bpfJeq = 0x10
 
-	BPF_K = 0x00
+	bpfK = 0x00
 
-	AUDIT_ARCH_X86_64 = 3221225534 // HACK: I don't understand this value
-	ARCH_NR           = AUDIT_ARCH_X86_64
+	auditArchX86_64 = 3221225534 // HACK: I don't understand this value
+	archNr          = auditArchX86_64
 
-	syscall_nr = 0
+	syscallNr = 0
 )
 
 // SockFilter is a single filter block.
@@ -95,66 +95,67 @@ type SockFProg struct {
 	Filter *SockFilter
 }
 
+// SockFilterSlice is a subprogram filter.
 type SockFilterSlice []SockFilter
 
-func BPF_STMT(code uint16, k uint32) SockFilter {
+func bpfStmt(code uint16, k uint32) SockFilter {
 	return SockFilter{code, 0, 0, k}
 }
 
-func BPF_JUMP(code uint16, k uint32, jt uint8, jf uint8) SockFilter {
+func bpfJump(code uint16, k uint32, jt uint8, jf uint8) SockFilter {
 	return SockFilter{code, jt, jf, k}
 }
 
-func ValidateArchitecture() []SockFilter {
+func validateArchitecture() []SockFilter {
 	return []SockFilter{
-		BPF_STMT(BPF_LD+BPF_W+BPF_ABS, 4), // HACK: I don't understand this 4.
-		BPF_JUMP(BPF_JMP+BPF_JEQ+BPF_K, ARCH_NR, 1, 0),
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_KILL_PROCESS),
+		bpfStmt(bpfLd+bpfW+bpfAbs, 4), // HACK: I don't understand this 4.
+		bpfJump(bpfJmp+bpfJeq+bpfK, archNr, 1, 0),
+		bpfStmt(bpfRet+bpfK, seccompRetKillProcess),
 	}
 }
 
 func ExamineSyscall() []SockFilter {
 	return []SockFilter{
-		BPF_STMT(BPF_LD+BPF_W+BPF_ABS, syscall_nr),
+		bpfStmt(bpfLd+bpfW+bpfAbs, syscallNr),
 	}
 }
 
 func AllowSyscall(syscallNum uint32) []SockFilter {
 	return []SockFilter{
-		BPF_JUMP(BPF_JMP+BPF_JEQ+BPF_K, syscallNum, 0, 1),
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
+		bpfJump(bpfJmp+bpfJeq+bpfK, syscallNum, 0, 1),
+		bpfStmt(bpfRet+bpfK, seccompRetAllow),
 	}
 }
 
 func DisallowSyscall(syscallNum, errno uint32) []SockFilter {
 	return []SockFilter{
-		BPF_JUMP(BPF_JMP+BPF_JEQ+BPF_K, syscallNum, 0, 1),
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ERRNO|(errno&SECCOMP_RET_DATA)),
+		bpfJump(bpfJmp+bpfJeq+bpfK, syscallNum, 0, 1),
+		bpfStmt(bpfRet+bpfK, seccompRetErrno|(errno&seccompRetData)),
 	}
 }
 
 func KillProcess() []SockFilter {
 	return []SockFilter{
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_KILL_PROCESS),
+		bpfStmt(bpfRet+bpfK, seccompRetKillProcess),
 	}
 }
 
 func NotifyProcessAndDie() []SockFilter {
 	return []SockFilter{
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_TRAP),
+		bpfStmt(bpfRet+bpfK, seccompRetTrap),
 	}
 }
 
 func TrapOnSyscall(syscallNum uint32) []SockFilter {
 	return []SockFilter{
-		BPF_JUMP(BPF_JMP+BPF_JEQ+BPF_K, syscallNum, 0, 1),
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_TRAP),
+		bpfJump(bpfJmp+bpfJeq+bpfK, syscallNum, 0, 1),
+		bpfStmt(bpfRet+bpfK, seccompRetTrap),
 	}
 }
 
 func AllGood() []SockFilter {
 	return []SockFilter{
-		BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
+		bpfStmt(bpfRet+bpfK, seccompRetAllow),
 	}
 }
 
@@ -178,10 +179,10 @@ func prctl(option, arg1, arg2, arg3, arg4, arg5 uintptr) error {
 	return nil
 }
 
-// seccomp_set_mode_filter is our wrapper for performing our seccomp system call.
+// SeccompSetModeFilter is our wrapper for performing our seccomp system call.
 //go:uintptrescapes
-func seccomp_set_mode_filter(prog *SockFProg) error {
-	if _, _, e := syscall.RawSyscall(SYS_SECCOMP, SECCOMP_SET_MODE_FILTER, SECCOMP_FILTER_FLAG_TSYNC, uintptr(unsafe.Pointer(prog))); e != 0 {
+func SeccompSetModeFilter(prog *SockFProg) error {
+	if _, _, e := syscall.RawSyscall(sysSeccomp, seccompSetModeFilter, seccompFilterFlagTsync, uintptr(unsafe.Pointer(prog))); e != 0 {
 		return e
 	}
 	return nil
@@ -220,12 +221,12 @@ func applyPolicy(prog *SockFProg) {
 	}
 
 	// This is required to load a filter without privilege.
-	if err := prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0, 0); err != nil {
+	if err := prctl(prSetNoNewPrivs, 1, 0, 0, 0, 0); err != nil {
 		log.Fatalf("Prctl(PR_SET_NO_NEW_PRIVS): %v", err)
 	}
 
 	fmt.Println("Applying syscall policy...")
-	if err := seccomp_set_mode_filter(prog); err != nil {
+	if err := SeccompSetModeFilter(prog); err != nil {
 		log.Fatalf("seccomp_set_mode_filter: %v", err)
 	}
 	fmt.Println("...Policy applied")
@@ -240,7 +241,7 @@ func main() {
 	}
 
 	var filter []SockFilter
-	filter = append(filter, ValidateArchitecture()...)
+	filter = append(filter, validateArchitecture()...)
 
 	// Grab the system call number.
 	filter = append(filter, ExamineSyscall()...)
