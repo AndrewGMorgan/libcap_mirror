@@ -43,11 +43,11 @@ LIBDIR=$(lib_prefix)/$(lib)
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
 GOPKGDIR=$(prefix)/share/gocode/src
 
-# Once go1.16 is released, I plan to set this value to 1 and keep it
-# there. The Go packages should always remain backwardly compatible,
-# but I may have to up it if Go's syntax dramatically changes in a
-# backwards incompatible manner. (Let's hope not.)
-GOMAJOR=0
+# From here on out, the Go module packages should always remain
+# backwardly compatible. I will only resort to using major version 2
+# etc if Go's syntax dramatically changes in a backwards incompatible
+# manner. (Let's hope not.)
+GOMAJOR=1
 
 # Compilation specifics
 

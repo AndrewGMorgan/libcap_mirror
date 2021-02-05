@@ -82,8 +82,8 @@ morganrelease: distcheck
 	git tag -u E2CCF3F4 -s libcap-korg-$(VERSION).$(MINOR) -m "This is libcap-$(VERSION).$(MINOR)"
 	@echo "The following are for the Go module tracking."
 	git tag -u D41A6DF2 -s v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'libcap' Go base directory associated with libcap-$(VERSION).$(MINOR)."
-	git tag -u D41A6DF2 -s psx/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'psx' Go package associated with libcap-$(VERSION).$(MINOR)."
-	git tag -u D41A6DF2 -s cap/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'cap' Go package associated with libcap-$(VERSION).$(MINOR)."
+	git tag -u D41A6DF2 -s psx/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the (stable) version tag for the 'psx' Go package associated with libcap-$(VERSION).$(MINOR)."
+	git tag -u D41A6DF2 -s cap/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the (stable) version tag for the 'cap' Go package associated with libcap-$(VERSION).$(MINOR)."
 	$(MAKE) release
 	@echo "sign the tar file using korg key"
 	cd .. && gpg -sba -u E2CCF3F4 libcap-$(VERSION).$(MINOR).tar
