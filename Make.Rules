@@ -103,16 +103,21 @@ PAM_CAP ?= $(shell if [ -f /usr/include/security/pam_modules.h ]; then echo $(SH
 PTHREADS ?= yes
 
 ifeq ($(PTHREADS),yes)
-GO := go
-GOLANG := $(shell if [ -n "$(shell $(GO) version 2>/dev/null)" ]; then echo yes ; else echo no ; fi)
+GO ?= go
+GOLANG ?= $(shell if [ -n "$(shell $(GO) version 2>/dev/null)" ]; then echo yes ; else echo no ; fi)
 ifeq ($(GOLANG),yes)
-GOROOT := $(shell $(GO) env GOROOT)
-GOCGO := $(shell if [ "$(shell $(GO) env CGO_ENABLED)" = 1 ]; then echo yes ; else echo no ; fi)
-GOOSARCH := $(shell $(GO) env GOHOSTOS)_$(shell $(GO) env GOHOSTARCH)
+GOROOT ?= $(shell $(GO) env GOROOT)
+GOCGO ?= $(shell if [ "$(shell $(GO) env CGO_ENABLED)" = 1 ]; then echo yes ; else echo no ; fi)
+GOOSARCH ?= $(shell $(GO) env GOHOSTOS)_$(shell $(GO) env GOHOSTARCH)
+CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh $(GO))
+ifeq ($(CGO_REQUIRED),1)
+# Strictly speaking go1.15 doesn't need this, but 1.16 is when the
+# real golang support arrives for non-cgo support, so drop the last
+# vestige of legacy workarounds then.
+CGO_LDFLAGS_ALLOW := -Wl,-?-wrap[=,][^-.@][^,]*
+endif
 CGO_CFLAGS := -I$(topdir)/libcap/include
 CGO_LDFLAGS := -L$(topdir)/libcap
-CGO_LDFLAGS_ALLOW := -Wl,-?-wrap[=,][^-.@][^,]*
-CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh)
 endif
 endif
 

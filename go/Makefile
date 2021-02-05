@@ -76,12 +76,11 @@ ifeq ($(CGO_REQUIRED),0)
 	GO111MODULE=off CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
 endif
 
-# Bug reported issues:
-#   https://bugzilla.kernel.org/show_bug.cgi?id=210533 (cgo - fixed)
-#   https://github.com/golang/go/issues/43149 (nocgo - not fixed yet)
-# When the latter is fixed we can replace CGO_ENABLED=1 with ="$(CGO_REQUIRED)"
-psx-signals: psx-signals.go  $(PSXGOPACKAGE)
-	GO111MODULE=off CGO_ENABLED=1 CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
+psx-signals: psx-signals.go $(PSXGOPACKAGE)
+	GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
+ifeq ($(CGO_REQUIRED),0)
+	GO111MODULE=off CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
+endif
 
 b210613: b210613.go $(CAPGOPACKAGE)
 	GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
@@ -91,6 +90,9 @@ test: all
 	GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" GOPATH="$(GOPATH)" $(GO) test $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals
+ifeq ($(CGO_REQUIRED),0)
+	./psx-signals-cgo
+endif
 	./setid --caps=false
 	./gowns -- -c "echo gowns runs"
 
@@ -122,5 +124,5 @@ clean:
 	rm -f web setid gowns
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
-	rm -f psx-signals b210613
+	rm -f b210613 psx-signals psx-signals-cgo
 	rm -fr pkg src
