@@ -923,8 +923,8 @@ int main(int argc, char *argv[], char *envp[])
 	    }
 	} else if (!strcmp("--license", argv[i])) {
 	    printf(
-		"%s has a you choose license: BSD 3-clause or GPL2\n"
-		"Copyright (c) 2008-11,16,19,2020 Andrew G. Morgan"
+		"%s see LICENSE file for details.\n"
+		"Copyright (c) 2008-11,16,19-21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
 	} else {
