@@ -32,22 +32,46 @@
 //       log.Fatalf("failed to fully drop privilege: have=%q, wanted=%q", now, empty)
 //   }
 //
-// See https://sites.google.com/site/fullycapable/ for recent updates,
-// some more complete walk-through examples of ways of using
-// 'cap.Set's etc and information on how to file bugs.
-//
-// For CGo linked binaries, behind the scenes, the package
-// "kernel.org/pub/linux/libs/security/libcap/psx" is used to perform
-// POSIX semantics system calls that manipulate thread state
-// uniformly over the whole Go (and CGo linked) process runtime.
+// The "cap" package operates with POSIX semantics for security
+// state. That is all OS threads are kept in sync at all times. The
+// package "kernel.org/pub/linux/libs/security/libcap/psx" is used to
+// implement POSIX semantics system calls that manipulate thread state
+// uniformly over the whole Go (and any CGo linked) process runtime.
 //
 // Note, if the Go runtime syscall interface contains the Linux
 // variant syscall.AllThreadsSyscall() API (it debuted in go1.16 see
-// https://github.com/golang/go/issues/1435 for its history) then
-// the "psx" package will use that to invoke Capability setting system
-// calls in pure Go binaries. In such an enhanced Go runtime, to force
-// this behavior, use the CGO_ENABLED=0 environment variable.
+// https://github.com/golang/go/issues/1435 for its history) then the
+// "libcap/psx" package will use that to invoke Capability setting
+// system calls in pure Go binaries. With such an enhanced Go runtime,
+// to force this behavior, use the CGO_ENABLED=0 environment variable.
 //
+// POSIX semantics are more secure than trying to manage privilege at
+// a thread level when those threads share a common memory image as
+// they do under Linux: it is trivial to exploit a vulnerability in
+// one thread of a process to cause execution on any another
+// thread. So, any imbalance in security state, in such cases will
+// readily create an opportunity for a privilege escalation
+// vulnerability.
+//
+// POSIX semantics also work well with Go, which deliberately tries to
+// insulate the user from worrying about the number of OS threads that
+// are actually running in their program. Indeed, Go can efficiently
+// launch and manage tens of thousands of concurrent goroutines
+// without bogging the program or wider system down. It does this by
+// aggressively migrating idle threads to make progress on unblocked
+// goroutines. So, inconsistent security state across OS threads can
+// also lead to program misbehavior.
+//
+// The only exception to this process-wide common security state is
+// the cap.Launcher related functionality. This briefly locks an OS
+// thread to a goroutine in order to launch another executable - the
+// robust implementation of this kind of support is quite subtle, so
+// please read its documentation carefully, if you find that you need
+// it.
+//
+// See https://sites.google.com/site/fullycapable/ for recent updates,
+// some more complete walk-through examples of ways of using
+// 'cap.Set's etc and information on how to file bugs.
 //
 // Copyright (c) 2019-21 Andrew G. Morgan <morgan@kernel.org>
 //
