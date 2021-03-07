@@ -212,3 +212,50 @@ func TestIAB(t *testing.T) {
 		}
 	}
 }
+
+func TestFuncLaunch(t *testing.T) {
+	if _, err := FuncLauncher(func(data interface{}) error {
+		return nil
+	}).Launch(nil); err != nil {
+		t.Fatalf("trivial launcher failed: %v", err)
+	}
+
+	before, err := singlesc.prctlrcall(prGetKeepCaps, 0, 0)
+	if err != nil {
+		t.Fatalf("failed to get PR_KEEP_CAPS: %v", err)
+	}
+
+	if _, err := FuncLauncher(func(data interface{}) error {
+		// This function is super contrived, since we want to
+		// do something 'privileged' without necessarily
+		// having any privilege. We may at some point provide
+		// a convenience wrapper, cap.Prctlw(), and then we can
+		// clean this test case up to use that.
+		state, sc := scwStateSC()
+		defer scwSetState(launchBlocked, state, -1)
+
+		was, ok := data.(int)
+		if !ok {
+			return fmt.Errorf("data was not an int: %v", data)
+		}
+		if _, err := sc.prctlwcall(prSetKeepCaps, uintptr(1-was), 0); err != nil {
+			return err
+		}
+		if v, err := sc.prctlrcall(prGetKeepCaps, 0, 0); err != nil {
+			return err
+		} else if v == was {
+			return fmt.Errorf("PR_KEEP_CAPS unchanged: got=%d, want=%v", v, 1-was)
+		}
+		// All good.
+		return nil
+	}).Launch(before); err != nil {
+		t.Fatalf("trivial launcher failed: %v", err)
+	}
+
+	// Now validate that the main process is still OK.
+	if after, err := singlesc.prctlrcall(prGetKeepCaps, 0, 0); err != nil {
+		t.Fatalf("failed to get PR_KEEP_CAPS: %v", err)
+	} else if before != after {
+		t.Fatalf("FuncLauncher leaked privileged state: got=%v want=%v", after, before)
+	}
+}

@@ -173,14 +173,6 @@ type header struct {
 	pid   int32
 }
 
-// scwMu is used to fully serialize the write system calls. Note, this
-// is generally not necesary, but in the case of Launch we get into a
-// situation where the launching thread is temporarily allowed to
-// deviate from the kernel state of the rest of the runtime and
-// allowing other threads to perform w* syscalls will potentially
-// interfere with the launching process.
-var scwMu sync.Mutex
-
 // syscaller is a type for abstracting syscalls. The r* variants are
 // for reading state, and can be parallelized, the w* variants need to
 // be serialized so all OS threads can share state.
@@ -363,9 +355,9 @@ func (sc *syscaller) setProc(c *Set) error {
 // will be returned if the attempt fails. Should the attempt fail
 // no process capabilities will have been modified.
 func (c *Set) SetProc() error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.setProc(c)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.setProc(c)
 }
 
 // defines from uapi/linux/prctl.h
@@ -405,9 +397,9 @@ func (sc *syscaller) dropBound(val ...Value) error {
 // ill-defined state. The caller can determine where things went wrong
 // using GetBound().
 func DropBound(val ...Value) error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.dropBound(val...)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.dropBound(val...)
 }
 
 // defines from uapi/linux/prctl.h
@@ -452,9 +444,9 @@ func (sc *syscaller) setAmbient(enable bool, val ...Value) error {
 // captures all three inheritable vectors in a single type. Consider
 // using that.
 func SetAmbient(enable bool, val ...Value) error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.setAmbient(enable, val...)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.setAmbient(enable, val...)
 }
 
 func (sc *syscaller) resetAmbient() error {
@@ -479,7 +471,7 @@ func (sc *syscaller) resetAmbient() error {
 // already raised in both the Permitted and Inheritable Set is allowed
 // to be raised by the kernel.
 func ResetAmbient() error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.resetAmbient()
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.resetAmbient()
 }

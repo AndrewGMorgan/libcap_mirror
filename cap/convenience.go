@@ -33,6 +33,7 @@ const (
 
 // defines from uapi/linux/prctl.h
 const (
+	prGetKeepCaps   = 7
 	prSetKeepCaps   = 8
 	prGetSecureBits = 27
 	prSetSecureBits = 28
@@ -57,9 +58,9 @@ func (sc *syscaller) setSecbits(s Secbits) error {
 // will raise cap.SETPCAP in order to achieve this operation, and will
 // completely lower the Effective  vector of the process returning.
 func (s Secbits) Set() error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.setSecbits(s)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.setSecbits(s)
 }
 
 // Mode summarizes a complicated secure-bits and capability mode in a
@@ -181,9 +182,9 @@ func (sc *syscaller) setMode(m Mode) error {
 // permission or because (some of) the Secbits are already locked for
 // the current process.
 func (m Mode) Set() error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.setMode(m)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.setMode(m)
 }
 
 // String returns the libcap conventional string for this mode.
@@ -238,9 +239,9 @@ func (sc *syscaller) setUID(uid int) error {
 // performs a change of UID cap.SETUID is available, and the action
 // does not alter the Permitted Flag of the process' Set.
 func SetUID(uid int) error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.setUID(uid)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.setUID(uid)
 }
 
 //go:uintptrescapes
@@ -286,7 +287,7 @@ func (sc *syscaller) setGroups(gid int, suppl []int) error {
 // completely lower the Effective Flag of the process Set before
 // returning.
 func SetGroups(gid int, suppl ...int) error {
-	scwMu.Lock()
-	defer scwMu.Unlock()
-	return multisc.setGroups(gid, suppl)
+	state, sc := scwStateSC()
+	defer scwSetState(launchBlocked, state, -1)
+	return sc.setGroups(gid, suppl)
 }
