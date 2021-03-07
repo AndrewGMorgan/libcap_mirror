@@ -226,22 +226,14 @@ func TestFuncLaunch(t *testing.T) {
 	}
 
 	if _, err := FuncLauncher(func(data interface{}) error {
-		// This function is super contrived, since we want to
-		// do something 'privileged' without necessarily
-		// having any privilege. We may at some point provide
-		// a convenience wrapper, cap.Prctlw(), and then we can
-		// clean this test case up to use that.
-		state, sc := scwStateSC()
-		defer scwSetState(launchBlocked, state, -1)
-
 		was, ok := data.(int)
 		if !ok {
 			return fmt.Errorf("data was not an int: %v", data)
 		}
-		if _, err := sc.prctlwcall(prSetKeepCaps, uintptr(1-was), 0); err != nil {
+		if _, err := Prctlw(prSetKeepCaps, uintptr(1-was)); err != nil {
 			return err
 		}
-		if v, err := sc.prctlrcall(prGetKeepCaps, 0, 0); err != nil {
+		if v, err := Prctl(prGetKeepCaps); err != nil {
 			return err
 		} else if v == was {
 			return fmt.Errorf("PR_KEEP_CAPS unchanged: got=%d, want=%v", v, 1-was)
