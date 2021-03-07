@@ -848,8 +848,9 @@ static int _cap_chroot(struct syscaller_s *sc, const char *root)
 
 /*
  * _cap_launch is invoked in the forked child, it cannot return but is
- * required to exit. If the execve fails, it will write the errno value
- * over the filedescriptor, fd, and exit with status 0.
+ * required to exit, if the execve fails. It will write the errno
+ * value for any failure over the filedescriptor, fd, and exit with
+ * status 1.
  */
 __attribute__ ((noreturn))
 static void _cap_launch(int fd, cap_launch_t attr, void *detail) {
@@ -857,6 +858,10 @@ static void _cap_launch(int fd, cap_launch_t attr, void *detail) {
 
     if (attr->custom_setup_fn && attr->custom_setup_fn(detail)) {
 	goto defer;
+    }
+    if (attr->arg0 == NULL) {
+	/* handle the successful cap_func_launcher completion */
+	exit(0);
     }
 
     if (attr->change_uids && _cap_setuid(sc, attr->uid)) {
@@ -903,19 +908,29 @@ defer:
 }
 
 /*
- * cap_launch performs a wrapped fork+exec that works in both an
- * unthreaded environment and also where libcap is linked with
- * psx+pthreads. The function supports dropping privilege in the
- * forked thread, but retaining privilege in the parent thread(s).
+ * cap_launch performs a wrapped fork+(callback and/or exec) that
+ * works in both an unthreaded environment and also where libcap is
+ * linked with psx+pthreads. The function supports dropping privilege
+ * in the forked thread, but retaining privilege in the parent
+ * thread(s).
  *
- * Since the ambient set is fragile with respect to changes in I or P,
- * the function carefully orders setting of these inheritable
- * characteristics, to make sure they stick, or return an error
- * of -1 setting errno because the launch failed.
+ * When applying the IAB vector inside the fork, since the ambient set
+ * is fragile with respect to changes in I or P, the function
+ * carefully orders setting of these inheritable characteristics, to
+ * make sure they stick.
+ *
+ * This function will return an error of -1 setting errno if the
+ * launch failed.
  */
 pid_t cap_launch(cap_launch_t attr, void *data) {
     int my_errno;
     int ps[2];
+
+    /* The launch must have a purpose */
+    if (attr->custom_setup_fn == NULL && (attr->arg0 == NULL || attr->argv == NULL)) {
+	errno = EINVAL;
+	return -1;
+    }
 
     if (pipe2(ps, O_CLOEXEC) != 0) {
 	return -1;

@@ -185,6 +185,7 @@ typedef struct cap_launch_s *cap_launch_t;
 
 extern cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
 				     const char * const *envp);
+extern cap_launch_t cap_func_launcher(int (callback_fn)(void *detail));
 extern void cap_launcher_callback(cap_launch_t attr,
 				  int (callback_fn)(void *detail));
 extern void cap_launcher_setuid(cap_launch_t attr, uid_t uid);
