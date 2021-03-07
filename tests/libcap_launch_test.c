@@ -25,12 +25,24 @@ struct test_case_s {
     const char *iab;
     cap_mode_t mode;
     int result;
+    int (*callback_fn)(void *detail);
 };
 
 #ifdef WITH_PTHREADS
 #include <pthread.h>
 #else /* WITH_PTHREADS */
 #endif /* WITH_PTHREADS */
+
+/*
+ * clean_out drops all process capabilities.
+ */
+static int clean_out(void *data) {
+    cap_t empty;
+    empty = cap_init();
+    cap_set_proc(empty);
+    cap_free(empty);
+    return 0;
+}
 
 int main(int argc, char **argv) {
     static struct test_case_s vs[] = {
@@ -39,13 +51,28 @@ int main(int argc, char **argv) {
 	    .result = 0
 	},
 	{
+	    .args = { "../progs/tcapsh-static", "--", "-c", "echo hello" },
+	    .callback_fn = &clean_out,
+	    .result = 0
+	},
+	{
+	    .callback_fn = &clean_out,
+	    .result = 0
+	},
+	{
 	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
 	    .result = 256
 	},
 	{
 	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
-	    .result = 0,
 	    .uid = 123,
+	    .result = 0,
+	},
+	{
+	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
+	    .callback_fn = &clean_out,
+	    .uid = 123,
+	    .result = 256
 	},
 	{
 	    .args = { "../progs/tcapsh-static", "--is-gid=123" },
@@ -92,7 +119,15 @@ int main(int argc, char **argv) {
 	const struct test_case_s *v = &vs[i];
 	printf("[%d] test should %s\n", i,
 	       v->result ? "generate error" : "work");
-	cap_launch_t attr = cap_new_launcher(v->args[0], v->args, v->envp);
+	cap_launch_t attr;
+	if (v->args != NULL) {
+	    attr = cap_new_launcher(v->args[0], v->args, v->envp);
+	    if (v->callback_fn != NULL) {
+		cap_launcher_callback(attr, v->callback_fn);
+	    }
+	} else {
+	    attr = cap_func_launcher(v->callback_fn);
+	}
 	if (v->chroot) {
 	    cap_launcher_set_chroot(attr, v->chroot);
 	}

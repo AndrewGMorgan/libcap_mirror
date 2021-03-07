@@ -945,8 +945,10 @@ pid_t cap_launch(cap_launch_t attr, void *data) {
     }
     if (!child) {
 	close(ps[0]);
-	/* noreturn from this function: */
+	prctl(PR_SET_NAME, "cap-launcher", 0, 0, 0);
 	_cap_launch(ps[1], attr, data);
+	/* no return from this function */
+	exit(1);
     }
 
     /*
