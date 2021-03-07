@@ -194,7 +194,7 @@ extern void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
 extern void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor);
 extern cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab);
 extern void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot);
-extern pid_t cap_launch(cap_launch_t attr, void *data);
+extern pid_t cap_launch(cap_launch_t attr, void *detail);
 
 /*
  * system calls - look to libc for function to system call

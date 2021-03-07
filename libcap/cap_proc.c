@@ -922,7 +922,7 @@ defer:
  * This function will return an error of -1 setting errno if the
  * launch failed.
  */
-pid_t cap_launch(cap_launch_t attr, void *data) {
+pid_t cap_launch(cap_launch_t attr, void *detail) {
     int my_errno;
     int ps[2];
 
@@ -946,7 +946,7 @@ pid_t cap_launch(cap_launch_t attr, void *data) {
     if (!child) {
 	close(ps[0]);
 	prctl(PR_SET_NAME, "cap-launcher", 0, 0, 0);
-	_cap_launch(ps[1], attr, data);
+	_cap_launch(ps[1], attr, detail);
 	/* no return from this function */
 	exit(1);
     }

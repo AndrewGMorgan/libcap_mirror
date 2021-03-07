@@ -16,7 +16,7 @@ void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot);
 
 #include <sys/types.h>
 
-pid_t cap_launch(cap_launch_t attr, void *data);
+pid_t cap_launch(cap_launch_t attr, void *detail);
 void cap_launcher_setuid(cap_launch_t attr, uid_t uid);
 void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
 .fi
@@ -93,11 +93,10 @@ execute with the capability and other security context of the
 application. The following functions can be used to instruct the
 launcher to modify the security state of the invoked program without
 altering the state of the calling program. Such modifications must be
-performed prior to calling
-.BR cap_launch ()
-if they are to have the desired effect. Further, they are only invoked
-after any installed callback has completed. For example, one can drop
-or modify capabilities, \fIjust\fP for executing a file.
+performed prior to calling \fBcap_launch\fP() if they are to have the
+desired effect. Further, they are only invoked after any installed
+callback has completed. For example, one can drop or modify
+capabilities, \fIjust\fP for executing a file.
 .PP
 The following functions instruct the launcher to do some common tasks
 of this sort (note some require permitted capability bits to succeed):
@@ -144,9 +143,7 @@ In all such cases consult
 .BR errno (3)
 for further details.
 .SH "HISTORY"
-The
-.BR cap_launch ()
-family of functions were introduced in libcap
+The \fBcap_launch\fP() family of functions were introduced in libcap
 2.33. It primarily addresses a complexity with \fI-lpsx\fP linked
 pthreads(7) applications that use capabilities but also honor POSIX
 semantics.
