@@ -100,28 +100,31 @@ capabilities, \fIjust\fP for executing a file.
 .PP
 The following functions instruct the launcher to do some common tasks
 of this sort (note some require permitted capability bits to succeed):
-.TP
+.sp
 .BR cap_launcher_callback ()
 can be used to install or replace the currently installed callback
 function of the launcher.
-.TP
+.sp
 .BR cap_launcher_set_mode ()
 can be used to ensure that the libcap-mode of the launched program is
 the desired one.
-.TP
+.sp
 .BR cap_launcher_set_iab ()
 This function returns the \fBcap_iab_t\fP previously associated with
 the launcher. Calling this function with an IAB value of NULL will
 configure the launcher to not set an IAB value (the default).
-.TP
+See
+.BR cap_iab (3)
+for details on the IAB set.
+.sp
 .BR cap_launcher_set_chroot ()
 This function causes the launched program executable to be invoked
 inside a chroot \fIroot\fP directory.
-.TP
+.sp
 .BR cap_launcher_setuid ()
 This function causes the launched program executable to be invoked
 with the specified user identifier (\fIuid_t\fP).
-.TP
+.sp
 .BR cap_launcher_setgroups ()
 This function causes the launched program executable to be invoked
 with the specified primary and supplementary group IDs.
@@ -158,6 +161,7 @@ explanation.)
 .BR psx_syscall (3),
 .BR libcap (3),
 .BR cap_mode (3),
+.BR cap_iab (3),
 .BR capabilities (7),
 .BR errno (3),
 .BR fork (2),
