@@ -83,7 +83,9 @@ func FuncLauncher(fn func(interface{}) error) *Launcher {
 // If the specified callback fn should call any "cap" package
 // functions that change privilege state, these calls will only affect
 // the launch goroutine itself. While the launch is in progress, other
-// goroutines will block if they attempt to change privilege state.
+// (non-launch) goroutines will block if they attempt to change
+// privilege state. These routines will unblock once there are no
+// in-flight launches.
 //
 // Note, the first argument provided to the callback function is the
 // *syscall.ProcAttr value to be used when a process launch is taking
@@ -301,7 +303,7 @@ abort:
 // Launch performs a callback function and/or new program launch with
 // a disposable security state. The data object, when not nil, can be
 // used to communicate with the callback. It can also be used to
-// return details from the callback functions exection.
+// return details from the callback functions execution.
 //
 // If the attr was created with NewLauncher(), this present function
 // will return the pid of the launched process, or -1 and a non-nil

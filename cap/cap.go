@@ -354,6 +354,11 @@ func (sc *syscaller) setProc(c *Set) error {
 // process. The kernel will perform permission checks and an error
 // will be returned if the attempt fails. Should the attempt fail
 // no process capabilities will have been modified.
+//
+// Note, the general behavior of this call is to set the
+// process-shared capabilities. However, when called from a callback
+// function as part of a (*Launcher).Launch(), the call only sets the
+// capabilities of the thread being used to perform the launch.
 func (c *Set) SetProc() error {
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)
