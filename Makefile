@@ -8,7 +8,7 @@ include Make.Rules
 # flags
 #
 
-all install clean kdebug: %: %-here
+all install clean: %: %-here
 	$(MAKE) -C libcap $@
 ifneq ($(PAM_CAP),no)
 	$(MAKE) -C pam_cap $@
@@ -51,6 +51,9 @@ ifeq ($(GOLANG),yes)
 	$(MAKE) -C go $@
 endif
 	$(MAKE) -C progs $@
+
+ktest: all
+	$(MAKE) -C kdebug test
 
 sudotest: all
 	$(MAKE) -C tests $@
