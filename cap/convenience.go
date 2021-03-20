@@ -293,7 +293,7 @@ func SetGroups(gid int, suppl ...int) error {
 	return sc.setGroups(gid, suppl)
 }
 
-//go:unintptrescapes
+//go:uintptrescapes
 
 // Prctlw is a convenience function for performing a syscall.Prctl()
 // call that executes on all the threads of the process. It is called
@@ -313,7 +313,7 @@ func Prctlw(prVal uintptr, args ...uintptr) (int, error) {
 	return sc.prctlwcall6(prVal, as[0], as[1], as[2], as[3], as[4])
 }
 
-//go:unintptrescapes
+//go:uintptrescapes
 
 // Prctl is a convenience function that performs a syscall.Prctl()
 // that either reads state using a single OS thread, or performs a
