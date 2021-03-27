@@ -230,8 +230,6 @@ const (
 	//   - override the maximum number of consoles for console
 	//     allocation
 	//   - override the maximum number of keymaps
-	//
-	//
 	SYS_RESOURCE
 
 	// SYS_TIME allows a process to perform time manipulation of clocks:

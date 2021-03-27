@@ -4,11 +4,11 @@ include $(topdir)/Make.Rules
 #
 # Programs: all of the examples that we will compile
 #
-PROGS=getpcaps capsh getcap setcap
+PROGS=getpcaps getcap setcap
 
 BUILD=$(PROGS)
 
-all: $(BUILD)
+all: $(BUILD) capsh
 
 ifeq ($(DYNAMIC),yes)
 LDPATH = LD_LIBRARY_PATH=../libcap
@@ -28,7 +28,7 @@ $(BUILD): %: %.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
 
 %.o: %.c $(INCS)
-	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -c $< -o $@
+	$(CC) $(IPATH) $(CFLAGS) -c $< -o $@
 
 install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(SBINDIR)
@@ -41,7 +41,14 @@ endif
 
 test: $(PROGS)
 
-tcapsh-static: capsh.c $(DEPS)
+capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
+	./mkcapshdoc.sh > $@
+	diff -u capshdoc.h $@ || (rm $@ ; exit 1)
+
+capsh: capsh.c capshdoc.h.cf $(DEPS)
+	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
+
+tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
 	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS) --static
 
 sudotest: test tcapsh-static
@@ -49,4 +56,5 @@ sudotest: test tcapsh-static
 
 clean:
 	$(LOCALCLEAN)
-	rm -f *.o $(BUILD) tcapsh* privileged ping hack.sh compare-cap
+	rm -f *.o $(BUILD) privileged ping hack.sh compare-cap
+	rm -f capsh tcapsh* capshdoc.h.cf

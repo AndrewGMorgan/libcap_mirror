@@ -32,6 +32,8 @@
 #define SHELL "/bin/bash"
 #endif /* ndef SHELL */
 
+#include "./capshdoc.h"
+
 #define MAX_GROUPS       100   /* max number of supplementary groups for user */
 
 static char *binary(unsigned long value)
@@ -927,22 +929,54 @@ int main(int argc, char *argv[], char *envp[])
 		"Copyright (c) 2008-11,16,19-21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
+	} else 	if (!strncmp("--explain=", argv[i], 10)) {
+	    cap_value_t cap;
+	    if (cap_from_name(argv[i]+10, &cap) != 0) {
+		fprintf(stderr, "unrecognised value '%s'\n", argv[i]+10);
+		exit(1);
+	    }
+	    if (cap < 0) {
+		fprintf(stderr, "negative capability (%d) invalid\n", cap);
+		exit(1);
+	    }
+	    if (cap < CAPSH_DOC_LIMIT) {
+		int j;
+		const char **lines = explanations[cap];
+		char *name = cap_to_name(cap);
+		if (cap < cap_max_bits()) {
+		    printf("%s (%d)", name, cap);
+		} else {
+		    printf("<reserved for> %s (%d)", name, cap);
+		}
+		cap_free(name);
+		printf(" [/proc/self/status:CapXXX: 0x%016llx]\n\n", 1ULL<<cap);
+		for (j=0; lines[j]; j++) {
+		    printf("    %s\n", lines[j]);
+		}
+		continue;
+	    } else if (cap < cap_max_bits()) {
+		printf("<unnamed in libcap> (%d)", cap);
+	    } else {
+		printf("<unsupported> (%d)", cap);
+	    }
+	    printf(" [/proc/self/status:CapXXX: 0x%016llx]\n", 1ULL<<cap);
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
-		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
-		   "  --has-ambient  exit 1 unless ambient vector supported\n"
 		   "  --addamb=xxx   add xxx,... capabilities to ambient set\n"
 		   "  --cap-uid=<n>  use libcap cap_setuid() to change uid\n"
 		   "  --caps=xxx     set caps as per cap_from_text()\n"
 		   "  --chroot=path  chroot(2) to this path\n"
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
+		   "  --explain=xxx  explain what capability xxx permits\n"
 		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
 		   "  --gid=<n>      set gid to <n> (hint: id <username>)\n"
 		   "  --groups=g,... set the supplemental groups\n"
-		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"
+		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
+		   "  --has-ambient  exit 1 unless ambient vector supported\n"
 		   "  --has-i=xxx    exit 1 if capability xxx not inheritable\n"
+		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"
 		   "  --has-no-new-privs  exit 1 if privs not limited\n"
 		   "  --help, -h     this message (or try 'man capsh')\n"
 		   "  --iab=...      use cap_iab_from_text() to set iab\n"
