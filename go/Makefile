@@ -78,8 +78,10 @@ endif
 
 psx-signals: psx-signals.go $(PSXGOPACKAGE)
 	CC="$(CC)" GO111MODULE=off CGO_ENABLED="$(CGO_REQUIRED)" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build $<
+
 ifeq ($(CGO_REQUIRED),0)
-	CC="$(CC)" GO111MODULE=off CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build -o $@-cgo $<
+psx-signals-cgo: psx-signals.go $(PSXGOPACKAGE)
+	CC="$(CC)" GO111MODULE=off CGO_ENABLED="1" CGO_LDFLAGS_ALLOW="$(CGO_LDFLAGS_ALLOW)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPATH=$(GOPATH) $(GO) build -o $@ $<
 endif
 
 b210613: b210613.go $(CAPGOPACKAGE)
@@ -91,6 +93,7 @@ test: all
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals
 ifeq ($(CGO_REQUIRED),0)
+	$(MAKE) psx-signals-cgo
 	./psx-signals-cgo
 endif
 	./setid --caps=false

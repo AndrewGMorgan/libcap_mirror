@@ -220,34 +220,45 @@ func TestFuncLaunch(t *testing.T) {
 		t.Fatalf("trivial launcher failed: %v", err)
 	}
 
-	before, err := singlesc.prctlrcall(prGetKeepCaps, 0, 0)
-	if err != nil {
-		t.Fatalf("failed to get PR_KEEP_CAPS: %v", err)
-	}
+	for i := 0; i < 100; i++ {
+		expect := i & 1
+		before, err := Prctl(prGetKeepCaps)
+		if err != nil {
+			t.Fatalf("failed to get PR_KEEP_CAPS: %v", err)
+		}
+		if before != expect {
+			t.Fatalf("invalid initial state: got=%d want=%d", before, expect)
+		}
 
-	if _, err := FuncLauncher(func(data interface{}) error {
-		was, ok := data.(int)
-		if !ok {
-			return fmt.Errorf("data was not an int: %v", data)
+		if _, err := FuncLauncher(func(data interface{}) error {
+			was, ok := data.(int)
+			if !ok {
+				return fmt.Errorf("data was not an int: %v", data)
+			}
+			if _, err := Prctlw(prSetKeepCaps, uintptr(1-was)); err != nil {
+				return err
+			}
+			if v, err := Prctl(prGetKeepCaps); err != nil {
+				return err
+			} else if v == was {
+				return fmt.Errorf("PR_KEEP_CAPS unchanged: got=%d, want=%v", v, 1-was)
+			}
+			// All good.
+			return nil
+		}).Launch(before); err != nil {
+			t.Fatalf("trivial launcher failed: %v", err)
 		}
-		if _, err := Prctlw(prSetKeepCaps, uintptr(1-was)); err != nil {
-			return err
-		}
-		if v, err := Prctl(prGetKeepCaps); err != nil {
-			return err
-		} else if v == was {
-			return fmt.Errorf("PR_KEEP_CAPS unchanged: got=%d, want=%v", v, 1-was)
-		}
-		// All good.
-		return nil
-	}).Launch(before); err != nil {
-		t.Fatalf("trivial launcher failed: %v", err)
-	}
 
-	// Now validate that the main process is still OK.
-	if after, err := singlesc.prctlrcall(prGetKeepCaps, 0, 0); err != nil {
-		t.Fatalf("failed to get PR_KEEP_CAPS: %v", err)
-	} else if before != after {
-		t.Fatalf("FuncLauncher leaked privileged state: got=%v want=%v", after, before)
+		// Now validate that the main process is still OK.
+		if after, err := Prctl(prGetKeepCaps); err != nil {
+			t.Fatalf("failed to get PR_KEEP_CAPS: %v", err)
+		} else if before != after {
+			t.Fatalf("FuncLauncher leaked privileged state: got=%v want=%v", after, before)
+		}
+
+		// Now force the other way
+		if _, err := Prctlw(prSetKeepCaps, uintptr(1-expect)); err != nil {
+			t.Fatalf("[%d] attempt to flip PR_KEEP_CAPS failed: %v", i, err)
+		}
 	}
 }
