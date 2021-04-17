@@ -214,6 +214,12 @@ If the exit status does not match the signal being used to kill it, the
 .B capsh
 program exits with status 1.
 .TP
+.BI \-\-explain= cap_xxx
+Give a brief textual description of what privileges the specified
+capability makes available to a running program. Note, instead of
+\fIcap_xxx\fP, one can provide a decimal number and \fBcapsh\fP will
+look up the corresponding capability's description.
+.TP
 .BI \-\-decode= N
 This is a convenience feature. If you look at
 .B /proc/1/status
