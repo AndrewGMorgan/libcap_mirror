@@ -272,6 +272,11 @@ vector has capability
 .B xxx
 raised.
 .TP
+.BI \-\-iab= xxx
+Attempts to set the IAB tuple of inheritable capability vectors.
+The text conventions used for \fIxxx\fP are those of
+.BR cap_iab_from_text (3).
+.TP
 .BI \-\-addamb= xxx
 Adds the specified ambient capability to the running process.
 .TP
@@ -296,6 +301,8 @@ https://bugzilla.kernel.org/buglist.cgi?component=libcap&list_id=1047723&product
 .SH "SEE ALSO"
 .BR libcap (3),
 .BR getcap (8),
-.BR setcap (8)
+.BR setcap (8),
+.BR cap_from_text (3),
+.BR cap_iab (3)
 and
 .BR capabilities (7).
