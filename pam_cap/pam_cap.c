@@ -218,7 +218,7 @@ static int set_capabilities(struct pam_cap_s *cs)
 	if (!cap_set_proc(cap_s)) {
 	    ok = 1;
 	}
-	goto cleanup_cap_s;
+	goto cleanup_conf;
     }
 
     iab = cap_iab_from_text(conf_caps);
@@ -238,10 +238,9 @@ cleanup_conf:
     _pam_drop(conf_caps);
 
 cleanup_cap_s:
-    if (cap_s) {
-	cap_free(cap_s);
-	cap_s = NULL;
-    }
+    cap_free(cap_s);
+    cap_s = NULL;
+
     return ok;
 }
 

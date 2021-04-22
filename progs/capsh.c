@@ -338,8 +338,8 @@ static void arg_change_amb(const char *arg_names, cap_flag_value_t set)
  */
 static char *find_self(const char *arg0)
 {
-    int i;
-    char *parts, *dir, *scratch;
+    int i, status=1;
+    char *p = NULL, *parts, *dir, *scratch;
     const char *path;
 
     for (i = strlen(arg0)-1; i >= 0 && arg0[i] != '/'; i--);
@@ -354,21 +354,35 @@ static char *find_self(const char *arg0)
     }
 
     parts = strdup(path);
-    scratch = malloc(2+strlen(path)+strlen(arg0));
-    if (parts == NULL || scratch == NULL) {
-        fprintf(stderr, "insufficient memory for path building\n");
+    if (parts == NULL) {
+        fprintf(stderr, "insufficient memory for parts of path\n");
 	exit(1);
     }
 
-    for (i=0; (dir = strtok(parts, ":")); parts = NULL) {
-        sprintf(scratch, "%s/%s", dir, arg0);
-	if (access(scratch, X_OK) == 0) {
-            return scratch;
-	}
+    scratch = malloc(2+strlen(path)+strlen(arg0));
+    if (scratch == NULL) {
+        fprintf(stderr, "insufficient memory for path building\n");
+	goto free_parts;
     }
 
-    fprintf(stderr, "unable to find executable '%s' in PATH\n", arg0);
-    exit(1);
+    for (i=0, p = parts; (dir = strtok(p, ":")); p = NULL) {
+        sprintf(scratch, "%s/%s", dir, arg0);
+	if (access(scratch, X_OK) == 0) {
+	    status = 0;
+	    break;
+	}
+    }
+    if (status) {
+	fprintf(stderr, "unable to find executable '%s' in PATH\n", arg0);
+	free(scratch);
+    }
+
+free_parts:
+    free(parts);
+    if (status) {
+	exit(status);
+    }
+    return scratch;
 }
 
 int main(int argc, char *argv[], char *envp[])
