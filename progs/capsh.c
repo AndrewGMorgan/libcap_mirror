@@ -365,7 +365,7 @@ static char *find_self(const char *arg0)
 	goto free_parts;
     }
 
-    for (i=0, p = parts; (dir = strtok(p, ":")); p = NULL) {
+    for (p = parts; (dir = strtok(p, ":")); p = NULL) {
         sprintf(scratch, "%s/%s", dir, arg0);
 	if (access(scratch, X_OK) == 0) {
 	    status = 0;
@@ -383,6 +383,16 @@ free_parts:
 	exit(status);
     }
     return scratch;
+}
+
+static long safe_sysconf(int name)
+{
+    long ans = sysconf(name);
+    if (ans <= 0) {
+	fprintf(stderr, "sysconf(%d) returned a non-positive number: %ld\n", name, ans);
+	exit(1);
+    }
+    return ans;
 }
 
 int main(int argc, char *argv[], char *envp[])
@@ -633,7 +643,9 @@ int main(int argc, char *argv[], char *envp[])
 	     * Given we are now in a new directory tree, its good practice
 	     * to start off in a sane location
 	     */
-	    status = chdir("/");
+	    if (status == 0) {
+		status = chdir("/");
+	    }
 
 	    cap_free(orig);
 
@@ -734,14 +746,14 @@ int main(int argc, char *argv[], char *envp[])
 	  gid_t *group_list;
 	  int g_count;
 
-	  length = sysconf(_SC_GETGR_R_SIZE_MAX);
+	  length = safe_sysconf(_SC_GETGR_R_SIZE_MAX);
 	  buf = calloc(1, length);
 	  if (NULL == buf) {
 	    fprintf(stderr, "No memory for [%s] operation\n", argv[i]);
 	    exit(1);
 	  }
 
-	  max_groups = sysconf(_SC_NGROUPS_MAX);
+	  max_groups = safe_sysconf(_SC_NGROUPS_MAX);
 	  group_list = calloc(max_groups, sizeof(gid_t));
 	  if (NULL == group_list) {
 	    fprintf(stderr, "No memory for gid list\n");
@@ -757,8 +769,7 @@ int main(int argc, char *argv[], char *envp[])
 	    }
 	    if (!isdigit(*ptr)) {
 	      struct group *g, grp;
-	      getgrnam_r(ptr, &grp, buf, length, &g);
-	      if (NULL == g) {
+	      if (getgrnam_r(ptr, &grp, buf, length, &g) || NULL == g) {
 		fprintf(stderr, "Failed to identify gid for group [%s]\n", ptr);
 		exit(1);
 	      }
@@ -851,6 +862,7 @@ int main(int argc, char *argv[], char *envp[])
 	    argv[argc] = NULL;
 	    execve(argv[i], argv+i, envp);
 	    fprintf(stderr, "execve '%s' failed!\n", argv[i]);
+	    free(argv[i]);
 	    exit(1);
 	} else if (!strncmp("--shell=", argv[i], 8)) {
 	    shell = argv[i]+8;

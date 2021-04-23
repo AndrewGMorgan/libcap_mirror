@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
 	printf("[%d] test should %s\n", i,
 	       v->result ? "generate error" : "work");
 	cap_launch_t attr;
-	if (v->args != NULL) {
+	if (v->args[0] != NULL) {
 	    attr = cap_new_launcher(v->args[0], v->args, v->envp);
 	    if (v->callback_fn != NULL) {
 		cap_launcher_callback(attr, v->callback_fn);
