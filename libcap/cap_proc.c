@@ -406,6 +406,29 @@ static void _cap_set_no_new_privs(struct syscaller_s *sc)
 }
 
 /*
+ * cap_prctl performs a prctl() 6 argument call on the current
+ * thread. Use cap_prctlw() if you want to perform a POSIX semantics
+ * prctl() system call.
+ */
+int cap_prctl(long int pr_cmd, long int arg1, long int arg2,
+	      long int arg3, long int arg4, long int arg5)
+{
+    return prctl(pr_cmd, arg1, arg2, arg3, arg4, arg5);
+}
+
+/*
+ * cap_prctlw performs a POSIX semantics prctl() call. That is a 6 arg
+ * prctl() call that executes on all available threads when libpsx is
+ * linked. The suffix 'w' refers to the fact one only ever needs to
+ * invoke this is if the call will write some kernel state.
+ */
+int cap_prctlw(long int pr_cmd, long int arg1, long int arg2,
+	       long int arg3, long int arg4, long int arg5)
+{
+    return _libcap_wprctl6(&multithread, pr_cmd, arg1, arg2, arg3, arg4, arg5);
+}
+
+/*
  * Some predefined constants
  */
 #define CAP_SECURED_BITS_BASIC                                 \

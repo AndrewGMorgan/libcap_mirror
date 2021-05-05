@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 1999,2007,19,20 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 1999,2007,2019-21 Andrew G. Morgan <morgan@kernel.org>
  *
  * The purpose of this module is to enforce inheritable, bounding and
  * ambient capability sets for a specified user.
  */
 
-/* #define DEBUG */
+/* #define PAM_DEBUG */
 
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
@@ -21,6 +21,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/capability.h>
+#include <sys/prctl.h>
 #include <sys/types.h>
 #include <linux/limits.h>
 
@@ -33,6 +34,7 @@
 
 struct pam_cap_s {
     int debug;
+    int keepcaps;
     const char *user;
     const char *conf_filename;
 };
@@ -233,6 +235,16 @@ static int set_capabilities(struct pam_cap_s *cs)
     }
     cap_free(iab);
 
+    if (cs->keepcaps) {
+	/*
+	 * Best effort to set keep caps - this may help work around
+	 * situations where applications are using a capabilities
+	 * unaware setuid() call.
+	 */
+	D(("setting keepcaps"));
+	(void) cap_prctlw(PR_SET_KEEPCAPS, 1, 0, 0, 0, 0);
+    }
+
 cleanup_conf:
     memset(conf_caps, 0, conf_caps_length);
     _pam_drop(conf_caps);
@@ -259,12 +271,15 @@ static void _pam_log(int err, const char *format, ...)
 
 static void parse_args(int argc, const char **argv, struct pam_cap_s *pcs)
 {
+    D(("parsing %d module arg(s)", argc));
     /* step through arguments */
     for (; argc-- > 0; ++argv) {
 	if (!strcmp(*argv, "debug")) {
 	    pcs->debug = 1;
 	} else if (!strncmp(*argv, "config=", 7)) {
 	    pcs->conf_filename = 7 + *argv;
+	} else if (!strcmp(*argv, "keepcaps")) {
+	    pcs->keepcaps = 1;
 	} else {
 	    _pam_log(LOG_ERR, "unknown option; %s", *argv);
 	}
@@ -353,5 +368,5 @@ int pam_sm_setcred(pam_handle_t *pamh, int flags,
     retval = set_capabilities(&pcs);
     memset(&pcs, 0, sizeof(pcs));
 
-    return (retval ? PAM_SUCCESS:PAM_IGNORE );
+    return (retval ? PAM_SUCCESS:PAM_IGNORE);
 }

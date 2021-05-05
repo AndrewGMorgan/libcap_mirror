@@ -175,6 +175,10 @@ extern const char *cap_mode_name(cap_mode_t flavor);
 extern unsigned cap_get_secbits(void);
 extern int cap_set_secbits(unsigned bits);
 
+extern int cap_prctl(long int pr_cmd, long int arg1, long int arg2,
+		     long int arg3, long int arg4, long int arg5);
+extern int cap_prctlw(long int pr_cmd, long int arg1, long int arg2,
+		      long int arg3, long int arg4, long int arg5);
 extern int cap_setuid(uid_t uid);
 extern int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[]);
 
