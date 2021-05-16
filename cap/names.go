@@ -259,6 +259,11 @@ const (
 	AUDIT_CONTROL
 
 	// SETFCAP allows a process to set capabilities on files.
+	// Permits a process to uid_map the uid=0 of the
+	// parent user namespace into that of the child
+	// namespace. Also, permits a process to override
+	// securebits locks through user namespace
+	// creation.
 	SETFCAP
 
 	// MAC_OVERRIDE allows a process to override Manditory Access Control

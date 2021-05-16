@@ -276,6 +276,11 @@ static const char *explanation30[] = {  /* cap_audit_control = 30 */
 };
 static const char *explanation31[] = {  /* cap_setfcap = 31 */
     "Allows a process to set capabilities on files.",
+    "Permits a process to uid_map the uid=0 of the",
+    "parent user namespace into that of the child",
+    "namespace. Also, permits a process to override",
+    "securebits locks through user namespace",
+    "creation.",
     NULL
 };
 static const char *explanation32[] = {  /* cap_mac_override = 32 */

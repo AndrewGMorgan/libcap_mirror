@@ -8,9 +8,9 @@ include ../Make.Rules
 #
 
 all:
-	make libcap_launch_test
+	$(MAKE) libcap_launch_test uns_test
 ifeq ($(PTHREADS),yes)
-	make psx_test libcap_psx_test libcap_psx_launch_test
+	$(MAKE) psx_test libcap_psx_test libcap_psx_launch_test
 endif
 
 install: all
@@ -30,31 +30,32 @@ endif
 endif
 
 ../libcap/libcap.so:
-	make -C ../libcap libcap.so
+	$(MAKE) -C ../libcap libcap.so
 
 ../libcap/libcap.a:
-	make -C ../libcap libcap.a
+	$(MAKE) -C ../libcap libcap.a
 
 ifeq ($(PTHREADS),yes)
 ../libcap/libpsx.so:
-	make -C ../libcap libpsx.so
+	$(MAKE) -C ../libcap libpsx.so
 
 ../libcap/libpsx.a:
-	make -C ../libcap libpsx.a
+	$(MAKE) -C ../libcap libpsx.a
 endif
 
 ../progs/tcapsh-static:
-	make -C ../progs tcapsh-static
+	$(MAKE) -C ../progs tcapsh-static
 
 test:
 ifeq ($(PTHREADS),yes)
-	make run_psx_test run_libcap_psx_test
+	$(MAKE) run_psx_test run_libcap_psx_test
 endif
 
 sudotest: test
-	make run_libcap_launch_test
+	$(MAKE) run_uns_test
+	$(MAKE) run_libcap_launch_test
 ifeq ($(PTHREADS),yes)
-	make run_libcap_psx_launch_test run_exploit_test
+	$(MAKE) run_libcap_psx_launch_test run_exploit_test
 endif
 
 # unprivileged
@@ -71,6 +72,12 @@ libcap_psx_test: libcap_psx_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB) $(LDFLAGS)
 
 # privileged
+uns_test: uns_test.c $(DEPS)
+	$(CC) $(CFLAGS) $(IPATH) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LDFLAGS)
+
+run_uns_test: uns_test
+	echo exit | sudo ./uns_test
+
 run_libcap_launch_test: libcap_launch_test noop ../progs/tcapsh-static
 	sudo ./libcap_launch_test
 
@@ -111,6 +118,6 @@ noop: noop.c
 	$(CC) $(CFLAGS) $< -o $@ --static
 
 clean:
-	rm -f psx_test libcap_psx_test libcap_launch_test *~
+	rm -f psx_test libcap_psx_test libcap_launch_test uns_test *~
 	rm -f libcap_launch_test libcap_psx_launch_test core noop
 	rm -f exploit noexploit exploit.o
