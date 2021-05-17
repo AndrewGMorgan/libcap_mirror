@@ -50,7 +50,7 @@ const (
 	// file.
 	FSETID
 
-	// KILL allows a process to sent a kill(2) signal to any other
+	// KILL allows a process to send a kill(2) signal to any other
 	// process - overriding the limitation that there be a
 	// [E]UID match between source and target process.
 	KILL

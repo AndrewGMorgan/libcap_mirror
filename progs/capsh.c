@@ -14,6 +14,10 @@
 #define _DEFAULT_SOURCE
 #endif
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -393,6 +397,22 @@ static long safe_sysconf(int name)
 	exit(1);
     }
     return ans;
+}
+
+static void describe(cap_value_t cap) {
+    int j;
+    const char **lines = explanations[cap];
+    char *name = cap_to_name(cap);
+    if (cap < cap_max_bits()) {
+	printf("%s (%d)", name, cap);
+    } else {
+	printf("<reserved for> %s (%d)", name, cap);
+    }
+    cap_free(name);
+    printf(" [/proc/self/status:CapXXX: 0x%016llx]\n\n", 1ULL<<cap);
+    for (j=0; lines[j]; j++) {
+	printf("    %s\n", lines[j]);
+    }
 }
 
 int main(int argc, char *argv[], char *envp[])
@@ -955,7 +975,7 @@ int main(int argc, char *argv[], char *envp[])
 		"Copyright (c) 2008-11,16,19-21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
-	} else 	if (!strncmp("--explain=", argv[i], 10)) {
+	} else if (!strncmp("--explain=", argv[i], 10)) {
 	    cap_value_t cap;
 	    if (cap_from_name(argv[i]+10, &cap) != 0) {
 		fprintf(stderr, "unrecognised value '%s'\n", argv[i]+10);
@@ -966,26 +986,31 @@ int main(int argc, char *argv[], char *envp[])
 		exit(1);
 	    }
 	    if (cap < CAPSH_DOC_LIMIT) {
-		int j;
-		const char **lines = explanations[cap];
-		char *name = cap_to_name(cap);
-		if (cap < cap_max_bits()) {
-		    printf("%s (%d)", name, cap);
-		} else {
-		    printf("<reserved for> %s (%d)", name, cap);
-		}
-		cap_free(name);
-		printf(" [/proc/self/status:CapXXX: 0x%016llx]\n\n", 1ULL<<cap);
-		for (j=0; lines[j]; j++) {
-		    printf("    %s\n", lines[j]);
-		}
+		describe(cap);
 		continue;
-	    } else if (cap < cap_max_bits()) {
+	    }
+	    if (cap < cap_max_bits()) {
 		printf("<unnamed in libcap> (%d)", cap);
 	    } else {
 		printf("<unsupported> (%d)", cap);
 	    }
 	    printf(" [/proc/self/status:CapXXX: 0x%016llx]\n", 1ULL<<cap);
+	} else if (!strncmp("--suggest=", argv[i], 10)) {
+	    cap_value_t cap;
+	    int hits = 0;
+	    for (cap=0; cap < CAPSH_DOC_LIMIT; cap++) {
+		const char **lines = explanations[cap];
+		int j;
+		for (j=0; lines[j]; j++) {
+		    if (strcasestr(lines[j], argv[i]+10) != NULL) {
+			if (hits++) {
+			    printf("\n");
+			}
+			describe(cap);
+			break;
+		    }
+		}
+	    }
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
@@ -1020,6 +1045,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --print        display capability relevant state\n"
 		   "  --secbits=<n>  write a new value for securebits\n"
 		   "  --shell=/xx/yy use /xx/yy instead of " SHELL " for --\n"
+		   "  --suggest=text search cap descriptions for text\n"
 		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
 		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
                    "  --user=<name>  set uid,gid and groups to that of user\n"

@@ -41,7 +41,7 @@ static const char *explanation4[] = {  /* cap_fsetid = 4 */
     NULL
 };
 static const char *explanation5[] = {  /* cap_kill = 5 */
-    "Allows a process to sent a kill(2) signal to any other",
+    "Allows a process to send a kill(2) signal to any other",
     "process - overriding the limitation that there be a",
     "[E]UID match between source and target process.",
     NULL
