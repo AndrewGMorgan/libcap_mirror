@@ -68,7 +68,7 @@ endif
 distcheck:
 	./distcheck.sh
 	$(MAKE) DYNAMIC=yes clean all test sudotest
-	$(MAKE) CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
+	$(MAKE) PAM_CAP=no CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
 	$(MAKE) clean all test sudotest
 	$(MAKE) distclean
 
