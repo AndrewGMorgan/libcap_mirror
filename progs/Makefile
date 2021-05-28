@@ -32,14 +32,14 @@ $(BUILD): %: %.o $(DEPS)
 
 install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(SBINDIR)
-	for p in $(PROGS) ; do \
+	for p in $(PROGS) capsh ; do \
 		install -m 0755 $$p $(FAKEROOT)$(SBINDIR) ; \
 	done
 ifeq ($(RAISE_SETFCAP),yes)
 	$(FAKEROOT)$(SBINDIR)/setcap cap_setfcap=i $(FAKEROOT)$(SBINDIR)/setcap
 endif
 
-test: $(PROGS)
+test: $(PROGS) capsh
 
 capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
 	./mkcapshdoc.sh > $@
