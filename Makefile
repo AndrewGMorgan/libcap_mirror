@@ -73,9 +73,13 @@ distcheck:
 	$(MAKE) distclean
 
 morgangodoc:
-	@echo "Now the release is made, you want to remember to run:"
+	@echo "Now the release is made, you want to remember to run one of:"
 	@echo
-	@echo "GOPROXY=https://proxy.golang.org GO111MODULE=on go get kernel.org/pub/linux/libs/security/libcap/cap@v$(GOMAJOR).$(VERSION).$(MINOR)"
+	@echo "  GOPROXY=https://proxy.golang.org GO111MODULE=on go get kernel.org/pub/linux/libs/security/libcap/cap@v$(GOMAJOR).$(VERSION).$(MINOR)"
+	@echo
+	@echo or press the request button on this page:
+	@echo
+	@echo "  https://pkg.go.dev/kernel.org/pub/linux/libs/security/libcap/cap@v$(GOMAJOR).$(VERSION).$(MINOR)"
 	@echo
 	@echo "This will cause a go.dev documentation update."
 
