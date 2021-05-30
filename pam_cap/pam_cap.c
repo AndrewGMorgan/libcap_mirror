@@ -35,6 +35,7 @@
 struct pam_cap_s {
     int debug;
     int keepcaps;
+    int autoauth;
     const char *user;
     const char *conf_filename;
 };
@@ -272,6 +273,9 @@ static void _pam_log(int err, const char *format, ...)
 static void parse_args(int argc, const char **argv, struct pam_cap_s *pcs)
 {
     D(("parsing %d module arg(s)", argc));
+
+    memset(pcs, 0, sizeof(*pcs));
+
     /* step through arguments */
     for (; argc-- > 0; ++argv) {
 	if (!strcmp(*argv, "debug")) {
@@ -280,6 +284,8 @@ static void parse_args(int argc, const char **argv, struct pam_cap_s *pcs)
 	    pcs->conf_filename = 7 + *argv;
 	} else if (!strcmp(*argv, "keepcaps")) {
 	    pcs->keepcaps = 1;
+	} else if (!strcmp(*argv, "autoauth")) {
+	    pcs->autoauth = 1;
 	} else {
 	    _pam_log(LOG_ERR, "unknown option; %s", *argv);
 	}
@@ -298,7 +304,6 @@ int pam_sm_authenticate(pam_handle_t *pamh, int flags,
     struct pam_cap_s pcs;
     char *conf_caps;
 
-    memset(&pcs, 0, sizeof(pcs));
     parse_args(argc, argv, &pcs);
 
     retval = pam_get_user(pamh, &pcs.user, NULL);
@@ -306,6 +311,12 @@ int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 	D(("user conversation is not available yet"));
 	memset(&pcs, 0, sizeof(pcs));
 	return PAM_INCOMPLETE;
+    }
+
+    if (pcs.autoauth) {
+	D(("pam_sm_authenticate autoauth = success"));
+	memset(&pcs, 0, sizeof(pcs));
+	return PAM_SUCCESS;
     }
 
     if (retval != PAM_SUCCESS) {
@@ -324,9 +335,11 @@ int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 	   conf_caps));
 
 	/* We could also store this as a pam_[gs]et_data item for use
-	   by the setcred call to follow. As it is, there is a small
-	   race associated with a redundant read. Oh well, if you
-	   care, send me a patch.. */
+	   by the setcred call to follow. However, this precludes
+	   using pam_cap as just a cred module, and requires that the
+	   'auth' component be called first.  As it is, there is a
+	   small race associated with a redundant read of the
+	   config. */
 
 	_pam_overwrite(conf_caps);
 	_pam_drop(conf_caps);
@@ -356,7 +369,6 @@ int pam_sm_setcred(pam_handle_t *pamh, int flags,
 	return PAM_IGNORE;
     }
 
-    memset(&pcs, 0, sizeof(pcs));
     parse_args(argc, argv, &pcs);
 
     retval = pam_get_item(pamh, PAM_USER, (const void **)&pcs.user);
