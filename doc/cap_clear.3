@@ -1,6 +1,6 @@
 .TH CAP_CLEAR 3 "2021-03-06" "" "Linux Programmer's Manual"
 .SH NAME
-cap_clear, cap_clear_flag, cap_get_flag, cap_set_flag, cap_compare \- capability data object manipulation
+cap_clear, cap_clear_flag, cap_get_flag, cap_set_flag, cap_fill, cap_compare \- capability data object manipulation
 .SH SYNOPSIS
 .nf
 #include <sys/capability.h>
@@ -11,6 +11,7 @@ int cap_get_flag(cap_t cap_p, cap_value_t cap,
                  cap_flag_t flag, cap_flag_value_t *value_p);
 int cap_set_flag(cap_t cap_p, cap_flag_t flag, int ncap,
                  const cap_value_t *caps, cap_flag_value_t value);
+int cap_fill(cap_t cap_p, cap_flag_t to, cap_flag_t from);
 int cap_compare(cap_t cap_a, cap_t cap_b);
 .fi
 .sp
@@ -79,6 +80,9 @@ The argument,
 .IR ncap ,
 is used to specify the number of capabilities in the array,
 .IR caps .
+.PP
+.BR cap_fill ()
+fills the to flag values by copying all of the from flag values.
 .PP
 .BR cap_compare ()
 compares two full capability sets and, in the spirit of

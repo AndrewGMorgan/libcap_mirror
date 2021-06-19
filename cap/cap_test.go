@@ -284,3 +284,17 @@ func TestFuncLaunch(t *testing.T) {
 		}
 	}
 }
+
+func TestFill(t *testing.T) {
+	c, err := FromText("cap_setfcap=p")
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+	c.Fill(Effective, Permitted)
+	c.ClearFlag(Permitted)
+	c.Fill(Inheritable, Effective)
+	c.ClearFlag(Effective)
+	if got, want := c.String(), "cap_setfcap=i"; got != want {
+		t.Errorf("Fill failed: got=%q want=%q", got, want)
+	}
+}

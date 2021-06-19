@@ -110,8 +110,8 @@ endif
 cap_text.o: cap_text.c $(USE_GPERF_OUTPUT) $(INCLS)
 	$(CC) $(CFLAGS) $(IPATH) $(INCLUDE_GPERF_OUTPUT) -c $< -o $@
 
-cap_test: cap_test.c libcap.h
-	$(CC) $(CFLAGS) $(IPATH) $< -o $@
+cap_test: cap_test.c libcap.h $(CAPOBJS)
+	$(CC) $(CFLAGS) $(IPATH) $< $(CAPOBJS) -o $@
 
 test: cap_test
 	./cap_test

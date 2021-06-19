@@ -115,6 +115,10 @@ extern int     cap_set_flag(cap_t, cap_flag_t, int, const cap_value_t *,
 			    cap_flag_value_t);
 extern int     cap_clear(cap_t);
 extern int     cap_clear_flag(cap_t, cap_flag_t);
+extern int     cap_fill(cap_t, cap_flag_t, cap_flag_t);
+
+#define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
+extern int     cap_compare(cap_t, cap_t);
 
 extern cap_flag_value_t cap_iab_get_vector(cap_iab_t, cap_iab_vector_t,
 					 cap_value_t);
@@ -158,9 +162,6 @@ extern char *  cap_to_name(cap_value_t);
 
 extern char *     cap_iab_to_text(cap_iab_t iab);
 extern cap_iab_t  cap_iab_from_text(const char *text);
-
-#define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
-extern int     cap_compare(cap_t, cap_t);
 
 /* libcap/cap_proc.c */
 extern void cap_set_syscall(long int (*new_syscall)(long int,
