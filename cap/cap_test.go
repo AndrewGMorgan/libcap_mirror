@@ -106,6 +106,18 @@ func same(a, b *Set) error {
 	return nil
 }
 
+func confirmExpectedExport(t *testing.T, info string, c *Set, size uint) {
+	if ex, err := c.Export(); err != nil {
+		t.Fatalf("[%s] failed to export empty set: %v", info, err)
+	} else if n := 5 + 3*size; uint(len(ex)) != n {
+		t.Fatalf("[%s] wrong length: got=%d [%0x] want=%d", info, len(ex), ex, n)
+	} else if im, err := Import(ex); err != nil {
+		t.Fatalf("[%s] failed to import empty set: %v", info, err)
+	} else if got, want := im.String(), c.String(); got != want {
+		t.Fatalf("[%s] import != export: got=%q want=%q [%02x]", info, got, want, ex)
+	}
+}
+
 func TestImportExport(t *testing.T) {
 	wantQ := "=ep cap_chown-e 63+ip"
 	if q, err := FromText(wantQ); err != nil {
@@ -116,15 +128,7 @@ func TestImportExport(t *testing.T) {
 
 	// Sanity check empty import/export.
 	c := NewSet()
-	if ex, err := c.Export(); err != nil {
-		t.Fatalf("failed to export empty set: %v", err)
-	} else if len(ex) != 5 {
-		t.Fatalf("wrong length: got=%d want=%d", len(ex), 5)
-	} else if im, err := Import(ex); err != nil {
-		t.Fatalf("failed to import empty set: %v", err)
-	} else if got, want := im.String(), c.String(); got != want {
-		t.Fatalf("import != export: got=%q want=%q", got, want)
-	}
+	confirmExpectedExport(t, "empty", c, MinExtFlagSize)
 	// Now keep flipping bits on and off and validate that all
 	// forms of import/export work.
 	for i := uint(0); i < 7000; i += 13 {
@@ -143,6 +147,24 @@ func TestImportExport(t *testing.T) {
 			t.Fatalf("[%d] miscompare (%q vs. %q): %v", i, got, parsed, err)
 		}
 	}
+
+	oMin := MinExtFlagSize
+	for j := uint(0); j < 5; j++ {
+		t.Logf("exporting with min flag size %d", j)
+		MinExtFlagSize = j
+		c = NewSet()
+		for i := uint(0); i < maxValues; i++ {
+			s := Flag(i % 3)
+			v := Value(i)
+			c.SetFlag(s, true, v)
+			size := 1 + i/8
+			if size < MinExtFlagSize {
+				size = MinExtFlagSize
+			}
+			confirmExpectedExport(t, fmt.Sprintf("%d added %d %v %v", j, i, s, v), c, size)
+		}
+	}
+	MinExtFlagSize = oMin
 }
 
 func TestIAB(t *testing.T) {

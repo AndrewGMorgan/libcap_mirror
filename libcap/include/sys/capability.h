@@ -145,9 +145,10 @@ extern int     cap_reset_ambient(void);
 #define CAP_AMBIENT_SUPPORTED() (cap_get_ambient(CAP_CHOWN) >= 0)
 
 /* libcap/cap_extint.c */
-extern ssize_t cap_size(cap_t);
-extern ssize_t cap_copy_ext(void *, cap_t, ssize_t);
-extern cap_t   cap_copy_int(const void *);
+extern ssize_t cap_size(cap_t cap_d);
+extern ssize_t cap_copy_ext(void *cap_ext, cap_t cap_d, ssize_t length);
+extern cap_t   cap_copy_int(const void *cap_ext);
+extern cap_t   cap_copy_int_check(const void *cap_ext, ssize_t length);
 
 /* libcap/cap_text.c */
 extern cap_t   cap_from_text(const char *);
