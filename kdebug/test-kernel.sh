@@ -48,6 +48,7 @@ file /root/capsh $HERE/../progs/capsh 0755 0 0
 file /root/getpcaps $HERE/../progs/getpcaps 0755 0 0
 file /root/tcapsh-static $HERE/../progs/tcapsh-static 0755 0 0
 file /root/exit $HERE/exit 0755 0 0
+file /root/uns_test $HERE/../tests/uns_test 0755 0 0
 EOF
 
 # convenience for some local experiments

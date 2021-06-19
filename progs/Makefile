@@ -51,10 +51,14 @@ capsh: capsh.c capshdoc.h.cf $(DEPS)
 tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
 	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS) --static
 
-sudotest: test tcapsh-static
+uns_test: ../tests/uns_test.c
+	$(MAKE) -C ../tests uns_test
+	cp ../tests/uns_test .
+
+sudotest: test tcapsh-static uns_test
 	sudo $(LDPATH) ./quicktest.sh
 
 clean:
 	$(LOCALCLEAN)
-	rm -f *.o $(BUILD) privileged ping hack.sh compare-cap
+	rm -f *.o $(BUILD) privileged ping hack.sh compare-cap uns_test
 	rm -f capsh tcapsh* capshdoc.h.cf

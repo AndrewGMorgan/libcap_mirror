@@ -259,4 +259,11 @@ else
 fi
 rm -f compare-cap
 
+echo "attempt to exploit kernel bug"
+./uns_test
+if [ $? -ne 0 ]; then
+    echo "upgrade your kernel"
+    exit 1
+fi
+
 echo "ALL TESTS PASSED!"
