@@ -137,7 +137,10 @@ int main(int argc, char **argv)
 	}
     }
 
-    write(fds.to[1], ".", 1);
+    if (write(fds.to[1], ".", 1) != 1) {
+	perror("failed to write '.'");
+	exit(1);
+    }
     close(fds.to[1]);
 
     fprintf(stderr, "user namespace launched exploit worked - upgrade kernel\n");
@@ -149,6 +152,6 @@ int main(int argc, char **argv)
 
 bailok:
     fprintf(stderr, "exploit attempt failed\n");
-    write(fds.to[1], "!", 1);
+    (void) write(fds.to[1], "!", 1);
     exit(0);
 }
