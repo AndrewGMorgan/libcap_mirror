@@ -114,7 +114,7 @@ ifeq ($(CGO_REQUIRED),1)
 # Strictly speaking go1.15 doesn't need this, but 1.16 is when the
 # real golang support arrives for non-cgo support, so drop the last
 # vestige of legacy workarounds then.
-CGO_LDFLAGS_ALLOW := -Wl,-?-wrap[=,][^-.@][^,]*
+CGO_LDFLAGS_ALLOW := CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
 endif
 CGO_CFLAGS := -I$(topdir)/libcap/include
 CGO_LDFLAGS := -L$(topdir)/libcap
