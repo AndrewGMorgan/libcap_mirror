@@ -229,7 +229,7 @@ static void psx_syscall_start(void) {
     psx_tracker.psx_sig = SIGSYS;
 
     psx_confirm_sigaction();
-    psx_do_registration(); // register the main thread.
+    psx_do_registration(); /* register the main thread. */
 
     psx_tracker.initialized = 1;
 }

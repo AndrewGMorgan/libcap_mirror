@@ -115,7 +115,8 @@ int main(int argc, char **argv)
     }
     close(fds.from[0]);
 
-    for (int i=0; i<2; i++) {
+    int i;
+    for (i=0; i<2; i++) {
 	char *map_file;
 	if (asprintf(&map_file, file_formats[i], pid) < 0) {
 	    perror("allocate string");

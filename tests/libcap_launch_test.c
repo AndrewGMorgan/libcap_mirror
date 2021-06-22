@@ -199,10 +199,10 @@ int main(int argc, char **argv) {
     cap_free(final);
     cap_free(orig);
 
-    if (success) {
-	printf("cap_launch_test: PASSED\n");
-    } else {
+    if (!success) {
 	printf("cap_launch_test: FAILED\n");
 	exit(1);
     }
+    printf("cap_launch_test: PASSED\n");
+    exit(0);
 }
