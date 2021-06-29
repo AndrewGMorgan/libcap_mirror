@@ -27,8 +27,9 @@ test_pam_cap: test_pam_cap.c pam_cap.c
 testlink: test.c pam_cap.o
 	$(CC) $(CFLAGS) -o $@ $+ -lpam -ldl $(LIBCAPLIB) $(LDFLAGS)
 
-test: pam_cap.so
-	make testlink
+test: pam_cap.so test_pam_cap
+	$(MAKE) testlink
+	./test_pam_cap
 
 sudotest: test test_pam_cap
 	sudo ./test_pam_cap root 0x0 0x0 0x0 config=./capability.conf

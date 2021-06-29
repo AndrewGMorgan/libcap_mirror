@@ -32,12 +32,16 @@
 #define CAP_FILE_BUFFER_SIZE    4096
 #define CAP_FILE_DELIMITERS     " \t\n"
 
+/*
+ * pam_cap_s is used to summarize argument values in a parsed form.
+ */
 struct pam_cap_s {
     int debug;
     int keepcaps;
     int autoauth;
     const char *user;
     const char *conf_filename;
+    const char *fallback;
 };
 
 /*
@@ -77,7 +81,7 @@ static int load_groups(const char *user, char ***groups, int *groups_n) {
     return 0;
 }
 
-/* obtain the inheritable capabilities for the current user */
+/* obtain the desired IAB capabilities for the current user */
 
 static char *read_capabilities_for_user(const char *user, const char *source)
 {
@@ -201,7 +205,11 @@ static int set_capabilities(struct pam_cap_s *cs)
 					   ? cs->conf_filename:USER_CAP_FILE );
     if (conf_caps == NULL) {
 	D(("no capabilities found for user [%s]", cs->user));
-	goto cleanup_cap_s;
+	if (cs->fallback == NULL) {
+	    goto cleanup_cap_s;
+	}
+	conf_caps = strdup(cs->fallback);
+	D(("user [%s] received fallback caps [%s]", cs->user, conf_caps));
     }
 
     ssize_t conf_caps_length = strlen(conf_caps);
@@ -286,6 +294,8 @@ static void parse_args(int argc, const char **argv, struct pam_cap_s *pcs)
 	    pcs->keepcaps = 1;
 	} else if (!strcmp(*argv, "autoauth")) {
 	    pcs->autoauth = 1;
+	} else if (!strncmp(*argv, "default=", 8)) {
+	    pcs->fallback = 8 + *argv;
 	} else {
 	    _pam_log(LOG_ERR, "unknown option; %s", *argv);
 	}
