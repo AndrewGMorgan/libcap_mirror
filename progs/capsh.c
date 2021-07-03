@@ -1013,6 +1013,16 @@ int main(int argc, char *argv[], char *envp[])
 	    for (cap=0; cap < CAPSH_DOC_LIMIT; cap++) {
 		const char **lines = explanations[cap];
 		int j;
+		char *name = cap_to_name(cap);
+		char *match = strcasestr(name, argv[i]+10);
+		cap_free(name);
+		if (match != NULL) {
+		    if (hits++) {
+			printf("\n");
+		    }
+		    describe(cap);
+		    continue;
+		}
 		for (j=0; lines[j]; j++) {
 		    if (strcasestr(lines[j], argv[i]+10) != NULL) {
 			if (hits++) {
