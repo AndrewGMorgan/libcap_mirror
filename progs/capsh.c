@@ -83,33 +83,45 @@ static void display_prctl_set(const char *name, int (*fn)(cap_value_t))
     }
 }
 
-/* arg_print displays the current capability state of the process */
-static void arg_print(void)
+static void display_current(void)
 {
-    long set;
-    int status, j;
     cap_t all;
     char *text;
-    const char *sep;
-    struct group *g;
-    gid_t groups[MAX_GROUPS], gid;
-    uid_t uid, euid;
-    struct passwd *u, *eu;
-    cap_iab_t iab;
 
     all = cap_get_proc();
     text = cap_to_text(all, NULL);
     printf("Current: %s\n", text);
     cap_free(text);
     cap_free(all);
+}
 
-    display_prctl_set("Bounding", cap_get_bound);
-    display_prctl_set("Ambient", cap_get_ambient);
+static void display_current_iab(void)
+{
+    cap_iab_t iab;
+    char *text;
+
     iab = cap_iab_get_proc();
     text = cap_iab_to_text(iab);
     printf("Current IAB: %s\n", text);
     cap_free(text);
     cap_free(iab);
+}
+
+/* arg_print displays the current capability state of the process */
+static void arg_print(void)
+{
+    long set;
+    int status, j;
+    const char *sep;
+    struct group *g;
+    gid_t groups[MAX_GROUPS], gid;
+    uid_t uid, euid;
+    struct passwd *u, *eu;
+
+    display_current();
+    display_prctl_set("Bounding", cap_get_bound);
+    display_prctl_set("Ambient", cap_get_ambient);
+    display_current_iab();
 
     set = cap_get_secbits();
     if (set >= 0) {
@@ -1011,6 +1023,9 @@ int main(int argc, char *argv[], char *envp[])
 		    }
 		}
 	    }
+	} else if (strcmp("--current", argv[i]) == 0) {
+	    display_current();
+	    display_current_iab();
 	} else {
 	usage:
 	    printf("usage: %s [args ...]\n"
@@ -1018,6 +1033,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --cap-uid=<n>  use libcap cap_setuid() to change uid\n"
 		   "  --caps=xxx     set caps as per cap_from_text()\n"
 		   "  --chroot=path  chroot(2) to this path\n"
+		   "  --current      show current caps and IAB vectors\n"
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
 		   "  --explain=xxx  explain what capability xxx permits\n"

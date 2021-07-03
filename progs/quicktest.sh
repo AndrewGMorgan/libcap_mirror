@@ -43,6 +43,7 @@ pass_capsh () {
 }
 
 pass_capsh --print
+pass_capsh --current
 
 # Validate that PATH expansion works
 PATH=$(/bin/pwd)/junk:$(/bin/pwd) capsh == == == --modes
