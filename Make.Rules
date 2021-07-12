@@ -63,6 +63,7 @@ BUILD_COPTS ?= -O2
 BUILD_CFLAGS ?= $(BUILD_COPTS) $(DEFINES) $(IPATH)
 AR := $(CROSS_COMPILE)ar
 RANLIB := $(CROSS_COMPILE)ranlib
+OBJCOPY := $(CROSS_COMPILE)objcopy
 DEBUG = -g #-DDEBUG
 WARNINGS=-Wall -Wwrite-strings \
         -Wpointer-arith -Wcast-qual -Wcast-align \
