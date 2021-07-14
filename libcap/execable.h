@@ -70,7 +70,7 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
  * function.
  */
 
-#define SO_MAIN						\
+#define SO_MAIN						        \
 static void __execable_main(int, char**);                       \
 extern void __so_start(void);		                	\
 void __so_start(void)                                           \

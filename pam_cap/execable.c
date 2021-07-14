@@ -32,7 +32,7 @@ SO_MAIN(int argc, char **argv)
 	"can be found at:\n"
 	"\n"
 	"    https://sites.google.com/site/fullycapable/\n", cmd);
-    if (argc == 1) {
+    if (argc <= 1) {
 	return;
     }
 
