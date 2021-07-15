@@ -11,7 +11,7 @@
  *
  * Compile your shared library with:
  *
- *   -DDL_LOADER="\"ld-linux...\"" (loader for your target system)
+ *   -DSHARED_LOADER="\"ld-linux...\"" (loader for your target system)
  *   ...
  *   --entry=__so_start
  */
@@ -33,7 +33,7 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
     FILE *f = fopen("/proc/self/cmdline", "rb");
     if (f != NULL) {
 	char *mem = NULL, *p;
-	size_t size = 4, offset;
+	size_t size = 32, offset;
 	for (offset=0; ; size *= 2) {
 	    mem = realloc(mem, size+1);
 	    if (mem == NULL) {
