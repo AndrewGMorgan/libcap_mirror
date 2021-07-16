@@ -35,11 +35,15 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 	char *mem = NULL, *p;
 	size_t size = 32, offset;
 	for (offset=0; ; size *= 2) {
-	    mem = realloc(mem, size+1);
-	    if (mem == NULL) {
+	    char *new_mem = realloc(mem, size+1);
+	    if (new_mem == NULL) {
 		perror("unable to parse arguments");
+		if (mem != NULL) {
+		    free(mem);
+		}
 		exit(1);
 	    }
+	    mem = new_mem;
 	    offset += fread(mem+offset, 1, size-offset, f);
 	    if (offset < size) {
 		size = offset;
@@ -54,6 +58,7 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 	argv = calloc(argc+1, sizeof(char *));
 	if (argv == NULL) {
 	    perror("failed to allocate memory for argv");
+	    free(mem);
 	    exit(1);
 	}
 	for (p=mem, argc=0, offset=0; offset < size; argc++) {
@@ -79,6 +84,10 @@ void __so_start(void)                                           \
     char **argv;                                                \
     __execable_parse_args(&argc, &argv);                        \
     __execable_main(argc, argv);				\
+    if (argc != 0) {                                            \
+	free(argv[0]);                                          \
+	free(argv);                                             \
+    }                                                           \
     exit(0);                                                    \
 }                                                               \
 static void __execable_main
