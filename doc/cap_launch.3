@@ -1,4 +1,4 @@
-.TH CAP_LAUNCH 3 "2021-03-07" "" "Linux Programmer's Manual"
+.TH CAP_LAUNCH 3 "2021-08-01" "" "Linux Programmer's Manual"
 .SH NAME
 .nf
 #include <sys/capability.h>
@@ -90,13 +90,22 @@ this would be to allocate detail as follows:
 .PP
 Unless modified by the callback function, the launched code will
 execute with the capability and other security context of the
-application. The following functions can be used to instruct the
-launcher to modify the security state of the invoked program without
-altering the state of the calling program. Such modifications must be
-performed prior to calling \fBcap_launch\fP() if they are to have the
-desired effect. Further, they are only invoked after any installed
-callback has completed. For example, one can drop or modify
-capabilities, \fIjust\fP for executing a file.
+application.
+
+If the callback function returns anything other than zero, a
+.BR cap_launch ()
+will be aborted. If detail of the failure is important to the caller,
+it should be communicated via the
+.I detail
+argument.
+
+The following functions can be used to instruct the launcher to modify
+the security state of the invoked program without altering the state
+of the calling program. Such modifications must be performed prior to
+calling \fBcap_launch\fP() if they are to have the desired
+effect. Further, they are only invoked after any installed callback
+has completed. For example, one can drop or modify capabilities,
+\fIjust\fP for executing a file.
 .PP
 The following functions instruct the launcher to do some common tasks
 of this sort (note some require permitted capability bits to succeed):
