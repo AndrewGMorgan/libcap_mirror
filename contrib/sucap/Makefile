@@ -1,9 +1,9 @@
 all: su
 
 su: su.c
-	$(CC) -o $@ $< -lpam -lpam_misc -lcap
-	sudo chown root ./su
-	sudo chmod +s ./su
+	$(CC) -DPAM_APP_NAME=\"sucap\" -o $@ $< -lpam -lpam_misc -lcap
+	# to permit all ambient capabilities, this needs all permitted.
+	sudo setcap =p ./su
 
 clean:
 	rm -f su su.o *~

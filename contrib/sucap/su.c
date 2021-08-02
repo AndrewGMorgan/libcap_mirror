@@ -1,22 +1,39 @@
 /*
- * ( based on an implementation of `su' by
+ * Originally based on an implementation of `su' by
  *
  *     Peter Orbaek  <poe@daimi.aau.dk>
  *
- * obtained circa 1997 from ftp://ftp.daimi.aau.dk/pub/linux/poe/ )
+ * obtained circa 1997 from ftp://ftp.daimi.aau.dk/pub/linux/poe/
  *
  * Rewritten for Linux-PAM by Andrew G. Morgan <morgan@linux.kernel.org>
  * Modified by Andrey V. Savochkin <saw@msu.ru>
  * Modified for use with libcap by Andrew G. Morgan <morgan@kernel.org>
  */
 
-#define ROOT_UID                  0
-#define PAM_APP_NAME              "sucap"
+/* #define PAM_DEBUG */
+
+#include <sys/prctl.h>
+
+/* non-root user of convenience to block signals */
+#define TEMP_UID                  1
+
+#ifndef PAM_APP_NAME
+#define PAM_APP_NAME              "su"
+#endif /* ndef PAM_APP_NAME */
+
 #define DEFAULT_HOME              "/"
 #define DEFAULT_SHELL             "/bin/bash"
 #define SLEEP_TO_KILL_CHILDREN    3  /* seconds to wait after SIGTERM before
 					SIGKILL */
 #define SU_FAIL_DELAY     2000000    /* usec on authentication failure */
+
+#define RHOST_UNKNOWN_NAME        ""     /* perhaps "[from.where?]" */
+#define DEVICE_FILE_PREFIX        "/dev/"
+#define WTMP_LOCK_TIMEOUT         3      /* in seconds */
+
+#ifndef UT_IDSIZE
+#define UT_IDSIZE 4            /* XXX - this is sizeof(struct utmp.ut_id) */
+#endif
 
 #include <stdlib.h>
 #include <signal.h>
@@ -36,9 +53,13 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
+#include <sys/capability.h>
+
+#include <security/_pam_macros.h>
 
 /* -------------------------------------------- */
 /* ------ declarations ------------------------ */
@@ -48,23 +69,12 @@ extern char **environ;
 static pam_handle_t *pamh = NULL;
 static int state;
 
-#define SU_STATE_PAM_INITIALIZED     1
-#define SU_STATE_AUTHENTICATED       2
-#define SU_STATE_AUTHORIZED          3
-#define SU_STATE_SESSION_OPENED      4
-#define SU_STATE_CREDENTIALS_GOTTEN  5
-#define SU_STATE_PROCESS_UNKILLABLE  6
-#define SU_STATE_TERMINAL_REOWNED    7
-#define SU_STATE_UTMP_WRITTEN        8
-
-#define ROOT_UID                     0
-
 static int wait_for_child_caught=0;
 static int need_job_control=0;
 static int is_terminal = 0;
 static struct termios stored_mode;        /* initial terminal mode settings */
 static uid_t terminal_uid = (uid_t) -1;
-static uid_t invoked_uid;
+static uid_t invoked_uid = (uid_t) -1;
 
 /* -------------------------------------------- */
 /* ------ some local (static) functions ------- */
@@ -87,50 +97,52 @@ static const char *posix_env[] = {
     NULL
 };
 
+/*
+ * make_environment transcribes a selection of environment variables
+ * from the invoking user.
+ */
 static int make_environment(pam_handle_t *pamh, int keep_env)
 {
+    const char *tmpe;
+    int i;
     int retval;
 
     if (keep_env) {
-
 	/* preserve the original environment */
-	retval = pam_misc_paste_env(pamh, (const char * const *)environ);
-
-    } else {
-	const char *tmpe;
-	int i;
-
-	/* we always transcribe some variables anyway */
-	{
-	    tmpe = getenv("TERM");
-	    if (tmpe == NULL) {
-		tmpe = "dumb";
-	    }
-	    retval = pam_misc_setenv(pamh, "TERM", tmpe, 0);
-	    tmpe = NULL;
-	    if (retval == PAM_SUCCESS) {
-		retval = pam_misc_setenv(pamh, "PATH", "/bin:/usr/bin", 0);
-	    }
-
-	    if (retval != PAM_SUCCESS) {
-		D(("error setting environment variables"));
-		return retval;
-	    }
-	}
-
-	/* also propogate the POSIX specific ones */
-	for (i=0; retval == PAM_SUCCESS && posix_env[i]; ++i) {
-	    tmpe = getenv(posix_env[i]);
-	    if (tmpe != NULL) {
-		retval = pam_misc_setenv(pamh, posix_env[i], tmpe, 0);
-	    }
-	}
-	tmpe = NULL;
+	return pam_misc_paste_env(pamh, (const char * const *)environ);
     }
 
-    return retval;                                   /* how did we do? */
+    /* we always transcribe some variables anyway */
+    tmpe = getenv("TERM");
+    if (tmpe == NULL) {
+	tmpe = "dumb";
+    }
+    retval = pam_misc_setenv(pamh, "TERM", tmpe, 0);
+    if (retval == PAM_SUCCESS) {
+	retval = pam_misc_setenv(pamh, "PATH", "/bin:/usr/bin", 0);
+    }
+    if (retval != PAM_SUCCESS) {
+	tmpe = NULL;
+	D(("error setting environment variables"));
+	return retval;
+    }
+
+    /* also propogate the POSIX specific ones */
+    for (i=0; retval == PAM_SUCCESS && posix_env[i]; ++i) {
+	tmpe = getenv(posix_env[i]);
+	if (tmpe != NULL) {
+	    retval = pam_misc_setenv(pamh, posix_env[i], tmpe, 0);
+	}
+    }
+    tmpe = NULL;
+
+    return retval;
 }
 
+/*
+ * checkfds ensures that stdout and stderr filedescriptors are
+ * defined. If all else fails, it directs them to /dev/null.
+ */
 static void checkfds(void)
 {
     struct stat st;
@@ -154,41 +166,53 @@ static void checkfds(void)
     }
 }
 
-/* should be called once at the beginning */
+/*
+ * store_terminal_modes captures the current state of the input
+ * terminal. Calling this at the start of the program, we ensure we
+ * can restore these default settings when su exits.
+ */
 static void store_terminal_modes(void)
 {
     if (isatty(STDIN_FILENO)) {
 	is_terminal = 1;
 	if (tcgetattr(STDIN_FILENO, &stored_mode) != 0) {
-	    (void) fprintf(stderr, PAM_APP_NAME ": couldn't copy terminal mode");
+	    fprintf(stderr, PAM_APP_NAME ": couldn't copy terminal mode");
 	    exit(1);
 	}
-    } else if (getuid()) {
-	(void) fprintf(stderr, PAM_APP_NAME ": must be run from a terminal\n");
-	exit(1);
-    } else
-	is_terminal = 0;
+	return;
+    }
+    fprintf(stderr, PAM_APP_NAME ": must be run from a terminal\n");
+    exit(1);
 }
 
 /*
+ * restore_terminal_modes resets the terminal to the state it was in
+ * when the program started.
+ *
  * Returns:
  *   0     ok
- * !=0     error
+ *   1     error
  */
-static int reset_terminal_modes(void)
+static int restore_terminal_modes(void)
 {
     if (is_terminal && tcsetattr(STDIN_FILENO, TCSAFLUSH, &stored_mode) != 0) {
-	(void) fprintf(stderr, PAM_APP_NAME ": cannot reset terminal mode: %s\n"
-		       , strerror(errno));
+	fprintf(stderr, PAM_APP_NAME ": cannot restore terminal mode: %s\n",
+		strerror(errno));
 	return 1;
-    } else
+    } else {
 	return 0;
+    }
 }
 
 /* ------ unexpected signals ------------------ */
 
 struct sigaction old_int_act, old_quit_act, old_tstp_act, old_pipe_act;
 
+/*
+ * disable_terminal_signals attempts to make the process resistant to
+ * being stopped - it helps ensure that the PAM stack can complete
+ * session and auth failure logging etc.
+ */
 static void disable_terminal_signals(void)
 {
     /*
@@ -230,10 +254,10 @@ static void enable_terminal_signals(void)
 /* ------ terminal ownership ------------------ */
 
 /*
- * Change the ownership of STDIN if needed.
+ * change_terminal_owner changes the ownership of STDIN if needed.
  * Returns:
  *   0     ok,
- *  -1     fatal error (continue of the work is impossible),
+ *  -1     fatal error (continuing is impossible),
  *   1     non-fatal error.
  * In the case of an error "err_descr" is set to the error message
  * and "callname" to the name of the failed call.
@@ -244,30 +268,68 @@ static int change_terminal_owner(uid_t uid, int is_login,
     /* determine who owns the terminal line */
     if (is_terminal && is_login) {
 	struct stat stat_buf;
+	cap_t current, working;
+	int status;
+	cap_value_t cchown = CAP_CHOWN;
 
-	if (fstat(STDIN_FILENO,&stat_buf) != 0) {
+	if (fstat(STDIN_FILENO, &stat_buf) != 0) {
             *callname = "fstat to STDIN";
 	    *err_descr = strerror(errno);
 	    return -1;
 	}
-	if(fchown(STDIN_FILENO, uid, -1) != 0) {
-	    *callname = "fchown to STDIN";
-            *err_descr = strerror(errno);
+
+	current = cap_get_proc();
+	working = cap_dup(current);
+	cap_set_flag(working, CAP_EFFECTIVE, 1, &cchown, CAP_SET);
+	status = cap_set_proc(working);
+	cap_free(working);
+
+	if (status != 0) {
+	    *callname = "capset CHOWN";
+	} else if ((status = fchown(STDIN_FILENO, uid, -1)) != 0) {
+	    *callname = "fchown of STDIN";
+	} else {
+	    cap_set_proc(current);
+	}
+	cap_free(current);
+
+	if (status != 0) {
+	    *err_descr = strerror(errno);
 	    return 1;
 	}
+
 	terminal_uid = stat_buf.st_uid;
     }
     return 0;
 }
 
+/*
+ * restore_terminal_owner changes the terminal owner back to the value
+ * it had when su was started.
+ */
 static void restore_terminal_owner(void)
 {
     if (terminal_uid != (uid_t) -1) {
-        if(fchown(STDIN_FILENO, terminal_uid, -1) != 0) {
-            openlog(PAM_APP_NAME, LOG_CONS | LOG_PERROR | LOG_PID, LOG_AUTHPRIV);
-	    syslog(LOG_ALERT
-		    , "Terminal owner hasn\'t been restored: %s"
-		    , strerror(errno));
+	cap_t current, working;
+	int status;
+	cap_value_t cchown = CAP_CHOWN;
+
+	current = cap_get_proc();
+	working = cap_dup(current);
+	cap_set_flag(working, CAP_EFFECTIVE, 1, &cchown, CAP_SET);
+	status = cap_set_proc(working);
+	cap_free(working);
+
+	if (status == 0) {
+	    status = fchown(STDIN_FILENO, terminal_uid, -1);
+	    cap_set_proc(current);
+	}
+	cap_free(current);
+
+        if (status != 0) {
+            openlog(PAM_APP_NAME, LOG_CONS|LOG_PERROR|LOG_PID, LOG_AUTHPRIV);
+	    syslog(LOG_ALERT, "Terminal owner hasn\'t been restored: %s",
+		   strerror(errno));
 	    closelog();
         }
         terminal_uid = (uid_t) -1;
@@ -275,7 +337,9 @@ static void restore_terminal_owner(void)
 }
 
 /*
- * Make the process unkillable by the user invoked it.
+ * make_process_unkillable changes the uid of the process. TEMP_UID is
+ * used for this temporary state.
+ *
  * Returns:
  *   0     ok,
  *  -1     fatal error (continue of the work is impossible),
@@ -283,33 +347,45 @@ static void restore_terminal_owner(void)
  * In the case of an error "err_descr" is set to the error message
  * and "callname" to the name of the failed call.
  */
-int make_process_unkillable(const char **callname
-        , const char **err_descr)
+int make_process_unkillable(const char **callname, const char **err_descr)
 {
     invoked_uid = getuid();
-    if(setuid(geteuid()) != 0) {
+    if (invoked_uid == TEMP_UID) {
+	/* no change needed */
+	return 0;
+    }
+
+    if (cap_setuid(TEMP_UID) != 0) {
         *callname = "setuid";
 	*err_descr = strerror(errno);
 	return -1;
-    }else
-	return 0;
+    }
+    return 0;
 }
 
+/*
+ * make_process_killable restores the invoking uid to the current
+ * process.
+ */
 void make_process_killable()
 {
-    setreuid(invoked_uid, -1);
+    (void) cap_setuid(invoked_uid);
 }
 
 /* ------ command line parser ----------------- */
 
-void usage()
+void usage(int exit_val)
 {
-    (void) fprintf(stderr,"usage: su [-] [-c \"command\"] [username]\n");
-    exit(1);
+    fprintf(stderr,"usage: su [-] [-h] [-c \"command\"] [username]\n");
+    exit(exit_val);
 }
 
-void parse_command_line(int argc, char *argv[]
-	, int *is_login, const char **user, const char **command)
+/*
+ * parse_command_line extracts the options from the command line
+ * arguments.
+ */
+void parse_command_line(int argc, char *argv[],
+			int *is_login, const char **user, const char **command)
 {
     int username_present, command_present;
 
@@ -326,12 +402,12 @@ void parse_command_line(int argc, char *argv[]
 	    switch (*++token) {
 	    case '\0':             /* su as a login shell for the user */
 		if (*is_login)
-		    usage();
+		    usage(1);
 		*is_login = 1;
 		break;
 	    case 'c':
 		if (command_present) {
-		    usage();
+		    usage(1);
 		} else {               /* indicate we are running commands */
 		    if (*++token != '\0') {
 			command_present = 1;
@@ -340,37 +416,28 @@ void parse_command_line(int argc, char *argv[]
 			command_present = 1;
 			*command = *++argv;
 		    } else
-			usage();
+			usage(1);
 		}
 		break;
+	    case 'h':
+		usage(0);
 	    default:
-		usage();
+		usage(1);
 	    }
 	} else {                       /* must be username */
-	    if (username_present)
-		usage();
+	    if (username_present) {
+		usage(1);
+	    }
 	    username_present = 1;
 	    *user = *argv;
 	}
     }
 
-    if (!username_present) {           /* default user is superuser */
-	const struct passwd *pw;
-
-	pw = getpwuid(ROOT_UID);
-	if (pw == NULL)                               /* No ROOT_UID!? */
-	{
-	    printf ("\nsu:no access to superuser identity!? (%d)\n",
-				ROOT_UID);
-	    exit (1);
-	}
-
-	*user = NULL;
-	if (pw->pw_name != NULL)
-	    *user = strdup(pw->pw_name);
+    if (!username_present) {
+	fprintf(stderr, PAM_APP_NAME ": requires a username\n");
+	usage(1);
     }
 }
-
 
 /*
  * This following contains code that waits for a child process to die.
@@ -390,7 +457,7 @@ static void prepare_for_job_control(int need_it)
 
     (void) sigfillset(&ourset);
     if (sigprocmask(SIG_BLOCK, &ourset, NULL) != 0) {
-	(void) fprintf(stderr,"[trouble blocking signals]\n");
+	fprintf(stderr,"[trouble blocking signals]\n");
 	wait_for_child_caught = 1;
 	return;
     }
@@ -403,6 +470,9 @@ int wait_for_child(pid_t child)
     sigset_t ourset;
 
     exit_code = -1; /* no exit code yet, exit codes could be from 0 to 255 */
+    if (child == -1) {
+	return exit_code;
+    }
 
     /*
      * set up signal handling
@@ -412,14 +482,14 @@ int wait_for_child(pid_t child)
 	struct sigaction action, defaction;
 
 	action.sa_handler = wait_for_child_catch_sig;
-	(void) sigemptyset(&action.sa_mask);
+	sigemptyset(&action.sa_mask);
 	action.sa_flags = 0;
 
 	defaction.sa_handler = SIG_DFL;
-	(void) sigemptyset(&defaction.sa_mask);
+	sigemptyset(&defaction.sa_mask);
 	defaction.sa_flags = 0;
 
-	(void) sigemptyset(&ourset);
+	sigemptyset(&ourset);
 
 	if (   sigaddset(&ourset, SIGTERM)
 	    || sigaction(SIGTERM, &action, NULL)
@@ -436,27 +506,27 @@ int wait_for_child(pid_t child)
             || (need_job_control && sigaction(SIGCONT, &defaction, NULL))
 	    || sigprocmask(SIG_UNBLOCK, &ourset, NULL)
 	    ) {
-	    (void) fprintf(stderr,"[trouble setting signal intercept]\n");
+	    fprintf(stderr,"[trouble setting signal intercept]\n");
 	    wait_for_child_caught = 1;
 	}
 
 	/* application should be ready for receiving a SIGTERM/HUP now */
     }
 
-    /* this code waits for the process to actually die. If it stops,
+    /*
+     * This code waits for the process to actually die. If it stops,
      * then the parent attempts to mimic the behavior of the
      * child.. There is a slight bug in the code when the 'su'd user
      * attempts to restart the child independently of the parent --
-     * the child dies. */
-
+     * the child dies.
+     */
     while (!wait_for_child_caught) {
-
         /* parent waits for child */
 	if ((retval = waitpid(child, &status, 0)) <= 0) {
-            if (errno == EINTR)
+            if (errno == EINTR) {
                 continue;             /* recovering from a 'fg' */
-            (void) fprintf(stderr, "[error waiting child: %s]\n"
-                           , strerror(errno));
+	    }
+            fprintf(stderr, "[error waiting child: %s]\n", strerror(errno));
             /*
              * Break the loop keeping exit_code undefined.
              * Do we have a chance for a successfull wait() call
@@ -464,29 +534,29 @@ int wait_for_child(pid_t child)
              */
             wait_for_child_caught = 1;
             break;
-        }else {
+        } else {
 	    /* the child is terminated via exit() or a fatal signal */
-	    if (WIFEXITED(status))
+	    if (WIFEXITED(status)) {
 		exit_code = WEXITSTATUS(status);
-	    else
+	    } else {
 		exit_code = 1;
+	    }
 	    break;
 	}
     }
 
     if (wait_for_child_caught) {
-	(void) fprintf(stderr,"\nKilling shell...");
-	(void) kill(child, SIGTERM);
+	fprintf(stderr,"\nKilling shell...");
+	kill(child, SIGTERM);
     }
 
     /*
      * do we need to wait for the child to catch up?
      */
-
     if (wait_for_child_caught) {
-	(void) sleep(SLEEP_TO_KILL_CHILDREN);
-	(void) kill(child, SIGKILL);
-	(void) fprintf(stderr, "killed\n");
+	sleep(SLEEP_TO_KILL_CHILDREN);
+	kill(child, SIGKILL);
+	fprintf(stderr, "killed\n");
     }
 
     /*
@@ -495,15 +565,16 @@ int wait_for_child(pid_t child)
     if (exit_code == -1) {
 	do {
 	    retval = waitpid(child, &status, 0);
-	}while (retval == -1 && errno == EINTR);
+	} while (retval == -1 && errno == EINTR);
 	if (retval == -1) {
-	    (void) fprintf(stderr, PAM_APP_NAME ": the final wait failed: %s\n"
-			   , strerror(errno));
+	    fprintf(stderr, PAM_APP_NAME ": the final wait failed: %s\n",
+		    strerror(errno));
 	}
-	if (WIFEXITED(status))
+	if (WIFEXITED(status)) {
 	    exit_code = WEXITSTATUS(status);
-	else
+	} else {
 	    exit_code = 1;
+	}
     }
 
     return exit_code;
@@ -514,8 +585,8 @@ int wait_for_child(pid_t child)
  * Next some code that parses the spawned shell command line.
  */
 
-static char * const *build_shell_args(const char *pw_shell,
-				      int login, const char *command)
+static char * const *build_shell_args(const char *pw_shell, int login,
+				      const char *command)
 {
     int use_default = 1;  /* flag to signal we should use the default shell */
     const char **args=NULL;             /* array of PATH+ARGS+NULL pointers */
@@ -618,7 +689,6 @@ static char * const *build_shell_args(const char *pw_shell,
             D(("terminating args with NULL"));
             args[++i] = NULL;
             D(("list completed."));
-
         }
     }
 
@@ -643,8 +713,8 @@ static char * const *build_shell_args(const char *pw_shell,
         args[last_arg] = NULL;        /* terminate list of args */
     }
 
-    D(("returning"));
-    return (char * const *)args;               /* return argument list */
+    D(("returning arg list"));
+    return (char * const *) args;
 }
 
 
@@ -654,7 +724,7 @@ static void exit_now(int exit_code, const char *format, ...)
 {
     va_list args;
 
-    va_start(args,format);
+    va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
 
@@ -663,7 +733,7 @@ static void exit_now(int exit_code, const char *format, ...)
 
     /* USER's shell may have completely broken terminal settings
        restore the sane(?) initial conditions */
-    reset_terminal_modes();
+    restore_terminal_modes();
 
     exit(exit_code);
 }
@@ -700,7 +770,8 @@ static void do_pam_init(const char *user, int is_login)
 	 * pamh isn't a valid handler. Without a handler
 	 * we couldn't call pam_strerror :-(   1998/03/29 (SAW)
 	 */
-	(void) fprintf(stderr, PAM_APP_NAME ": pam_start failed with code %d\n", retval);
+	fprintf(stderr, PAM_APP_NAME ": pam_start failed with code %d\n",
+		retval);
 	exit(1);
     }
 
@@ -747,94 +818,42 @@ static void do_pam_init(const char *user, int is_login)
 }
 
 /*
- * Here we set the user's groups and return their uid
+ * authenticate_user arranges for the PAM authentication stack to run.
  */
-
-static int set_user_credentials(pam_handle_t *pamh, int login,
-				const char **user, uid_t *uid,
-				const char **shell)
+static int authenticate_user(pam_handle_t *pamh, cap_t all,
+			     int *retval, const char **place,
+			     const char **err_descr)
 {
-    const struct passwd *pw;
-    int retval;
-
-    /*
-     * Identify the user from PAM.
-     */
-
-    D(("get user from pam"));
-    retval = pam_get_item(pamh, PAM_USER, (const void **)user);
-    if (retval != PAM_SUCCESS || *user == NULL || **user == '\0') {
-	D(("error identifying user from PAM."));
-	return retval;
+    *place = "pre-auth cap_set_proc";
+    if (cap_set_proc(all)) {
+	D(("failed to raise all capabilities"));
+	*err_descr = "cap_set_proc() failed";
+	*retval = PAM_SUCCESS;
+	return 1;
     }
 
-    /*
-     * identify user, update their name too. This is most likely only
-     * useful with libpwdb where guest may be mapped to guest37 ...
-     */
-
-    pw = getpwnam(*user);
-    if (pw == NULL || (*user = x_strdup(pw->pw_name)) == NULL) {
-	D(("failed to identify user"));
-	return PAM_USER_UNKNOWN;
-    }
-
-    *uid = pw->pw_uid;
-
-    *shell = x_strdup(pw->pw_shell);
-    if (*shell == NULL) {
-	return PAM_CRED_ERR;
-    }
-
-    /* initialize groups */
-
-    if (initgroups(pw->pw_name, pw->pw_gid) != 0
-	|| setgid(pw->pw_gid) != 0) {
-	return PAM_PERM_DENIED;
-    }
-
-    /*
-     * Add the LOGNAME and HOME environment variables.
-     */
-
-    D(("add some variables"));
-    if (login) {
-	/* set LOGNAME, HOME */
-	if (pam_misc_setenv(pamh, "LOGNAME", *user, 0) != PAM_SUCCESS) {
-	    D(("failed to set LOGNAME"));
-	    return PAM_CRED_ERR;
-	}
-	if (pam_misc_setenv(pamh, "HOME", pw->pw_dir, 0) != PAM_SUCCESS) {
-	    D(("failed to set HOME"));
-	    return PAM_CRED_ERR;
-	}
-    }
-
-    pw = NULL;                                                  /* be tidy */
-
-    /*
-     * next, we call the PAM framework to add/enhance the credentials
-     * of this user [it may change the user's home directory...]
-     */
-
-    retval = pam_setcred(pamh, PAM_ESTABLISH_CRED);
-    if (retval != PAM_SUCCESS) {
-	D(("failed to set PAM credentials; %s", pam_strerror(pamh,retval)));
-	return retval;
-    }
-
-    return PAM_SUCCESS;
+    D(("attempt to authenticate user"));
+    *place = "pam_authenticate";
+    *retval = pam_authenticate(pamh, 0);
+    return (*retval != PAM_SUCCESS);
 }
 
-#define RHOST_UNKNOWN_NAME        ""     /* perhaps "[from.where?]" */
-
-#define DEVICE_FILE_PREFIX        "/dev/"
-
-#define WTMP_LOCK_TIMEOUT         3      /* in seconds */
-
-#ifndef UT_IDSIZE
-#define UT_IDSIZE 4            /* XXX - this is sizeof(struct utmp.ut_id) */
-#endif
+/*
+ * user_accounting confirms an authenticated user is permitted service.
+ */
+static int user_accounting(pam_handle_t *pamh, cap_t all,
+			   int *retval, const char **place,
+			   const char **err_descr) {
+    *place = "user_accounting";
+    if (cap_set_proc(all)) {
+	D(("failed to raise all capabilities"));
+	*err_descr = "cap_set_proc() failed";
+	return 1;
+    }
+    *place = "pam_acct_mgmt";
+    *retval = pam_acct_mgmt(pamh, 0);
+    return (*retval != PAM_SUCCESS);
+}
 
 /*
  * Find entry for this terminal (if there is one).
@@ -844,10 +863,8 @@ static int set_user_credentials(pam_handle_t *pamh, int login,
  * The caller expects that pututline with the same arguments
  * will replace the found entry.
  */
-
-static
-const struct utmp *find_utmp_entry(const char *ut_line
-        , const char *ut_id)
+static const struct utmp *find_utmp_entry(const char *ut_line,
+					  const char *ut_id)
 {
     struct utmp *u_tmp_p;
 
@@ -866,9 +883,7 @@ const struct utmp *find_utmp_entry(const char *ut_line
 /*
  * Identify the terminal name and the abreviation we will use.
  */
-
-static
-void set_terminal_name(const char *terminal, char *ut_line, char *ut_id)
+static void set_terminal_name(const char *terminal, char *ut_line, char *ut_id)
 {
     memset(ut_line, 0, UT_LINESIZE);
     memset(ut_id, 0, UT_IDSIZE);
@@ -911,9 +926,8 @@ void set_terminal_name(const char *terminal, char *ut_line, char *ut_id)
 #define WWTMP_STATE_SIGACTION_SET 2
 #define WWTMP_STATE_LOCK_TAKEN    3
 
-static
-int write_wtmp(struct utmp *u_tmp_p
-                      , const char **callname, const char **err_descr)
+static int write_wtmp(struct utmp *u_tmp_p, const char **callname,
+		      const char **err_descr)
 {
     int w_tmp_fd;
     struct flock w_lock;
@@ -936,14 +950,14 @@ int write_wtmp(struct utmp *u_tmp_p
 
         /* prepare for blocking operation... */
         act1.sa_handler = SIG_DFL;
-        (void) sigemptyset(&act1.sa_mask);
+        sigemptyset(&act1.sa_mask);
         act1.sa_flags = 0;
         if (sigaction(SIGALRM, &act1, &act2) == -1) {
             *callname = "sigaction";
             *err_descr = strerror(errno);
             break;
         }
-        (void) alarm(WTMP_LOCK_TIMEOUT);
+        alarm(WTMP_LOCK_TIMEOUT);
         state = WWTMP_STATE_SIGACTION_SET;
 
         /* now we try to lock this file-rcord exclusively; non-blocking */
@@ -956,21 +970,21 @@ int write_wtmp(struct utmp *u_tmp_p
             *err_descr = strerror(errno);
             break;
         }
-        (void) alarm(0);
-        (void) sigaction(SIGALRM, &act2, NULL);
+        alarm(0);
+        sigaction(SIGALRM, &act2, NULL);
         state = WWTMP_STATE_LOCK_TAKEN;
 
-        if (write(w_tmp_fd, u_tmp_p, sizeof(struct utmp)) != -1)
+        if (write(w_tmp_fd, u_tmp_p, sizeof(struct utmp)) != -1) {
             retval = 0;
-
+	}
     } while(0); /* it's not a loop! */
 
     if (state >= WWTMP_STATE_LOCK_TAKEN) {
         w_lock.l_type = F_UNLCK;               /* unlock wtmp file */
-        (void) fcntl(w_tmp_fd, F_SETLK, &w_lock);
+        fcntl(w_tmp_fd, F_SETLK, &w_lock);
     }else if (state >= WWTMP_STATE_SIGACTION_SET) {
-        (void) alarm(0);
-        (void) sigaction(SIGALRM, &act2, NULL);
+        alarm(0);
+        sigaction(SIGALRM, &act2, NULL);
     }
 
     if (state >= WWTMP_STATE_FILE_OPENED) {
@@ -996,9 +1010,9 @@ struct utmp *login_stored_utmp=NULL;
  *  callname and err_descr will be set
  * Be carefull: the function indirectly uses alarm().
  */
-static int utmp_do_open_session(const char *user, const char *terminal
-				, const char *rhost, pid_t pid
-				, const char **callname, const char **err_descr)
+static int utmp_do_open_session(const char *user, const char *terminal,
+				const char *rhost, pid_t pid,
+				const char **place, const char **err_descr)
 {
     struct utmp u_tmp;
     const struct utmp *u_tmp_p;
@@ -1027,7 +1041,7 @@ static int utmp_do_open_session(const char *user, const char *terminal
 	if (login_stored_utmp == NULL) {
 	    login_stored_utmp = malloc(sizeof(struct utmp));
             if (login_stored_utmp == NULL) {
-                *callname = "malloc";
+                *place = "malloc";
                 *err_descr = "fail";
                 endutent();
                 return -1;
@@ -1069,14 +1083,14 @@ static int utmp_do_open_session(const char *user, const char *terminal
     pututline(&u_tmp);                         /* write it to utmp */
     endutent();                                /* close the file */
 
-    retval = write_wtmp(&u_tmp, callname, err_descr); /* write to wtmp file */
+    retval = write_wtmp(&u_tmp, place, err_descr); /* write to wtmp file */
     memset(&u_tmp, 0, sizeof(u_tmp));          /* reset entry */
 
     return retval;
 }
 
-static int utmp_do_close_session(const char *terminal
-                              , const char **callname, const char **err_descr)
+static int utmp_do_close_session(const char *terminal,
+				 const char **place, const char **err_descr)
 {
     int retval;
     struct utmp u_tmp;
@@ -1100,7 +1114,7 @@ static int utmp_do_close_session(const char *terminal
 	memcpy(&u_tmp, login_stored_utmp, sizeof(u_tmp));
 	u_tmp.ut_time = time(NULL);            /* a new time to restart */
 
-        retval = write_wtmp(&u_tmp, callname, err_descr);
+        retval = write_wtmp(&u_tmp, place, err_descr);
 
 	memset(login_stored_utmp, 0, sizeof(u_tmp)); /* reset entry */
 	free(login_stored_utmp);
@@ -1119,7 +1133,7 @@ static int utmp_do_close_session(const char *terminal
             setutent();                        /* rewind file (replace old) */
             pututline(&u_tmp);                 /* mark as dead */
 
-            retval = write_wtmp(&u_tmp, callname, err_descr);
+            retval = write_wtmp(&u_tmp, place, err_descr);
         }
     }
 
@@ -1138,138 +1152,183 @@ static int utmp_do_close_session(const char *terminal
  *   0     ok,
  *   1     non-fatal error
  *  -1     fatal error
- *  callname and err_descr will be set
+ * place and err_descr will be set
  * Be carefull: the function indirectly uses alarm().
  */
-static int utmp_open_session(pam_handle_t *pamh, pid_t pid
-                             , const char **callname, const char **err_descr)
+static int utmp_open_session(pam_handle_t *pamh, pid_t pid,
+			     int *retval,
+			     const char **place, const char **err_descr)
 {
     const char *user, *terminal, *rhost;
-    int retval;
 
-    retval = pam_get_item(pamh, PAM_USER, (const void **)&user);
-    if (retval != PAM_SUCCESS) {
-        *callname = "pam_get_item(PAM_USER)";
-        *err_descr = pam_strerror(pamh, retval);
+    *retval = pam_get_item(pamh, PAM_USER, (const void **)&user);
+    if (*retval != PAM_SUCCESS) {
         return -1;
     }
-    retval = pam_get_item(pamh, PAM_TTY, (const void **)&terminal);
+    *retval = pam_get_item(pamh, PAM_TTY, (const void **)&terminal);
     if (retval != PAM_SUCCESS) {
-        *callname = "pam_get_item(PAM_TTY)";
-        *err_descr = pam_strerror(pamh, retval);
         return -1;
     }
-    retval = pam_get_item(pamh, PAM_RHOST, (const void **)&rhost);
-    if (retval != PAM_SUCCESS)
+    *retval = pam_get_item(pamh, PAM_RHOST, (const void **)&rhost);
+    if (retval != PAM_SUCCESS) {
         rhost = NULL;
+    }
 
-    return
-        utmp_do_open_session(user, terminal, rhost, pid, callname, err_descr);
+    return utmp_do_open_session(user, terminal, rhost, pid, place, err_descr);
 }
 
 static int utmp_close_session(pam_handle_t *pamh
-                              , const char **callname, const char **err_descr)
+                              , const char **place, const char **err_descr)
 {
     int retval;
     const char *terminal;
 
     retval = pam_get_item(pamh, PAM_TTY, (const void **)&terminal);
     if (retval != PAM_SUCCESS) {
-        *callname = "pam_get_item(PAM_TTY)";
+        *place = "pam_get_item(PAM_TTY)";
         *err_descr = pam_strerror(pamh, retval);
         return -1;
     }
 
-    return utmp_do_close_session(terminal, callname, err_descr);
+    return utmp_do_close_session(terminal, place, err_descr);
+}
+
+/*
+ * set_credentials raises all of the process and PAM credentials.
+ */
+static int set_credentials(pam_handle_t *pamh, cap_t all, int login,
+			   const char **pw_shell,
+			   int *retval, const char **place,
+			   const char **err_descr)
+{
+    const char *user;
+    char *shell;
+    cap_value_t csetgid = CAP_SETGID;
+    cap_t current;
+    int status;
+    struct passwd *pw;
+    uid_t uid;
+
+    D(("get user from pam"));
+    *place = "set_credentials";
+    *retval = pam_get_item(pamh, PAM_USER, (const void **)&user);
+    if (*retval != PAM_SUCCESS || user == NULL || *user == '\0') {
+	D(("error identifying user from PAM."));
+	*retval = PAM_USER_UNKNOWN;
+	return 1;
+    }
+
+    /*
+     * Add the LOGNAME and HOME environment variables.
+     */
+
+    pw = getpwnam(user);
+    if (pw == NULL || (user = x_strdup(pw->pw_name)) == NULL) {
+	D(("failed to identify user"));
+	*retval = PAM_USER_UNKNOWN;
+	return 1;
+    }
+
+    uid = pw->pw_uid;
+    shell = x_strdup(pw->pw_shell);
+    if (shell == NULL) {
+	D(("user %s has no shell", user));
+	*retval = PAM_CRED_ERR;
+	return 1;
+    }
+
+    if (login) {
+	/* set LOGNAME, HOME */
+	if (pam_misc_setenv(pamh, "LOGNAME", user, 0) != PAM_SUCCESS) {
+	    D(("failed to set LOGNAME"));
+	    *retval = PAM_CRED_ERR;
+	    return 1;
+	}
+	if (pam_misc_setenv(pamh, "HOME", pw->pw_dir, 0) != PAM_SUCCESS) {
+	    D(("failed to set HOME"));
+	    *retval = PAM_CRED_ERR;
+	    return 1;
+	}
+    }
+
+    current = cap_get_proc();
+    cap_set_flag(current, CAP_EFFECTIVE, 1, &csetgid, CAP_SET);
+    status = cap_set_proc(current);
+    cap_free(current);
+    if (status != 0) {
+	*err_descr = "unable to raise CAP_SETGID";
+	return 1;
+    }
+
+    /* initialize groups */
+    if (initgroups(pw->pw_name, pw->pw_gid) != 0 || setgid(pw->pw_gid) != 0) {
+	D(("failed to setgid etc"));
+	*retval = PAM_PERM_DENIED;
+	return 1;
+    }
+    *pw_shell = shell;
+
+    pw = NULL;                                                  /* be tidy */
+
+    D(("desired uid=%d", uid));
+
+    /* assume user's identity - but preserve the permitted set */
+    if (cap_setuid(uid) != 0) {
+	D(("failed to setuid: %v", strerror(errno)));
+	*retval = PAM_PERM_DENIED;
+	return 1;
+    }
+
+    /*
+     * Next, we call the PAM framework to add/enhance the credentials
+     * of this user [it may change the user's home directory in the
+     * pam_env, and add supplemental group memberships...].
+     */
+    D(("setting credentials"));
+    if (cap_set_proc(all)) {
+	D(("failed to raise all capabilities"));
+	*retval = PAM_PERM_DENIED;
+	return 1;
+    }
+
+    D(("calling pam_setcred to establish credentials"));
+    *retval = pam_setcred(pamh, PAM_ESTABLISH_CRED);
+
+    return (*retval != PAM_SUCCESS);
+}
+
+/*
+ * open_session invokes the open session PAM stack.
+ */
+static int open_session(pam_handle_t *pamh, cap_t all,
+			int *retval, const char **place, const char **err_descr)
+{
+    /* Open the su-session */
+    *place = "pam_open_session";
+    if (cap_set_proc(all)) {
+	D(("failed to raise t_caps capabilities"));
+	*err_descr = "capability setting failed";
+	return 1;
+    }
+    *retval = pam_open_session(pamh, 0);     /* Must take care to close */
+    if (*retval != PAM_SUCCESS) {
+	return 1;
+    }
+    return 0;
 }
 
 /* ------ shell invoker ----------------------- */
 
-static void su_exec_shell(const char *shell, uid_t uid, int is_login
-			  , const char *command, const char *user)
+static int launch_callback_fn(void *h)
 {
-    char * const * shell_args;
-    char * const * shell_env;
-    const char *pw_dir;
+    pam_handle_t *pamh = h;
     int retval;
-
-    /*
-     * Now, find the home directory for the user
-     */
-
-    pw_dir = pam_getenv(pamh, "HOME");
-    if ( !pw_dir || pw_dir[0] == '\0' ) {
-	/* Not set so far, so we get it now. */
-	struct passwd *pwd;
-
-	pwd = getpwnam(user);
-	if (pwd != NULL && pwd->pw_name != NULL) {
-	    pw_dir = x_strdup(pwd->pw_name);
-	}
-
-	/* Last resort, take default directory.. */
-	if ( !pw_dir || pw_dir[0] == '\0') {
-	    (void) fprintf(stderr, "setting home directory for %s to %s\n"
-                           , user, DEFAULT_HOME);
-	    pw_dir = DEFAULT_HOME;
-	}
-    }
-
-    /*
-     * We may wish to change the current directory.
-     */
-
-    if (is_login && chdir(pw_dir)) {
-	exit_child_now(1, "%s not available; exiting\n", pw_dir);
-    }
-
-    /*
-     * If it is a login session, we should set the environment
-     * accordingly.
-     */
-
-    if (is_login
-	&& pam_misc_setenv(pamh, "HOME", pw_dir, 0) != PAM_SUCCESS) {
-	D(("failed to set $HOME"));
-	(void) fprintf(stderr
-                       , "Warning: unable to set HOME environment variable\n");
-    }
-
-    /*
-     * Break up the shell command into a command and arguments
-     */
-
-    shell_args = build_shell_args(shell, is_login, command);
-    if (shell_args == NULL) {
-	exit_child_now(1, PAM_APP_NAME ": could not identify appropriate shell\n");
-    }
-
-    /*
-     * and now copy the environment for non-PAM use
-     */
-
-    shell_env = pam_getenvlist(pamh);
-    if (shell_env == NULL) {
-	exit_child_now(1, PAM_APP_NAME ": corrupt environment\n");
-    }
-
-    /*
-     * close PAM (quietly = this is a forked process so ticket files
-     * should *not* be deleted logs should not be written - the parent
-     * will take care of this)
-     */
 
     D(("pam_end"));
     retval = pam_end(pamh, PAM_SUCCESS | PAM_DATA_SILENT);
     pamh = NULL;
-    user = NULL;                            /* user's name not valid now */
     if (retval != PAM_SUCCESS) {
-	exit_child_now(1, PAM_APP_NAME ": failed to release authenticator\n");
-    }
-
-    /* assume user's identity */
-    if (setuid(uid) != 0) {
-	exit_child_now(1, PAM_APP_NAME ": cannot assume uid\n");
+	return -1;
     }
 
     /*
@@ -1278,8 +1337,97 @@ static void su_exec_shell(const char *shell, uid_t uid, int is_login
      */
     enable_terminal_signals();
 
-    execve(shell_args[0], shell_args+1, shell_env);
-    exit_child_now(1, PAM_APP_NAME ": exec failed\n");
+    D(("about to launch"));
+    return 0;
+}
+
+/* Returns PAM_<STATUS>. */
+static int perform_launch_and_cleanup(cap_t all, int is_login,
+				      const char *shell, const char *command)
+{
+    int retval, status;
+    const char *user, *home;
+    uid_t uid;
+    char * const * shell_args;
+    char * const * shell_env;
+    cap_launch_t launcher;
+    pid_t child;
+
+
+    /*
+     * Break up the shell command into a command and arguments
+     */
+    shell_args = build_shell_args(shell, is_login, command);
+    if (shell_args == NULL) {
+	D(("failed to compute shell arguments"));
+	return PAM_SYSTEM_ERR;
+    }
+
+    home = pam_getenv(pamh, "HOME");
+    if ( !home || home[0] == '\0' ) {
+	fprintf(stderr, "setting home directory for %s to %s\n",
+		user, DEFAULT_HOME);
+	home = DEFAULT_HOME;
+	if (pam_misc_setenv(pamh, "HOME", home, 0) != PAM_SUCCESS) {
+	    D(("unable to set $HOME"));
+	    fprintf(stderr,
+		    "Warning: unable to set HOME environment variable\n");
+	}
+    }
+    if (is_login) {
+	if (chdir(home) && chdir(DEFAULT_HOME)) {
+	    D(("failed to change directory"));
+	    return PAM_SYSTEM_ERR;
+	}
+    }
+
+    shell_env = pam_getenvlist(pamh);
+    if (shell_env == NULL) {
+	D(("failed to obtain environment for child"));
+	return PAM_SYSTEM_ERR;
+    }
+
+    launcher = cap_new_launcher(shell_args[0],
+				(const char * const *) &shell_args[1],
+				(const char * const *) shell_env);
+    if (launcher == NULL) {
+	D(("failed to initialize launcher"));
+	return PAM_SYSTEM_ERR;
+    }
+    cap_launcher_set_iab(launcher, cap_iab_get_proc());
+    cap_launcher_callback(launcher, launch_callback_fn);
+
+    child = cap_launch(launcher, pamh);
+    cap_free(launcher);
+
+    /* job control is off for login sessions */
+    prepare_for_job_control(!is_login && command != NULL);
+
+    if (cap_setuid(TEMP_UID) != 0) {
+	fprintf(stderr, "[failed to change monitor UID=%d]\n", TEMP_UID);
+    }
+
+    /* wait for child to terminate */
+    status = wait_for_child(child);
+    if (status != 0) {
+	D(("shell returned %d", status));
+    }
+    return status;
+}
+
+static void close_session(pam_handle_t *pamh, cap_t all)
+{
+    int retval;
+
+    D(("session %p closing", pamh));
+    if (cap_set_proc(all)) {
+	fprintf(stderr, "WARNING: could not raise all caps\n");
+    }
+    retval = pam_close_session(pamh, 0);
+    if (retval != PAM_SUCCESS) {
+	fprintf(stderr, "WARNING: could not close session\n\t%s\n",
+		pam_strerror(pamh,retval));
+    }
 }
 
 /* -------------------------------------------- */
@@ -1290,11 +1438,14 @@ int main(int argc, char *argv[])
 {
     int retcode, is_login, status;
     int retval, final_retval; /* PAM_xxx return values */
-    const char *command, *user;
-    const char *shell;
+    const char *command, *shell;
     pid_t child;
     uid_t uid;
-    const char *place, *err_descr;
+    const char *place = NULL, *err_descr = NULL;
+    cap_t all, t_caps;
+
+    all = cap_get_proc();
+    cap_fill(all, CAP_EFFECTIVE, CAP_PERMITTED);
 
     checkfds();
 
@@ -1303,196 +1454,153 @@ int main(int argc, char *argv[])
      */
     store_terminal_modes();
 
+    /* ---------- parse the argument list and --------- */
+    /* ------ initialize the Linux-PAM interface ------ */
+    {
+	const char *user;              /* transient until PAM_USER defined */
+	parse_command_line(argc, argv, &is_login, &user, &command);
+	place = "do_pam_init";
+	do_pam_init(user, is_login);   /* call pam_start and set PAM items */
+    }
+
     /*
      * Turn off terminal signals - this is to be sure that su gets a
-     * chance to call pam_end() in spite of the frustrated user
-     * pressing Ctrl-C. (Only the superuser is exempt in the case that
-     * they are trying to run su without a controling tty).
+     * chance to call pam_end() and restore the terminal modes in
+     * spite of the frustrated user pressing Ctrl-C.
      */
     disable_terminal_signals();
 
-    /* ------------ parse the argument list ----------- */
-
-    parse_command_line(argc, argv, &is_login, &user, &command);
-
-    /* ------ initialize the Linux-PAM interface ------ */
-
-    do_pam_init(user, is_login);      /* call pam_start and set PAM items */
-    user = NULL;                      /* get this info later (it may change) */
-
     /*
-     * Note. We have forgotten everything about the user. We will get
-     * this info back after the user has been authenticated..
-     */
-
-    /*
-     * Starting from here all changes to the process and environment
-     * state are reflected in the change of "state".
-     * Random exits are strictly prohibited :-)  (SAW)
+     * Random exits from here are strictly prohibited :-) (SAW) AGM
+     * achieves this with goto's and a single exit at the end of main.
      */
     status = 1;                       /* fake exit status of a child */
-    err_descr = NULL;                 /* errors hasn't happened */
-    state = SU_STATE_PAM_INITIALIZED; /* state -- initial */
+    err_descr = NULL;                 /* errors haven't happened */
 
-    do {                              /* abuse loop to avoid using goto... */
-
-	place = "pam_authenticate";
-        retval = pam_authenticate(pamh, 0);	   /* authenticate the user */
-	if (retval != PAM_SUCCESS)
-            break;
-	state = SU_STATE_AUTHENTICATED;
-
-	/*
-	 * The user is valid, but should they have access at this
-	 * time?
-	 */
-	place = "pam_acct_mgmt";
-        retval = pam_acct_mgmt(pamh, 0);
-	if (retval != PAM_SUCCESS) {
-	    if (getuid() == 0) {
-		(void) fprintf(stderr, "Account management:- %s\n(Ignored)\n"
-                               , pam_strerror(pamh, retval));
-	    } else
-		break;
-	}
-	state = SU_STATE_AUTHORIZED;
-
-	/* Open the su-session */
-	place = "pam_open_session";
-        retval = pam_open_session(pamh, 0);     /* Must take care to close */
-	if (retval != PAM_SUCCESS)
-            break;
-	/*
-         * Do not advance the state to SU_STATE_SESSION_OPENED here.
-         * The session will be closed explicitly if the next step fails.
-         */
-
-	/*
-	 * Obtain all of the new credentials of the user
-	 */
-	place = "set_user_credentials";
-        retval = set_user_credentials(pamh, is_login, &user, &uid, &shell);
-	if (retval != PAM_SUCCESS) {
-	    (void) pam_close_session(pamh,retval);
-	    break;
-	}
-	state = SU_STATE_CREDENTIALS_GOTTEN;
-
-	/*
-         * Prepare the new session: ...
-         */
-        if (make_process_unkillable(&place, &err_descr) != 0)
-	    break;
-	state = SU_STATE_PROCESS_UNKILLABLE;
-
-        /*
-         * ... setup terminal, ...
-         */
-        retcode = change_terminal_owner(uid, is_login
-                , &place, &err_descr);
-	if (retcode > 0) {
-	    (void) fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
-	    err_descr = NULL; /* forget about the problem */
-	} else if (retcode < 0)
-	    break;
-	state = SU_STATE_TERMINAL_REOWNED;
-
-        /*
-         * ... make [uw]tmp entries.
-         */
-        if (is_login) {
-            /*
-             * Note: we use the parent pid as a session identifier for
-             * the logging.
-             */
-            retcode = utmp_open_session(pamh, getpid(), &place, &err_descr);
-            if (retcode > 0) {
-                (void) fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
-                err_descr = NULL; /* forget about the problem */
-            } else if (retcode < 0)
-                break;
-            state = SU_STATE_UTMP_WRITTEN;
-        }
-
-	/* this is where we execute the user's shell */
-        child = fork();
-        if (child == -1) {
-            place = "fork";
-            err_descr = strerror(errno);
-            break;
-        }
-
-        if (child == 0) {       /* child exec's shell */
-            su_exec_shell(shell, uid, is_login, command, user);
-            /* never reached */
-        }
-
-	/* wait for child to terminate */
-
-        /* job control is off for login sessions */
-        prepare_for_job_control(!is_login && command != NULL);
-	status = wait_for_child(child);
-	if (status != 0)
-	    D(("shell returned %d", status));
-
-    }while (0);                       /* abuse loop to avoid using goto... */
-
-    if (retval != PAM_SUCCESS) {      /* PAM has failed */
-	(void) fprintf(stderr, PAM_APP_NAME ": %s\n", pam_strerror(pamh, retval));
-	final_retval = PAM_ABORT;
-    } else if (err_descr != NULL) {   /* a system error has happened */
-	(void) fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
-	final_retval = PAM_ABORT;
-    } else
-	final_retval = PAM_SUCCESS;
-
-    /* do [uw]tmp cleanup */
-    if (state >= SU_STATE_UTMP_WRITTEN) {
-        retcode = utmp_close_session(pamh, &place, &err_descr);
-        if (retcode)
-            (void) fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
+    if (make_process_unkillable(&place, &err_descr) != 0) {
+	goto su_exit;
     }
 
-    /* return terminal to local control */
-    if (state >= SU_STATE_TERMINAL_REOWNED)
-	restore_terminal_owner();
+    if (authenticate_user(pamh, all, &retval, &place, &err_descr) != 0) {
+	goto auth_exit;
+    }
 
     /*
-     * My impression is that PAM expects real uid to be restored.
-     * Effective uid of the process is kept
-     * unchanged: superuser.  (SAW)
+     * The user is valid, but should they have access at this
+     * time?
      */
-    if (state >= SU_STATE_PROCESS_UNKILLABLE)
-	make_process_killable();
+    if (user_accounting(pamh, all, &retval, &place, &err_descr) != 0) {
+	goto auth_exit;
+    }
 
-    if (state >= SU_STATE_CREDENTIALS_GOTTEN) {
-	D(("setcred"));
-	/* Delete the user's credentials. */
-	retval = pam_setcred(pamh, PAM_DELETE_CRED);
-	if (retval != PAM_SUCCESS) {
-	    (void) fprintf(stderr, "WARNING: could not delete credentials\n\t%s\n"
-		    , pam_strerror(pamh,retval));
+    D(("su attempt is confirmed as authorized"));
+
+    /*
+     * ... setup terminal, ...
+     */
+    retcode = change_terminal_owner(uid, is_login, &place, &err_descr);
+    if (retcode > 0) {
+	fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
+	err_descr = NULL; /* forget about the problem */
+    } else if (retcode < 0) {
+	D(("terminal owner to uid=%d change failed", uid));
+	goto auth_exit;
+    }
+
+    if (set_credentials(pamh, all, is_login,
+			&shell, &retval, &place, &err_descr) != 0) {
+	D(("failed to set credentials"));
+	goto auth_exit;
+    }
+
+    /*
+     * Here the IAB value is fixed and may differ from all's
+     * Inheritable value. So synthesize what we need to proceed in the
+     * child, for now, in this current process.
+     */
+    place = "preserving inheritable parts";
+    t_caps = cap_get_proc();
+    if (t_caps == NULL) {
+	D(("failed to read capabilities"));
+	err_descr = "capability read failed";
+	goto delete_cred;
+    }
+    if (cap_fill(t_caps, CAP_EFFECTIVE, CAP_PERMITTED)) {
+	D(("failed to fill effective bits"));
+	err_descr = "capability fill failed";
+	goto delete_cred;
+    }
+
+    /*
+     * ... make [uw]tmp entries.
+     */
+    if (is_login) {
+	/*
+	 * Note: we use the parent pid as a session identifier for
+	 * the logging.
+	 */
+	retcode = utmp_open_session(pamh, getpid(),
+				    &retval, &place, &err_descr);
+	if (retcode > 0) {
+	    fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
+	    err_descr = NULL; /* forget about this non-critical problem */
+	} else if (retcode < 0) {
+	    goto delete_cred;
 	}
     }
 
-    if (state >= SU_STATE_SESSION_OPENED) {
-	D(("session %p", pamh));
-
-	/* close down */
-	retval = pam_close_session(pamh,0);
-	if (retval != PAM_SUCCESS)
-	    (void) fprintf(stderr, "WARNING: could not close session\n\t%s\n"
-                           , pam_strerror(pamh,retval));
+    if (open_session(pamh, t_caps, &retval, &place, &err_descr) != 0) {
+	goto utmp_closer;
     }
 
-    /* clean up */
-    D(("all done"));
+    status = perform_launch_and_cleanup(t_caps, is_login, shell, command);
+    close_session(pamh, all);
+
+utmp_closer:
+    if (is_login) {
+	/* do [uw]tmp cleanup */
+	retcode = utmp_close_session(pamh, &place, &err_descr);
+	if (retcode) {
+	    fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
+	}
+    }
+
+delete_cred:
+    D(("delete credentials"));
+    if (cap_set_proc(all)) {
+	D(("failed to raise all capabilities"));
+    }
+    retcode = pam_setcred(pamh, PAM_DELETE_CRED);
+    if (retcode != PAM_SUCCESS) {
+	fprintf(stderr, "WARNING: could not delete credentials\n\t%s\n",
+		pam_strerror(pamh, retcode));
+    }
+
+old_owner:
+    D(("return terminal to local control"));
+    restore_terminal_owner();
+
+auth_exit:
+    D(("for clean up we restore the launching user"));
+    make_process_killable();
+
+    D(("all done - closing down pam"));
+    if (retval != PAM_SUCCESS) {      /* PAM has failed */
+	fprintf(stderr, PAM_APP_NAME ": %s\n", pam_strerror(pamh, retval));
+	final_retval = PAM_ABORT;
+    } else if (err_descr != NULL) {   /* a system error has happened */
+	fprintf(stderr, PAM_APP_NAME ": %s: %s\n", place, err_descr);
+	final_retval = PAM_ABORT;
+    } else {
+	final_retval = PAM_SUCCESS;
+    }
     (void) pam_end(pamh, final_retval);
     pamh = NULL;
 
-    /* reset the terminal */
-    if (reset_terminal_modes() != 0 && !status)
+    if (restore_terminal_modes() != 0 && !status) {
 	status = 1;
+    }
 
+su_exit:
     exit(status);                 /* transparent exit */
 }
