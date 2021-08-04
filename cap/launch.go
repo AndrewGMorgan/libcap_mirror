@@ -54,10 +54,20 @@ func NewLauncher(path string, args []string, env []string) *Launcher {
 // bones variant of the more elaborate program launcher returned by
 // cap.NewLauncher().
 //
+// Note, this launcher will fully ignore any overrides provided by the
+// (*Launcher).SetUID() etc. methods. Should your fn() code want to
+// run with a different capability state or other privilege, it should
+// use the cap.*() functions to set them directly. The cap package
+// will ensure that their effects are limited to the runtime of this
+// individual function invocation. Warning: executing non-cap.*()
+// syscall functions may corrupt the state of the program runtime and
+// lead to unpredictable results.
+//
 // The properties of fn are similar to those supplied via
 // (*Launcher).Callback(fn) method. However, this launcher is bare
 // bones because, when launching, all privilege management performed
-// by the fn() is fully discarded when the fn() completes exection.
+// by the fn() is fully discarded when the fn() completes
+// exection. That is, it does not end by exec()ing some program.
 func FuncLauncher(fn func(interface{}) error) *Launcher {
 	return &Launcher{
 		callbackFn: func(ignored *syscall.ProcAttr, data interface{}) error {
