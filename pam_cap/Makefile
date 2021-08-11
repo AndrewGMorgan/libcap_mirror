@@ -10,16 +10,16 @@ install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(LIBDIR)/security
 	install -m 0755 pam_cap.so $(FAKEROOT)$(LIBDIR)/security
 
-# Note (as the author of much of the Linux-PAM library, I am confident
-# that this next line does *not* require -lpam on it.) If you think it
-# does, *verify that it does*, and if you observe that it fails as
-# written (and you know why it fails), email me and explain why. Thanks!
-
 ../libcap/loader.txt:
 	$(MAKE) -C ../libcap loader.txt
 
 execable.o: execable.c ../libcap/execable.h ../libcap/loader.txt
 	$(CC) $(CFLAGS) $(IPATH) -DLIBCAP_VERSION=\"libcap-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" -c execable.c -o $@
+
+# Note (as the author of much of the Linux-PAM library, I am confident
+# that this next line does *not* require -lpam on it.) If you think it
+# does, *verify that it does*, and if you observe that it fails as
+# written (and you know why it fails), email me and explain why. Thanks!
 
 pam_cap.so: pam_cap.o execable.o
 	$(LD) -o pam_cap.so $+ $(LIBCAPLIB) $(LDFLAGS) --entry=__so_start
