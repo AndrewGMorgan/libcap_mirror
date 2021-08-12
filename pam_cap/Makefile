@@ -20,9 +20,12 @@ execable.o: execable.c ../libcap/execable.h ../libcap/loader.txt
 # that this next line does *not* require -lpam on it.) If you think it
 # does, *verify that it does*, and if you observe that it fails as
 # written (and you know why it fails), email me and explain why. Thanks!
+#
+# This bug documents some overriden CC and LD flags that cause it to
+# be necessary: https://bugzilla.kernel.org/show_bug.cgi?id=214023
 
 pam_cap.so: pam_cap.o execable.o
-	$(LD) -o pam_cap.so $+ $(LIBCAPLIB) $(LDFLAGS) --entry=__so_start
+	$(LD) -o pam_cap.so $+ $(LIBCAPLIB) $(LDFLAGS) -Wl,-e,__so_start
 
 pam_cap.o: pam_cap.c
 	$(CC) $(CFLAGS) $(IPATH) -c $< -o $@

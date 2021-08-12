@@ -20,7 +20,7 @@ PSXMAGICOBJ=psx_magic.o
 
 # The linker magic needed to build a dynamic library as independently
 # executable
-MAGIC=--entry=__so_start
+MAGIC=-Wl,-e,__so_start
 
 INCLS=libcap.h cap_names.h $(INCS)
 GPERF_OUTPUT = _caps_output.gperf
@@ -105,7 +105,7 @@ empty: empty.c
 	$(CC) -o $@ $<
 
 loader.txt: empty
-	$(OBJCOPY) --dump-section .interp=/dev/stdout $< > $@
+	$(OBJCOPY) --dump-section .interp=$@ $<
 
 cap_magic.o: execable.h execable.c loader.txt
 	$(CC) $(CFLAGS) $(IPATH) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@

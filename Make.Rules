@@ -79,7 +79,6 @@ BUILD_GPERF := $(shell which gperf >/dev/null 2>/dev/null && echo yes)
 
 SYSTEM_HEADERS = /usr/include
 INCS=$(topdir)/libcap/include/sys/capability.h
-LDFLAGS += -L$(topdir)/libcap
 CFLAGS += -Dlinux $(WARNINGS) $(DEBUG)
 INDENT := $(shell if [ -n "$$(which indent 2>/dev/null)" ]; then echo "| indent -kr" ; fi)
 
