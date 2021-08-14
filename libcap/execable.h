@@ -19,7 +19,7 @@
 #include <string.h>
 
 #ifdef __EXECABLE_H
-#error "only inlcude execable.h once"
+#error "only include execable.h once"
 #endif
 #define __EXECABLE_H
 

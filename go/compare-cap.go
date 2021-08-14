@@ -184,7 +184,7 @@ func tryProcCaps() {
 		}
 	}
 
-	// The current process is now without any access to privelege.
+	// The current process is now without any access to privilege.
 }
 
 func main() {

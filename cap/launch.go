@@ -67,7 +67,7 @@ func NewLauncher(path string, args []string, env []string) *Launcher {
 // (*Launcher).Callback(fn) method. However, this launcher is bare
 // bones because, when launching, all privilege management performed
 // by the fn() is fully discarded when the fn() completes
-// exection. That is, it does not end by exec()ing some program.
+// execution. That is, it does not end by exec()ing some program.
 func FuncLauncher(fn func(interface{}) error) *Launcher {
 	return &Launcher{
 		callbackFn: func(ignored *syscall.ProcAttr, data interface{}) error {
@@ -101,7 +101,7 @@ func FuncLauncher(fn func(interface{}) error) *Launcher {
 // *syscall.ProcAttr value to be used when a process launch is taking
 // place. A non-nil structure pointer can be modified by the callback
 // to enhance the launch. For example, the .Files field can be
-// overriden to affect how the launched process' stdin/out/err are
+// overridden to affect how the launched process' stdin/out/err are
 // handled.
 //
 // Further, the 2nd argument to the callback function is provided at
@@ -206,7 +206,7 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 	if tid == pid {
 		// Force the go runtime to find a new thread to run
 		// on.  (It is really awkward to have a process'
-		// PID=TID thread in effectively a zomebie state. The
+		// PID=TID thread in effectively a zombie state. The
 		// Go runtime has support for it, but pstree gives
 		// ugly output since the prSetName value sticks around
 		// after launch completion...

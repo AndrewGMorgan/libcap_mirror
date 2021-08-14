@@ -267,7 +267,7 @@ func (c *Set) SetFd(file *os.File) error {
 
 //go:uintptrescapes
 
-// SetFile attempts to set the file capabilities of the specfied
+// SetFile attempts to set the file capabilities of the specified
 // filename. This function can also be used to delete a file's
 // capabilities, by calling with c = nil.
 //

@@ -151,7 +151,7 @@ const (
 )
 
 var (
-	// starUp protects setting of the following values: magic,
+	// startUp protects setting of the following values: magic,
 	// words, maxValues.
 	startUp sync.Once
 
@@ -261,7 +261,7 @@ func (sc *syscaller) prctlwcall6(prVal, v1, v2, v3, v4, v5 uintptr) (int, error)
 	return int(r), nil
 }
 
-// cInit perfoms the lazy identification of the capability vintage of
+// cInit performs the lazy identification of the capability vintage of
 // the running system.
 func (sc *syscaller) cInit() {
 	h := &header{

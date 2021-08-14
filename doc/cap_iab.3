@@ -47,7 +47,7 @@ Vector will survive
 and the Bound (or \fIblocked\fP) vector is the twos-complement of the
 process bounding set.
 .PP
-In some environments, it is considered desireable to naively inherit
+In some environments, it is considered desirable to naively inherit
 capabilities. That is pass capabilities, independent of the status of
 the executed binary, from parent to child through exec* system
 calls. The surviving capabilities become the Permitted flag for the
@@ -96,7 +96,7 @@ The text format accepted by
 is a comma separated list of capability values. Each capability is
 prefixed by nothing (or %) (Inh); ! (Bound); ^ (Amb). Or, some
 combination thereof. Since the Amb vector is constrained to be no
-greater than the Inh set, ^ is eqivalent to %^. Further, unless B is
+greater than the Inh set, ^ is equivalent to %^. Further, unless B is
 non-zero, % can be omitted. The following are legal text
 representations: "!%cap_chown" (Bound but Inh),
 "!cap_setuid,^cap_chown" (Bound, Inh+Amb). "cap_setuid,!cap_chown"

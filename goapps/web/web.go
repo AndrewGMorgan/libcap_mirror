@@ -1,4 +1,4 @@
-// Progam web provides an example of a webserver using capabilities to
+// Program web provides an example of a webserver using capabilities to
 // bind to a privileged port, and then drop all capabilities before
 // handling the first web request.
 //

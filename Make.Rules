@@ -155,7 +155,7 @@ endif
 #
 # In the context of this tree, on such such systems, a yes setting will
 # guarantee that every user, by default, is able to bless any binary with
-# any capability - a ready made local exploit machanism.
+# any capability - a ready made local exploit mechanism.
 RAISE_SETFCAP := no
 
 # If set to yes, this will cause the go "web" demo app to force the needed p

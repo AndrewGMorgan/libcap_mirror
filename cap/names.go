@@ -63,7 +63,7 @@ const (
 	SETGID
 
 	// SETUID allows a process to freely manipulate its own UIDs:
-	//   - arbitraily set the UID, EUID, REUID and RESUID
+	//   - arbitrarily set the UID, EUID, REUID and RESUID
 	//     values
 	//   - allows the forging of UID credentials passed over a
 	//     socket
@@ -85,7 +85,7 @@ const (
 	// default, as its unsuppressed behavior was not
 	// auditable: it could asynchronously grant its own
 	// Permitted capabilities to and remove capabilities from
-	// other processes arbitraily. The former leads to
+	// other processes arbitrarily. The former leads to
 	// undefined behavior, and the latter is better served by
 	// the kill system call.]
 	SETPCAP

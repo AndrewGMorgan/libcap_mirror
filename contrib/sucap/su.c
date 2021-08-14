@@ -127,7 +127,7 @@ static int make_environment(pam_handle_t *pamh, int keep_env)
 	return retval;
     }
 
-    /* also propogate the POSIX specific ones */
+    /* also propagate the POSIX specific ones */
     for (i=0; retval == PAM_SUCCESS && posix_env[i]; ++i) {
 	tmpe = getenv(posix_env[i]);
 	if (tmpe != NULL) {
@@ -529,7 +529,7 @@ int wait_for_child(pid_t child)
             fprintf(stderr, "[error waiting child: %s]\n", strerror(errno));
             /*
              * Break the loop keeping exit_code undefined.
-             * Do we have a chance for a successfull wait() call
+             * Do we have a chance for a successful wait() call
              * after kill()? (SAW)
              */
             wait_for_child_caught = 1;
@@ -632,7 +632,7 @@ static char * const *build_shell_args(const char *pw_shell, int login,
             ) {
 
             use_default = 0;                  /* we will use this shell */
-            D(("commited to using user's shell"));
+            D(("committed to using user's shell"));
             if (command) {
                 arg_no += 2;                  /* will append "-c" "command" */
             }
@@ -881,7 +881,7 @@ static const struct utmp *find_utmp_entry(const char *ut_line,
 }
 
 /*
- * Identify the terminal name and the abreviation we will use.
+ * Identify the terminal name and the abbreviation we will use.
  */
 static void set_terminal_name(const char *terminal, char *ut_line, char *ut_id)
 {
@@ -918,7 +918,7 @@ static void set_terminal_name(const char *terminal, char *ut_line, char *ut_id)
 
 /*
  * Append an entry to wtmp. See utmp_open_session for the return convention.
- * Be carefull: the function uses alarm().
+ * Be careful: the function uses alarm().
  */
 
 #define WWTMP_STATE_BEGINNING     0
@@ -1008,7 +1008,7 @@ struct utmp *login_stored_utmp=NULL;
  *   1     non-fatal error
  *  -1     fatal error
  *  callname and err_descr will be set
- * Be carefull: the function indirectly uses alarm().
+ * Be careful: the function indirectly uses alarm().
  */
 static int utmp_do_open_session(const char *user, const char *terminal,
 				const char *rhost, pid_t pid,
@@ -1034,7 +1034,7 @@ static int utmp_do_open_session(const char *user, const char *terminal,
 
 	/*
 	 * here, we make a record of the former entry. If the
-	 * utmp_close_session code is attatched to the same process,
+	 * utmp_close_session code is attached to the same process,
 	 * the wtmp will be replaced, otherwise we leave init to pick
 	 * up the pieces.
 	 */
@@ -1153,7 +1153,7 @@ static int utmp_do_close_session(const char *terminal,
  *   1     non-fatal error
  *  -1     fatal error
  * place and err_descr will be set
- * Be carefull: the function indirectly uses alarm().
+ * Be careful: the function indirectly uses alarm().
  */
 static int utmp_open_session(pam_handle_t *pamh, pid_t pid,
 			     int *retval,
@@ -1332,8 +1332,8 @@ static int launch_callback_fn(void *h)
     }
 
     /*
-     * Restore a signal status: information if the signal is ingored
-     * is inherited accross exec() call.  (SAW)
+     * Restore a signal status: information if the signal is ignored
+     * is inherited across exec() call.  (SAW)
      */
     enable_terminal_signals();
 

@@ -8,12 +8,12 @@ This library would not have been possible without the help of
     Aleph1, Roland Buresund and Andrew Main, Alexander Kjeldaas.
 
 More information on capabilities in the Linux kernel, links to the
-official git repostitory for libcap, release notes and how to report
+official git repository for libcap, release notes and how to report
 bugs can be found at:
 
     http://sites.google.com/site/fullycapable/
 
-The primary upstream git repostitory is this one:
+The primary upstream git repository is this one:
 
     https://git.kernel.org/pub/scm/libs/libcap/libcap.git/
 

@@ -56,7 +56,7 @@ func IABInit() *IAB {
 	}
 }
 
-// IABGetProc summarizes the Inh, Amb and Bound capabilty vectors of
+// IABGetProc summarizes the Inh, Amb and Bound capability vectors of
 // the current process.
 func IABGetProc() *IAB {
 	iab := IABInit()
@@ -188,7 +188,7 @@ func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 }
 
 // SetProc attempts to change the Inheritable, Ambient and Bounding
-// capabilty vectors of the current process using the content,
+// capability vectors of the current process using the content,
 // iab. The Bounding vector strongly affects the potential for setting
 // other bits, so this function carefully performs the the combined
 // operation in the most flexible manner.
