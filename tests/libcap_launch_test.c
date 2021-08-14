@@ -24,6 +24,7 @@ struct test_case_s {
     const char **envp;
     const char *iab;
     cap_mode_t mode;
+    int launch_abort;
     int result;
     int (*callback_fn)(void *detail);
 };
@@ -64,6 +65,10 @@ int main(int argc, char **argv) {
 	    .result = 256
 	},
 	{
+	    .args = { "/", "won't", "work" },
+	    .launch_abort = 1,
+	},
+	{
 	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
 	    .uid = 123,
 	    .result = 0,
@@ -72,7 +77,7 @@ int main(int argc, char **argv) {
 	    .args = { "../progs/tcapsh-static", "--is-uid=123" },
 	    .callback_fn = &clean_out,
 	    .uid = 123,
-	    .result = 256
+	    .launch_abort = 1,
 	},
 	{
 	    .args = { "../progs/tcapsh-static", "--is-gid=123" },
@@ -118,7 +123,7 @@ int main(int argc, char **argv) {
     for (i=0; vs[i].pass_on != NO_MORE; i++) {
 	const struct test_case_s *v = &vs[i];
 	printf("[%d] test should %s\n", i,
-	       v->result ? "generate error" : "work");
+	       v->result || v->launch_abort ? "generate error" : "work");
 	cap_launch_t attr;
 	if (v->args[0] != NULL) {
 	    attr = cap_new_launcher(v->args[0], v->args, v->envp);
@@ -160,28 +165,30 @@ int main(int argc, char **argv) {
 	pid_t child = cap_launch(attr, NULL);
 
 	if (child <= 0) {
-	    fprintf(stderr, "[%d] failed to launch", i);
-	    perror(":");
-	    success = 0;
+	    fprintf(stderr, "[%d] failed to launch: ", i);
+	    perror("");
+	    if (!v->launch_abort) {
+		success = 0;
+	    }
 	    continue;
 	}
 	if (cap_free(attr)) {
-	    fprintf(stderr, "[%d] failed to free launcher", i);
-	    perror(":");
+	    fprintf(stderr, "[%d] failed to free launcher: ", i);
+	    perror("");
 	    success = 0;
 	}
 	int result;
 	int ret = waitpid(child, &result, 0);
 	if (ret != child) {
-	    fprintf(stderr, "[%d] failed to wait", i);
-	    perror(":");
+	    fprintf(stderr, "[%d] failed to wait: ", i);
+	    perror("");
 	    success = 0;
 	    continue;
 	}
 	if (result != v->result) {
-	    fprintf(stderr, "[%d] bad result: got=%d want=%d", i, result,
+	    fprintf(stderr, "[%d] bad result: got=%d want=%d: ", i, result,
 		    v->result);
-	    perror(":");
+	    perror("");
 	    success = 0;
 	    continue;
 	}

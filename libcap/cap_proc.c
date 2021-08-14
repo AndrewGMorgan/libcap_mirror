@@ -948,9 +948,11 @@ defer:
 pid_t cap_launch(cap_launch_t attr, void *detail) {
     int my_errno;
     int ps[2];
+    pid_t child;
 
     /* The launch must have a purpose */
-    if (attr->custom_setup_fn == NULL && (attr->arg0 == NULL || attr->argv == NULL)) {
+    if (attr->custom_setup_fn == NULL &&
+	(attr->arg0 == NULL || attr->argv == NULL)) {
 	errno = EINVAL;
 	return -1;
     }
@@ -959,19 +961,19 @@ pid_t cap_launch(cap_launch_t attr, void *detail) {
 	return -1;
     }
 
-    int child = fork();
+    child = fork();
     my_errno = errno;
 
-    close(ps[1]);
-    if (child < 0) {
-	goto defer;
-    }
     if (!child) {
 	close(ps[0]);
 	prctl(PR_SET_NAME, "cap-launcher", 0, 0, 0);
 	_cap_launch(ps[1], attr, detail);
 	/* no return from this function */
-	exit(1);
+	_exit(1);
+    }
+    close(ps[1]);
+    if (child < 0) {
+	goto defer;
     }
 
     /*
@@ -996,5 +998,5 @@ pid_t cap_launch(cap_launch_t attr, void *detail) {
 defer:
     close(ps[0]);
     errno = my_errno;
-    return (pid_t) child;
+    return child;
 }
