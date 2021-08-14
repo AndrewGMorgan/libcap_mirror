@@ -878,6 +878,7 @@ static int _cap_chroot(struct syscaller_s *sc, const char *root)
 __attribute__ ((noreturn))
 static void _cap_launch(int fd, cap_launch_t attr, void *detail) {
     struct syscaller_s *sc = &singlethread;
+    int my_errno;
 
     if (attr->custom_setup_fn && attr->custom_setup_fn(detail)) {
 	goto defer;
@@ -919,8 +920,9 @@ defer:
      * getting here means an error has occurred and errno is
      * communicated to the parent
      */
+    my_errno = errno;
     for (;;) {
-	int n = write(fd, &errno, sizeof(errno));
+	int n = write(fd, &my_errno, sizeof(my_errno));
 	if (n < 0 && errno == EAGAIN) {
 	    continue;
 	}
