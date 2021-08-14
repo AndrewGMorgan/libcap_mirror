@@ -14,7 +14,7 @@ ifeq ($(DYNAMIC),yes)
 LDPATH = LD_LIBRARY_PATH=../libcap
 DEPS = ../libcap/libcap.so
 else
-LDFLAGS += --static
+LDSTATIC = --static
 DEPS = ../libcap/libcap.a
 endif
 
@@ -25,7 +25,7 @@ endif
 	make -C ../libcap libcap.so
 
 $(BUILD): %: %.o $(DEPS)
-	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
 
 %.o: %.c $(INCS)
 	$(CC) $(IPATH) $(CFLAGS) -c $< -o $@
@@ -46,10 +46,10 @@ capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
 	diff -u capshdoc.h $@ || (rm $@ ; exit 1)
 
 capsh: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
 
 tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS) --static
+	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) --static
 
 uns_test: ../tests/uns_test.c
 	$(MAKE) -C ../tests uns_test
