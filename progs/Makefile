@@ -28,7 +28,7 @@ $(BUILD): %: %.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
 
 %.o: %.c $(INCS)
-	$(CC) $(IPATH) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 install: all
 	mkdir -p -m 0755 $(FAKEROOT)$(SBINDIR)
@@ -46,10 +46,10 @@ capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
 	diff -u capshdoc.h $@ || (rm $@ ; exit 1)
 
 capsh: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
 
 tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(IPATH) $(CAPSH_SHELL) $(CFLAGS) -o $@ $< $(LIBCAPLIB) --static
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) --static
 
 uns_test: ../tests/uns_test.c
 	$(MAKE) -C ../tests uns_test

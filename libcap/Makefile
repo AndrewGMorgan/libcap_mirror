@@ -18,6 +18,9 @@ CAPMAGICOBJ=cap_magic.o
 PSXFILES=../psx/psx
 PSXMAGICOBJ=psx_magic.o
 
+# Always build libcap sources this way:
+CFLAGS += -fPIC
+
 # The linker magic needed to build a dynamic library as independently
 # executable
 MAGIC=-Wl,-e,__so_start
@@ -73,7 +76,7 @@ $(PSXTITLE).pc: $(PSXTITLE).pc.in
 		$< >$@
 
 _makenames: _makenames.c cap_names.list.h
-	$(BUILD_CC) $(BUILD_CFLAGS) $< -o $@
+	$(BUILD_CC) $(BUILD_CFLAGS) $(BUILD_CPPFLAGS) $< -o $@
 
 cap_names.h: _makenames
 	./_makenames > cap_names.h
@@ -108,7 +111,7 @@ loader.txt: empty
 	$(OBJCOPY) --dump-section .interp=$@ $<
 
 cap_magic.o: execable.h execable.c loader.txt
-	$(CC) $(CFLAGS) $(IPATH) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@
 
 $(CAPLIBNAME) $(MAJCAPLIBNAME) $(MINCAPLIBNAME): $(CAPOBJS) $(CAPMAGICOBJ)
 	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $(MINCAPLIBNAME) $^ $(MAGIC)
@@ -116,7 +119,7 @@ $(CAPLIBNAME) $(MAJCAPLIBNAME) $(MINCAPLIBNAME): $(CAPOBJS) $(CAPMAGICOBJ)
 	ln -sf $(MAJCAPLIBNAME) $(CAPLIBNAME)
 
 psx_magic.o: execable.h execable.c loader.txt
-	$(CC) $(CFLAGS) $(IPATH) -DLIBRARY_VERSION=\"$(PSXTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(PSXTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@
 
 $(PSXLIBNAME) $(MAJPSXLIBNAME) $(MINPSXLIBNAME): $(PSXOBJS) include/sys/psx_syscall.h $(PSXMAGICOBJ)
 	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -o $(MINPSXLIBNAME) $(PSXOBJS) $(PSXMAGICOBJ) $(MAGIC) $(PSXLINKFLAGS)
@@ -125,13 +128,13 @@ $(PSXLIBNAME) $(MAJPSXLIBNAME) $(MINPSXLIBNAME): $(PSXOBJS) include/sys/psx_sysc
 endif
 
 %.o: %.c $(INCLS)
-	$(CC) $(CFLAGS) $(IPATH) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 cap_text.o: cap_text.c $(USE_GPERF_OUTPUT) $(INCLS)
-	$(CC) $(CFLAGS) $(IPATH) $(INCLUDE_GPERF_OUTPUT) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE_GPERF_OUTPUT) -c $< -o $@
 
 cap_test: cap_test.c libcap.h $(CAPOBJS)
-	$(CC) $(CFLAGS) $(IPATH) $< $(CAPOBJS) -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< $(CAPOBJS) -o $@
 
 libcapsotest: $(CAPLIBNAME)
 	./$(CAPLIBNAME)

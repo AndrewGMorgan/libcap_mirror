@@ -3,6 +3,9 @@
 topdir=$(shell pwd)/..
 include ../Make.Rules
 
+# Always build pam_cap sources this way:
+CFLAGS += -fPIC
+
 all: pam_cap.so
 	$(MAKE) testlink
 
@@ -14,7 +17,7 @@ install: all
 	$(MAKE) -C ../libcap loader.txt
 
 execable.o: execable.c ../libcap/execable.h ../libcap/loader.txt
-	$(CC) $(CFLAGS) $(IPATH) -DLIBCAP_VERSION=\"libcap-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" -c execable.c -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBCAP_VERSION=\"libcap-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" -c execable.c -o $@
 
 pam_cap.so: pam_cap.o execable.o pam_cap_linkopts
 	cat pam_cap_linkopts | xargs -e $(LD) -o $@ pam_cap.o execable.o $(LIBCAPLIB) $(LDFLAGS)
@@ -36,16 +39,16 @@ pam_cap_linkopts: lazylink.so
 	./lazylink.so || echo "-lpam" >> $@
 
 lazylink.so: lazylink.c ../libcap/execable.h ../libcap/loader.txt
-	$(LD) -o $@ $(CFLAGS) $(IPATH) lazylink.c -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" $(LDFLAGS) -Wl,-e,__so_start
+	$(LD) -o $@ $(CFLAGS) $(CPPFLAGS) lazylink.c -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" $(LDFLAGS) -Wl,-e,__so_start
 
 pam_cap.o: pam_cap.c
-	$(CC) $(CFLAGS) $(IPATH) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 ../libcap/libcap.a:
 	$(MAKE) -C ../libcap libcap.a
 
 test_pam_cap: test_pam_cap.c pam_cap.c ../libcap/libcap.a
-	$(CC) $(CFLAGS) $(IPATH) -o $@ test_pam_cap.c $(LIBCAPLIB) $(LDFLAGS) --static
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ test_pam_cap.c $(LIBCAPLIB) $(LDFLAGS) --static
 
 testlink: test.c pam_cap.o
 	$(CC) $(CFLAGS) -o $@ $+ -lpam -ldl $(LIBCAPLIB) $(LDFLAGS)
