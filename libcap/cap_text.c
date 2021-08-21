@@ -100,7 +100,7 @@ static int lookupname(char const **strp)
 	return n;
     } else {
 	int c;
-	unsigned len;
+	size_t len;
 
 	for (len=0; (c = str.constp[len]); ++len) {
 	    if (!(isalpha(c) || (c == '_'))) {
