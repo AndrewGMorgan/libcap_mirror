@@ -227,7 +227,7 @@ extern int capsetp(pid_t pid, cap_t cap_d);
 		min = mid + 1;					\
 	    }							\
 	}							\
-	val = min ? min : fallback;				\
+	val = min ? (min <= high ? min : fallback) : fallback;	\
     } while(0)
 
 /*

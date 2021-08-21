@@ -219,7 +219,7 @@ cap_t cap_from_text(const char *str)
 
 	/* cycle through list of actions */
 	do {
-	    _cap_debug("next char = `%c'", *str);
+	    _cap_debug("next char = '%c'", *str);
 	    if (*str && !isspace(*str)) {
 		switch (*str++) {    /* Effective, Inheritable, Permitted */
 		case 'e':
@@ -309,20 +309,19 @@ int cap_from_name(const char *name, cap_value_t *value_p)
  */
 char *cap_to_name(cap_value_t cap)
 {
-    if ((cap < 0) || (cap >= __CAP_BITS)) {
-#if UINT_MAX != 4294967295U
-# error Recompile with correctly sized numeric array
-#endif
-	char *tmp, *result;
+    char *tmp, *result;
 
-	(void) asprintf(&tmp, "%u", cap);
-	result = _libcap_strdup(tmp);
-	free(tmp);
-
-	return result;
-    } else {
+    if ((cap >= 0) && (cap < __CAP_BITS)) {
 	return _libcap_strdup(_cap_names[cap]);
     }
+    if (asprintf(&tmp, "%u", cap) <= 0) {
+	_cap_debug("asprintf filed");
+	return NULL;
+    }
+
+    result = _libcap_strdup(tmp);
+    free(tmp);
+    return result;
 }
 
 /*
@@ -348,6 +347,12 @@ static int getstateflags(cap_t caps, int capno)
     return f;
 }
 
+/*
+ * This code assumes that the longest named capability is longer than
+ * the decimal text representation of __CAP_MAXBITS. This is very true
+ * at the time of writing and likely to remain so. However, we have
+ * a test in cap_text to validate it at build time.
+ */
 #define CAP_TEXT_BUFFER_ZONE 100
 
 char *cap_to_text(cap_t caps, ssize_t *length_p)

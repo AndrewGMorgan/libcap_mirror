@@ -684,9 +684,25 @@ int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[])
  */
 cap_iab_t cap_iab_get_proc(void)
 {
-    cap_iab_t iab = cap_iab_init();
-    cap_t current = cap_get_proc();
+    cap_iab_t iab;
+    cap_t current;
+
+    iab = cap_iab_init();
+    if (iab == NULL) {
+	_cap_debug("no memory for IAB tuple");
+	return NULL;
+    }
+
+    current = cap_get_proc();
+    if (current == NULL) {
+	_cap_debug("no memory for cap_t");
+	cap_free(iab);
+	return NULL;
+    }
+
     cap_iab_fill(iab, CAP_IAB_INH, current, CAP_INHERITABLE);
+    cap_free(current);
+
     cap_value_t c;
     for (c = cap_max_bits(); c; ) {
 	--c;

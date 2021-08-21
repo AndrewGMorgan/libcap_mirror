@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#include <stdio.h>
+
 #include "libcap.h"
 
 static cap_value_t top;
@@ -15,15 +18,18 @@ static int test_cap_bits(void) {
     for (i = 0; vs[i] >= 0; i++) {
 	cap_value_t ans;
 
-	top = i;
-	_binary_search(ans, cf, 0, __CAP_MAXBITS, 0);
+	top = vs[i];
+	_binary_search(ans, cf, 0, __CAP_MAXBITS, -1);
 	if (ans != top) {
-	    if (top > __CAP_MAXBITS && ans == __CAP_MAXBITS) {
-	    } else {
-		printf("test_cap_bits miscompared [%d] top=%d - got=%d\n",
-		       i, top, ans);
-		failed = -1;
+	    if (top == 0 && ans == -1) {
+		continue;
 	    }
+	    if (top > __CAP_MAXBITS && ans == -1) {
+		continue;
+	    }
+	    printf("test_cap_bits miscompared [%d] top=%d - got=%d\n",
+		   i, top, ans);
+	    failed = -1;
 	}
     }
     return failed;
@@ -68,11 +74,28 @@ static int test_cap_flags(void) {
     return 0;
 }
 
+static int test_short_bits(void) {
+    int result = 0;
+    char *tmp;
+    int n = asprintf(&tmp, "%d", __CAP_MAXBITS);
+    if (n <= 0) {
+	return -1;
+    }
+    if (strlen(tmp) > __CAP_NAME_SIZE) {
+	printf("cap_to_text buffer size reservation needs fixing (%ld > %d)\n",
+	       strlen(tmp), __CAP_NAME_SIZE);
+	result = -1;
+    }
+    free(tmp);
+    return result;
+}
+
 int main(int argc, char **argv) {
     int result = 0;
 
     result = test_cap_bits() | result;
     result = test_cap_flags() | result;
+    result = test_short_bits() | result;
 
     if (result) {
 	printf("cap_test FAILED\n");
