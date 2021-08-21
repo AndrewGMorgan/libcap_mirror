@@ -123,6 +123,10 @@ cap_t cap_dup(cap_t cap_d)
 
 cap_iab_t cap_iab_init(void) {
     __u32 *base = calloc(1, sizeof(__u32) + sizeof(struct cap_iab_s));
+    if (base == NULL) {
+	_cap_debug("out of memory");
+	return NULL;
+    }
     *(base++) = CAP_IAB_MAGIC;
     return (cap_iab_t) base;
 }
@@ -138,6 +142,10 @@ cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
 			      const char * const *envp)
 {
     __u32 *data = calloc(1, sizeof(__u32) + sizeof(struct cap_launch_s));
+    if (data == NULL) {
+	_cap_debug("out of memory");
+	return NULL;
+    }
     *(data++) = CAP_LAUNCH_MAGIC;
     struct cap_launch_s *attr = (struct cap_launch_s *) data;
     attr->arg0 = arg0;
@@ -156,6 +164,10 @@ cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
 cap_launch_t cap_func_launcher(int (callback_fn)(void *detail))
 {
     __u32 *data = calloc(1, sizeof(__u32) + sizeof(struct cap_launch_s));
+    if (data == NULL) {
+	_cap_debug("out of memory");
+	return NULL;
+    }
     *(data++) = CAP_LAUNCH_MAGIC;
     struct cap_launch_s *attr = (struct cap_launch_s *) data;
     attr->custom_setup_fn = callback_fn;
