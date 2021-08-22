@@ -15,7 +15,7 @@ PKGDIR=pkg/$(GOOSARCH)/$(IMPORTDIR)
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 
-all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns compare-cap try-launching psx-signals
+all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree compare-cap try-launching psx-signals
 
 $(DEPS):
 	make -C ../libcap all
@@ -70,6 +70,9 @@ setid: ../goapps/setid/setid.go CAPGOPACKAGE PSXGOPACKAGE
 gowns: ../goapps/gowns/gowns.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build -mod=vendor -o $@ $<
 
+captree: ../goapps/captree/captree.go CAPGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build -mod=vendor -o $@ $<
+
 ok: ok.go
 	CC="$(CC)" CGO_ENABLED=0 $(GO) build -mod=vendor $<
 
@@ -101,6 +104,7 @@ ifeq ($(CGO_REQUIRED),0)
 endif
 	./setid --caps=false
 	./gowns -- -c "echo gowns runs"
+	./captree 0
 
 # Note, the user namespace doesn't require sudo, but I wanted to avoid
 # requiring that the hosting kernel supports user namespaces for the
@@ -127,7 +131,7 @@ install: all
 
 clean:
 	rm -f *.o *.so *~ mknames ok good-names.go
-	rm -f web setid gowns
+	rm -f web setid gowns captree
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
 	rm -f b210613 psx-signals psx-signals-cgo
