@@ -103,6 +103,15 @@ const (
 	Inheritable
 )
 
+// Diff summarizes the result of the (*Set).Cf() function.
+type Diff uint
+
+const (
+	effectiveDiff   Diff = 1 << Effective
+	permittedDiff   Diff = 1 << Permitted
+	inheritableDiff Diff = 1 << Inheritable
+)
+
 // String identifies a Flag value by its conventional "e", "p" or "i"
 // string abbreviation.
 func (f Flag) String() string {

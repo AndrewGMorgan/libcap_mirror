@@ -153,20 +153,31 @@ func (c *Set) ClearFlag(vec Flag) error {
 // this function returns a non-zero value of 3 independent bits:
 // (differE ? 1:0) | (differP ? 2:0) | (differI ? 4:0). The Differs()
 // function can be used to test for a difference in a specific Flag.
+//
+// This function is deprecated in favor of (*Set).Cf().
 func (c *Set) Compare(d *Set) (uint, error) {
+	u, err := c.Cf(d)
+	return uint(u), err
+}
+
+// Cf returns 0 if c and d are identical. A non-zero Diff value
+// captures a simple macroscopic summary of how they differ. The
+// (Diff).Has() function can be used to determine how the two
+// capability sets differ.
+func (c *Set) Cf(d *Set) (Diff, error) {
 	if c == nil || len(c.flat) == 0 || d == nil || len(d.flat) == 0 {
 		return 0, ErrBadSet
 	}
-	var cf uint
+	var cf Diff
 	for i := 0; i < words; i++ {
 		if c.flat[i][Effective]^d.flat[i][Effective] != 0 {
-			cf |= (1 << Effective)
+			cf |= effectiveDiff
 		}
 		if c.flat[i][Permitted]^d.flat[i][Permitted] != 0 {
-			cf |= (1 << Permitted)
+			cf |= permittedDiff
 		}
 		if c.flat[i][Inheritable]^d.flat[i][Inheritable] != 0 {
-			cf |= (1 << Inheritable)
+			cf |= inheritableDiff
 		}
 	}
 	return cf, nil
@@ -174,6 +185,16 @@ func (c *Set) Compare(d *Set) (uint, error) {
 
 // Differs processes the result of Compare and determines if the
 // Flag's components were different.
+//
+// Use of this function is deprecated in favor of the (Diff).Has()
+// function, where Diff is returned as a result of the (*Set).Cf()
+// function.
 func Differs(cf uint, vec Flag) bool {
 	return cf&(1<<vec) != 0
+}
+
+// Has processes the Diff result of (*Set).Cf() and determines if the
+// Flag's components were different in that result.
+func (cf Diff) Has(vec Flag) bool {
+	return uint(cf)&(1<<vec) != 0
 }

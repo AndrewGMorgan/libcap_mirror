@@ -101,12 +101,12 @@ func GetMode() Mode {
 
 	w := GetProc()
 	e := NewSet()
-	cf, _ := w.Compare(e)
+	cf, _ := w.Cf(e)
 
-	if Differs(cf, Inheritable) {
+	if cf.Has(Inheritable) {
 		return ModePure1E
 	}
-	if Differs(cf, Permitted) || Differs(cf, Effective) {
+	if cf.Has(Permitted) || cf.Has(Effective) {
 		return ModePure1EInit
 	}
 

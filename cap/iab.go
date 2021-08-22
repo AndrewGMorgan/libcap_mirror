@@ -1,6 +1,11 @@
 package cap
 
-import "strings"
+import (
+	"fmt"
+	"io/ioutil"
+	"strconv"
+	"strings"
+)
 
 // omask returns the offset and mask for a specific capability.
 func omask(c Value) (uint, uint32) {
@@ -31,6 +36,24 @@ const (
 	Bound
 )
 
+// IABDiff holds the non-error result of an (*IAB).Cf()
+// function call. It can be interpreted with the function
+// (IABDiff).Has().
+type IABDiff uint
+
+// iBits, iBits and bBits track the (semi-)independent parts of an
+// IABDiff.
+const (
+	iBits IABDiff = 1 << Inh
+	aBits IABDiff = 1 << Amb
+	bBits IABDiff = 1 << Bound
+)
+
+// Has determines if an IAB comparison differs in a specific vector.
+func (d IABDiff) Has(v Vector) bool {
+	return d&(1<<v) != 0
+}
+
 // String identifies a Vector value by its conventional I A or B
 // string abbreviation.
 func (v Vector) String() string {
@@ -46,8 +69,8 @@ func (v Vector) String() string {
 	}
 }
 
-// IABInit returns an empty IAB.
-func IABInit() *IAB {
+// NewIAB returns an empty IAB.
+func NewIAB() *IAB {
 	startUp.Do(multisc.cInit)
 	return &IAB{
 		i:  make([]uint32, words),
@@ -56,10 +79,15 @@ func IABInit() *IAB {
 	}
 }
 
+// IABInit is a deprecated alias for the NewIAB function.
+func IABInit() *IAB {
+	return NewIAB()
+}
+
 // IABGetProc summarizes the Inh, Amb and Bound capability vectors of
 // the current process.
 func IABGetProc() *IAB {
-	iab := IABInit()
+	iab := NewIAB()
 	current := GetProc()
 	iab.Fill(Inh, current, Inheritable)
 	for c := MaxBits(); c > 0; {
@@ -78,7 +106,7 @@ func IABGetProc() *IAB {
 // IABFromText parses a string representing an IAB, as generated
 // by IAB.String(), to generate an IAB.
 func IABFromText(text string) (*IAB, error) {
-	iab := IABInit()
+	iab := NewIAB()
 	if len(text) == 0 {
 		return iab, nil
 	}
@@ -119,6 +147,9 @@ func IABFromText(text string) (*IAB, error) {
 
 // String serializes an IAB to a string format.
 func (iab *IAB) String() string {
+	if iab == nil {
+		return "<invalid>"
+	}
 	var vs []string
 	for c := Value(0); c < Value(maxValues); c++ {
 		offset, mask := omask(c)
@@ -284,4 +315,87 @@ func (iab *IAB) Fill(vec Vector, c *Set, flag Flag) error {
 		}
 	}
 	return nil
+}
+
+// Cf compares two IAB values. Its return value is 0 if the compared
+// tuples are considered identical. The macroscopic differences can be
+// investigated with (IABDiff).Has().
+func (iab *IAB) Cf(alt *IAB) (IABDiff, error) {
+	if iab == alt {
+		return 0, nil
+	}
+	if iab == nil || alt == nil || len(iab.i) != words || len(alt.i) != words || len(iab.a) != words || len(alt.a) != words || len(iab.nb) != words || len(alt.nb) != words {
+		return 0, ErrBadValue
+	}
+
+	var cf IABDiff
+	for i := 0; i < words; i++ {
+		if iab.i[i] != alt.i[i] {
+			cf |= iBits
+		}
+		if iab.a[i] != alt.a[i] {
+			cf |= aBits
+		}
+		if iab.nb[i] != alt.nb[i] {
+			cf |= bBits
+		}
+	}
+	return cf, nil
+}
+
+// parseHex converts the /proc/*/status string into an array of
+// uint32s suitable for storage in an IAB structure.
+func parseHex(hex string, invert bool) []uint32 {
+	if len(hex) != 8*words {
+		// Invalid string
+		return nil
+	}
+	var result []uint32
+	for i := 0; i < words; i++ {
+		upper := 8 * (words - i)
+		raw, err := strconv.ParseUint(hex[upper-8:upper], 16, 32)
+		if err != nil {
+			return nil
+		}
+		if invert {
+			raw = ^raw
+		}
+		bits := allMask(uint(i)) & uint32(raw)
+		result = append(result, bits)
+	}
+	return result
+}
+
+// IABGetPID returns the IAB tuple of a specified process. The kernel
+// ABI does not support this query via system calls, so the function
+// works by parsing the /proc/<pid>/status file content.
+func IABGetPID(pid int) (*IAB, error) {
+	tf := fmt.Sprintf("/proc/%d/status", pid)
+	d, err := ioutil.ReadFile(tf)
+	if err != nil {
+		return nil, err
+	}
+	iab := &IAB{}
+	for _, line := range strings.Split(string(d), "\n") {
+		if !strings.HasPrefix(line, "Cap") {
+			continue
+		}
+		flavor := line[3:]
+		if strings.HasPrefix(flavor, "Inh:\t") {
+			iab.i = parseHex(line[8:], false)
+			continue
+		}
+		if strings.HasPrefix(flavor, "Bnd:\t") {
+			iab.nb = parseHex(line[8:], true)
+			continue
+		}
+		if strings.HasPrefix(flavor, "Amb:\t") {
+			iab.a = parseHex(line[8:], false)
+			continue
+		}
+	}
+	if len(iab.i) != words || len(iab.a) != words || len(iab.nb) != words {
+		return nil, ErrBadValue
+	}
+	return iab, nil
 }

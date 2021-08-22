@@ -199,7 +199,7 @@ func TestIAB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get init's capabilities: %v", err)
 	}
-	iab := IABInit()
+	iab := NewIAB()
 	iab.Fill(Amb, one, Permitted)
 	for i := 0; i < words; i++ {
 		if iab.i[i] != iab.a[i] {
