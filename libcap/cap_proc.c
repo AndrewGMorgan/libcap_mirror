@@ -355,14 +355,9 @@ static int _cap_reset_ambient(struct syscaller_s *sc)
 	}
     }
 
-    result = _libcap_wprctl6(sc, PR_CAP_AMBIENT,
-			     pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
-			     pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
-    if (result < 0) {
-	errno = -result;
-	return -1;
-    }
-    return result;
+    return _libcap_wprctl6(sc, PR_CAP_AMBIENT,
+			   pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
+			   pr_arg(0), pr_arg(0), pr_arg(0), pr_arg(0));
 }
 
 /*
