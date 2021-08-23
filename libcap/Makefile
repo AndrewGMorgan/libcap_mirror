@@ -108,7 +108,7 @@ empty: empty.c
 	$(CC) -o $@ $<
 
 loader.txt: empty
-	$(OBJCOPY) --dump-section .interp=$@ $<
+	$(OBJCOPY) --dump-section .interp=$@ $< /dev/null
 
 cap_magic.o: execable.h execable.c loader.txt
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@
