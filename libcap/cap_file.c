@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 1997,2007,2016 Andrew G Morgan <morgan@kernel.org>
  *
- * This file deals with setting capabilities on files.
+ * This file deals with getting/setting capabilities from/on files.
  */
 
 #ifndef _DEFAULT_SOURCE

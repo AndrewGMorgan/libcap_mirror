@@ -65,13 +65,10 @@ int cap_set_flag(cap_t cap_d, cap_flag_t set,
 	    }
 	}
 	return 0;
-
     } else {
-
 	_cap_debug("invalid arguments");
 	errno = EINVAL;
 	return -1;
-
     }
 }
 
@@ -282,4 +279,24 @@ int cap_iab_fill(cap_iab_t iab, cap_iab_vector_t vec,
     }
 
     return 0;
+}
+
+/*
+ * cap_iab_compare compares two iab tuples.
+ */
+int cap_iab_compare(cap_iab_t a, cap_iab_t b)
+{
+    int j, result;
+    if (!(good_cap_iab_t(a) && good_cap_iab_t(b))) {
+	_cap_debug("invalid arguments");
+	errno = EINVAL;
+	return -1;
+    }
+    for (j=0, result=0; j<_LIBCAP_CAPABILITY_U32S; j++) {
+	result |=
+	    (a->i[j] == b->i[j] ? 0 : (1 << CAP_IAB_INH)) |
+	    (a->a[j] == b->a[j] ? 0 : (1 << CAP_IAB_AMB)) |
+	    (a->nb[j] == b->nb[j] ? 0 : (1 << CAP_IAB_BOUND));
+    }
+    return result;
 }

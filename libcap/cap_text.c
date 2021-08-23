@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8,2007-8,2019 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2007-8,2019,2021 Andrew G Morgan <morgan@kernel.org>
  * Copyright (c) 1997 Andrew Main <zefram@dcs.warwick.ac.uk>
  *
  * This file deals with exchanging internal and textual
@@ -608,4 +608,105 @@ cleanup:
     cap_free(iab);
     errno = EINVAL;
     return NULL;
+}
+
+static __u32 _parse_hex32(const char *c)
+{
+    int i;
+    __u32 v = 0;
+    for (i=0; i < 8; i++, c++) {
+	v <<= 4;
+	if (*c == 0 || *c < '0') {
+	    return 0;
+	} else if (*c <= '9') {
+	    v += *c - '0';
+	} else if (*c > 'f') {
+	    return 0;
+	} else if (*c >= 'a') {
+	    v += *c + 10 - 'a';
+	} else if (*c < 'A') {
+	    return 0;
+	} else if (*c <= 'F') {
+	    v += *c + 10 - 'A';
+	} else {
+	    return 0;
+	}
+    }
+    return v;
+}
+
+/*
+ * _parse_vec_string converts the hex dumps in /proc/<pid>/current into
+ * an array of u32s - masked as per the forceall() mask.
+ */
+static __u32 _parse_vec_string(__u32 *vals, const char *c, int invert)
+{
+    int i;
+    int words = strlen(c)/8;
+    if (words > _LIBCAP_CAPABILITY_U32S) {
+	return 0;
+    }
+    forceall(vals, ~0, words);
+    for (i = 0; i < words; i++) {
+	__u32 val = _parse_hex32(c+8*(words-1-i));
+	if (invert) {
+	    val = ~val;
+	}
+	vals[i] &= val;
+    }
+    return ~0;
+}
+
+#define PROC_LINE_MAX (8 + 8*_LIBCAP_CAPABILITY_U32S + 100)
+/*
+ * cap_iab_get_pid fills an IAB tuple from the content of
+ * /proc/<pid>/status. Linux doesn't support syscall access to the
+ * needed information, so we parse it out of that file.
+ */
+cap_iab_t cap_iab_get_pid(pid_t pid)
+{
+    cap_iab_t iab;
+    char *path;
+    FILE *file;
+    char line[PROC_LINE_MAX];
+
+    if (asprintf(&path, "/proc/%d/status", pid) <= 0) {
+	return NULL;
+    }
+    file = fopen(path, "r");
+    free(path);
+    if (file == NULL) {
+	return NULL;
+    }
+
+    iab = cap_iab_init();
+    uint ok = 0;
+    if (iab != NULL) {
+	while (fgets(line, PROC_LINE_MAX-1, file) != NULL) {
+	    if (strncmp("Cap", line, 3) != 0) {
+		continue;
+	    }
+	    if (strncmp("Inh:\t", line+3, 5) == 0) {
+		ok = (_parse_vec_string(iab->i, line+8, 0) &
+		    LIBCAP_IAB_I_FLAG) | ok;
+		continue;
+	    }
+	    if (strncmp("Bnd:\t", line+3, 5) == 0) {
+		ok = (_parse_vec_string(iab->nb, line+8, 1) &
+		      LIBCAP_IAB_NB_FLAG) | ok;
+		continue;
+	    }
+	    if (strncmp("Amb:\t", line+3, 5) == 0) {
+		ok = (_parse_vec_string(iab->a, line+8, 0) &
+		      LIBCAP_IAB_A_FLAG) | ok;
+		continue;
+	    }
+	}
+    }
+    if (ok != (LIBCAP_IAB_IA_FLAG | LIBCAP_IAB_NB_FLAG)) {
+	cap_free(iab);
+	iab = NULL;
+    }
+    fclose(file);
+    return iab;
 }

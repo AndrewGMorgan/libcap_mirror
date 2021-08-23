@@ -119,6 +119,8 @@ extern int     cap_fill(cap_t, cap_flag_t, cap_flag_t);
 
 #define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
 extern int     cap_compare(cap_t, cap_t);
+#define CAP_IAB_DIFFERS(result, vector)  (((result) & (1 << (vector))) != 0)
+extern int     cap_iab_compare(cap_iab_t, cap_iab_t);
 
 extern cap_flag_value_t cap_iab_get_vector(cap_iab_t, cap_iab_vector_t,
 					 cap_value_t);
@@ -185,6 +187,7 @@ extern int cap_setuid(uid_t uid);
 extern int cap_setgroups(gid_t gid, size_t ngroups, const gid_t groups[]);
 
 extern cap_iab_t cap_iab_get_proc(void);
+extern cap_iab_t cap_iab_get_pid(pid_t);
 extern int cap_iab_set_proc(cap_iab_t iab);
 
 typedef struct cap_launch_s *cap_launch_t;

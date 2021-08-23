@@ -22,6 +22,7 @@ static void usage(int code)
 	    "     --help, -h or --usage display this message.\n"
 	    "     --verbose             use a more verbose output format.\n"
 	    "     --ugly or --legacy    use the archaic legacy output format.\n"
+	    "     --iab                 show IAB of process too.\n"
 	    "     --license             display license info\n");
     exit(code);
 }
@@ -30,13 +31,13 @@ int main(int argc, char **argv)
 {
     int retval = 0;
     int verbose = 0;
+    int iab = 0;
 
     if (argc < 2) {
 	usage(1);
     }
 
     for ( ++argv; --argc > 0; ++argv ) {
-	ssize_t length;
 	int pid;
 	cap_t cap_d;
 
@@ -55,6 +56,9 @@ int main(int argc, char **argv)
 	} else if (!strcmp(argv[0], "--ugly") || !strcmp(argv[0], "--legacy")) {
 	    verbose = 2;
 	    continue;
+	} else if (!strcmp(argv[0], "--iab")) {
+	    iab = 1;
+	    continue;
 	}
 
 	pid = atoi(argv[0]);
@@ -66,11 +70,25 @@ int main(int argc, char **argv)
 		retval = 1;
 		continue;
 	} else {
-	    char *result = cap_to_text(cap_d, &length);
+	    char *result = cap_to_text(cap_d, NULL);
 	    if (verbose == 1) {
 		printf("Capabilities for '%s': %s\n", *argv, result);
 	    } else if (verbose == 2) {
 		fprintf(stderr, "Capabilities for `%s': %s\n", *argv, result);
+	    } else if (iab) {
+		cap_iab_t iab_val = cap_iab_get_pid(pid);
+		if (iab_val == NULL) {
+		    fprintf(stderr, "no IAB value for %d\n", pid);
+		    exit(1);
+		}
+		char *iab_text = cap_iab_to_text(iab_val);
+		if (iab_text == NULL) {
+		    perror("no text for IAB");
+		    exit(1);
+		}
+		printf("%s: \"%s\" [%s]\n", *argv, result, iab_text);
+		cap_free(iab_text);
+		cap_free(iab_val);
 	    } else {
 		printf("%s: %s\n", *argv, result);
 	    }

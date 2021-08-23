@@ -33,11 +33,18 @@ Displays output in a somewhat ugly legacy format.
 .B \-\-verbose
 Displays usage in a legacy-like format but not quite so ugly in modern
 default terminal fonts.
+.TP
+.B \-\-iab
+Displays IAB tuple capabilities from the process. The output format
+here is unique. Double quotes encase the regular process capabilities
+and square brackets encase the IAB tuple.
 .SH SEE ALSO
 .BR capsh (1),
 .BR capabilities (7),
 .BR getcap (8),
 .BR setcap (8)
+and
+.BR cap_iab (3).
 .SH AUTHOR
 This manual page was originally written by Robert Bihlmeyer
 <robbe@debian.org>, for the Debian GNU/Linux system (but may be used
