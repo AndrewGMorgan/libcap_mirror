@@ -14,7 +14,10 @@ ifeq ($(DYNAMIC),yes)
 LDPATH = LD_LIBRARY_PATH=../libcap
 DEPS = ../libcap/libcap.so
 else
-LDSTATIC = --static
+# For this build variant override the LDFLAGS to link statically from
+# libraries within the build tree. If you never want this, use
+# make DYNAMIC=yes ...
+LDFLAGS = --static
 DEPS = ../libcap/libcap.a
 endif
 
@@ -25,7 +28,7 @@ endif
 	make -C ../libcap libcap.so
 
 $(BUILD): %: %.o $(DEPS)
-	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
+	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
 
 %.o: %.c $(INCS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
@@ -46,7 +49,7 @@ capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
 	diff -u capshdoc.h $@ || (rm $@ ; exit 1)
 
 capsh: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) $(LDSTATIC)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
 
 tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) --static
