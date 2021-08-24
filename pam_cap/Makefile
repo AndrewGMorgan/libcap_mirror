@@ -31,15 +31,29 @@ pam_cap.so: pam_cap.o execable.o pam_cap_linkopts
 #
 #   https://bugzilla.kernel.org/show_bug.cgi?id=214023
 #
-# If the current build environment is one of those, extend the link
-# options for pam_cap.so to force linkage against libpam and the
-# gazillion other things libpam is linked against...
+# If the current build environment is one of those, or we can't
+# reliably prove it isn't, extend the link options for pam_cap.so to
+# force linkage against libpam and the gazillion other things libpam
+# is linked against...
+#
+# If you want to force this behavior one way or the other, use the
+# make FORCELINKPAM=yes or FORCELINKPAM=no override.
+ifeq ($(FORCELINKPAM),yes)
+pam_cap_linkopts: Makefile
+	echo "-Wl,-e,__so_start -lpam" > $@
+else
+ifeq ($(FORCELINKPAM),no)
+pam_cap_linkopts: Makefile
+	echo "-Wl,-e,__so_start" > $@
+else
 pam_cap_linkopts: lazylink.so
 	echo "-Wl,-e,__so_start" > $@
 	./lazylink.so || echo "-lpam" >> $@
 
 lazylink.so: lazylink.c ../libcap/execable.h ../libcap/loader.txt
 	$(LD) -o $@ $(CFLAGS) $(CPPFLAGS) lazylink.c -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" $(LDFLAGS) -Wl,-e,__so_start
+endif
+endif
 
 pam_cap.o: pam_cap.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@

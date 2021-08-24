@@ -53,16 +53,22 @@ GOMAJOR=1
 
 KERNEL_HEADERS := $(topdir)/libcap/include/uapi
 LIBCAP_INCLUDES = -I$(KERNEL_HEADERS) -I$(topdir)/libcap/include
+DEFINES := -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 
 CC := $(CROSS_COMPILE)gcc
-DEFINES := -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+LD=$(CC) -Wl,-x -shared
 COPTS ?= -O2
 CFLAGS ?= $(COPTS) $(DEFINES)
+LDFLAGS ?= #-g
 CPPFLAGS += $(LIBCAP_INCLUDES)
+
 BUILD_CC ?= $(CC)
-BUILD_COPTS ?= -O2
+BUILD_LD ?= $(BUILD_CC) -Wl,-x -shared
+BUILD_COPTS ?= $(COPTS)
 BUILD_CFLAGS ?= $(BUILD_COPTS) $(DEFINES)
+BUILD_LDFLAGS ?= $(LDFLAGS)
 BUILD_CPPFLAGS += $(LIBCAP_INCLUDES)
+
 AR := $(CROSS_COMPILE)ar
 RANLIB := $(CROSS_COMPILE)ranlib
 OBJCOPY := $(CROSS_COMPILE)objcopy
@@ -71,8 +77,6 @@ WARNINGS=-Wall -Wwrite-strings \
         -Wpointer-arith -Wcast-qual -Wcast-align \
         -Wstrict-prototypes -Wmissing-prototypes \
         -Wnested-externs -Winline -Wshadow
-LD=$(CC) -Wl,-x -shared
-LDFLAGS ?= #-g
 LIBCAPLIB := -L$(topdir)/libcap -lcap
 PSXLINKFLAGS :=  -lpthread -Wl,-wrap,pthread_create
 LIBPSXLIB := -L$(topdir)/libcap -lpsx $(PSXLINKFLAGS)
