@@ -32,6 +32,7 @@ int main(int argc, char **argv)
     int retval = 0;
     int verbose = 0;
     int iab = 0;
+    cap_iab_t noiab = cap_iab_init();
 
     if (argc < 2) {
 	usage(1);
@@ -71,24 +72,34 @@ int main(int argc, char **argv)
 		continue;
 	} else {
 	    char *result = cap_to_text(cap_d, NULL);
-	    if (verbose == 1) {
+	    if (iab) {
+		printf("%s:", *argv);
+		if (verbose || strcmp("=", result) != 0) {
+		    printf(" \"%s\"", result);
+		}
+		cap_iab_t iab_val = cap_iab_get_pid(pid);
+		if (iab_val == NULL) {
+		    fprintf(stderr, " no IAB value for %d\n", pid);
+		    exit(1);
+		}
+		int cf = cap_iab_compare(noiab, iab_val);
+		if (verbose ||
+		    CAP_IAB_DIFFERS(cf, CAP_IAB_AMB) ||
+		    CAP_IAB_DIFFERS(cf, CAP_IAB_BOUND)) {
+		    char *iab_text = cap_iab_to_text(iab_val);
+		    if (iab_text == NULL) {
+			perror(" no text for IAB");
+			exit(1);
+		    }
+		    printf(" [%s]", iab_text);
+		    cap_free(iab_text);
+		}
+		cap_free(iab_val);
+		printf("\n");
+	    } else if (verbose == 1) {
 		printf("Capabilities for '%s': %s\n", *argv, result);
 	    } else if (verbose == 2) {
 		fprintf(stderr, "Capabilities for `%s': %s\n", *argv, result);
-	    } else if (iab) {
-		cap_iab_t iab_val = cap_iab_get_pid(pid);
-		if (iab_val == NULL) {
-		    fprintf(stderr, "no IAB value for %d\n", pid);
-		    exit(1);
-		}
-		char *iab_text = cap_iab_to_text(iab_val);
-		if (iab_text == NULL) {
-		    perror("no text for IAB");
-		    exit(1);
-		}
-		printf("%s: \"%s\" [%s]\n", *argv, result, iab_text);
-		cap_free(iab_text);
-		cap_free(iab_val);
 	    } else {
 		printf("%s: %s\n", *argv, result);
 	    }
