@@ -153,6 +153,8 @@ int main(int argc, char **argv)
 
 bailok:
     fprintf(stderr, "exploit attempt failed\n");
-    (void) write(fds.to[1], "!", 1);
+    if (write(fds.to[1], "!", 1) != 1) {
+	perror("failed to inform child [ignored]");
+    }
     exit(0);
 }
