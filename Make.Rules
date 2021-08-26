@@ -21,6 +21,14 @@ ifndef lib
 lib=$(shell ldd /usr/bin/ld|egrep "ld-linux|ld.so"|cut -d/ -f2)
 endif
 
+ifndef sbin
+sbin=sbin
+endif
+
+ifdef sbindir
+sbin=$(sbindir)
+endif
+
 ifdef prefix
 exec_prefix=$(prefix)
 lib_prefix=$(exec_prefix)
@@ -37,7 +45,7 @@ endif
 # Target directories
 
 MANDIR=$(man_prefix)/man
-SBINDIR=$(exec_prefix)/sbin
+SBINDIR=$(exec_prefix)/$(sbin)
 INCDIR=$(inc_prefix)/include
 LIBDIR=$(lib_prefix)/$(lib)
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
