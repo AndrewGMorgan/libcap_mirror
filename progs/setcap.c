@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997,2007-8,2020 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 1997,2007-8,2020,21 Andrew G. Morgan <morgan@kernel.org>
  *
  * This sets/verifies the capabilities of a given file.
  */
@@ -21,6 +21,7 @@ static void usage(int status)
 	    " -r          remove capability from file\n"
 	    " -           read capability text from stdin\n"
 	    " <capsN>     cap_from_text(3) formatted file capability\n"
+	    " [ Note: capsh --suggest=\"something...\" might help you pick. ]"
 	    "\n"
 	    " -h          this message and exit status 0\n"
 	    " -q          quietly\n"
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
 	if (!strcmp("--license", *argv)) {
 	    printf(
 		"%s see LICENSE file for details.\n"
-		"Copyright (c) 1997,2007-8,2020 Andrew G. Morgan"
+		"Copyright (c) 1997,2007-8,2020,21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
 	}
@@ -238,11 +239,24 @@ int main(int argc, char **argv)
 		}
 #endif /* def linux */
 
-		fprintf(stderr,
-			"Failed to set capabilities on file `%s' (%s)\n",
-			argv[0], strerror(oerrno));
-		if (!explained) {
-		    usage(1);
+		switch (oerrno) {
+		case EINVAL:
+		    fprintf(stderr,
+			    "Invalid file '%s' for capability operation\n",
+			    argv[0]);
+		    exit(1);
+		case ENODATA:
+		    if (cap_d == NULL) {
+			fprintf(stderr,
+				"File '%s' has no capablity to remove\n",
+				argv[0]);
+			exit(1);
+		    }
+		default:
+		    fprintf(stderr,
+			    "Failed to set capabilities on file '%s': %s\n",
+			    argv[0], strerror(oerrno));
+		    exit(1);
 		}
 	    }
 	}
