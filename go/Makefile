@@ -60,7 +60,7 @@ web: ../goapps/web/web.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build -mod=vendor -o $@ $<
 ifeq ($(RAISE_GO_FILECAP),yes)
 	make -C ../progs setcap
-	sudo ../progs/setcap cap_setpcap,cap_net_bind_service=p web
+	$(SUDO) ../progs/setcap cap_setpcap,cap_net_bind_service=p web
 	@echo "NOTE: RAISED cap_setpcap,cap_net_bind_service ON web binary"
 endif
 
@@ -115,11 +115,11 @@ sudotest: test ../progs/tcapsh-static b210613
 ifeq ($(CGO_REQUIRED),0)
 	./try-launching-cgo
 endif
-	sudo ./try-launching
+	$(SUDO) ./try-launching
 ifeq ($(CGO_REQUIRED),0)
-	sudo ./try-launching-cgo
+	$(SUDO) ./try-launching-cgo
 endif
-	sudo ../progs/tcapsh-static --cap-uid=$$(id -u) --caps="cap_setpcap=ep" --iab="^cap_setpcap" -- -c ./b210613
+	$(SUDO) ../progs/tcapsh-static --cap-uid=$$(id -u) --caps="cap_setpcap=ep" --iab="^cap_setpcap" -- -c ./b210613
 
 install: all
 	rm -rf $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx

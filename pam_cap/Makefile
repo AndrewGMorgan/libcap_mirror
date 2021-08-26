@@ -75,13 +75,13 @@ test: testlink test_pam_cap pam_cap.so
 	@echo "module can be run as an executable!"
 
 sudotest: test test_pam_cap
-	sudo ./test_pam_cap root 0x0 0x0 0x0 config=./capability.conf
-	sudo ./test_pam_cap root 0x0 0x0 0x0 config=./sudotest.conf
-	sudo ./test_pam_cap alpha 0x0 0x0 0x0 config=./capability.conf
-	sudo ./test_pam_cap alpha 0x0 0x1 0x80 config=./sudotest.conf
-	sudo ./test_pam_cap beta 0x0 0x1 0x0 config=./sudotest.conf
-	sudo ./test_pam_cap gamma 0x0 0x0 0x81 config=./sudotest.conf
-	sudo ./test_pam_cap delta 0x41 0x80 0x41 config=./sudotest.conf
+	$(SUDO) ./test_pam_cap root 0x0 0x0 0x0 config=./capability.conf
+	$(SUDO) ./test_pam_cap root 0x0 0x0 0x0 config=./sudotest.conf
+	$(SUDO) ./test_pam_cap alpha 0x0 0x0 0x0 config=./capability.conf
+	$(SUDO) ./test_pam_cap alpha 0x0 0x1 0x80 config=./sudotest.conf
+	$(SUDO) ./test_pam_cap beta 0x0 0x1 0x0 config=./sudotest.conf
+	$(SUDO) ./test_pam_cap gamma 0x0 0x0 0x81 config=./sudotest.conf
+	$(SUDO) ./test_pam_cap delta 0x41 0x80 0x41 config=./sudotest.conf
 
 clean:
 	rm -f *.o *.so testlink lazylink.so test_pam_cap pam_cap_linkopts *~

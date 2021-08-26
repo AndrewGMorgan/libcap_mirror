@@ -79,13 +79,13 @@ uns_test: uns_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LDFLAGS)
 
 run_uns_test: uns_test
-	echo exit | sudo ./uns_test
+	echo exit | $(SUDO) ./uns_test
 
 run_libcap_launch_test: libcap_launch_test noop ../progs/tcapsh-static
-	sudo ./libcap_launch_test
+	$(SUDO) ./libcap_launch_test
 
 run_libcap_psx_launch_test: libcap_psx_launch_test ../progs/tcapsh-static
-	sudo ./libcap_psx_launch_test
+	$(SUDO) ./libcap_psx_launch_test
 
 libcap_launch_test: libcap_launch_test.c $(DEPS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LDFLAGS)
@@ -101,9 +101,9 @@ libcap_psx_launch_test: libcap_launch_test.c $(DEPS)
 # programs that link against libcap.
 run_exploit_test: exploit noexploit
 	@echo exploit should succeed
-	sudo ./exploit ; if [ $$? -ne 0 ]; then exit 0; else exit 1 ; fi
+	$(SUDO) ./exploit ; if [ $$? -ne 0 ]; then exit 0; else exit 1 ; fi
 	@echo exploit should fail
-	sudo ./noexploit ; if [ $$? -eq 0 ]; then exit 0; else exit 1 ; fi
+	$(SUDO) ./noexploit ; if [ $$? -eq 0 ]; then exit 0; else exit 1 ; fi
 
 exploit.o: exploit.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<

@@ -59,7 +59,7 @@ uns_test: ../tests/uns_test.c
 	cp ../tests/uns_test .
 
 sudotest: test tcapsh-static uns_test
-	sudo $(LDPATH) ./quicktest.sh
+	$(SUDO) $(LDPATH) ./quicktest.sh
 
 clean:
 	$(LOCALCLEAN)
