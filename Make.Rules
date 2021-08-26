@@ -102,6 +102,7 @@ INDENT := $(shell if [ -n "$$(which indent 2>/dev/null)" ]; then echo "| indent 
 # support shared libraries.)
 SHARED ?= yes
 # DYNAMIC controls how capsh etc are linked - to shared or static libraries
+# Force enabled with "make DYNAMIC=yes ...".
 DYNAMIC := $(shell if [ ! -d "$(topdir)/.git" ]; then echo $(SHARED); else echo no ; fi)
 
 PAM_CAP ?= $(shell if [ -f /usr/include/security/pam_modules.h ]; then echo $(SHARED) ; else echo no ; fi)
