@@ -49,6 +49,10 @@ int main(void)
 	    int was = pointers_avail * sizeof(char *);
 	    pointers_avail = 2 * list[i].index + 1;
 	    pointers = recalloc(pointers, was, pointers_avail * sizeof(char *));
+	    if (pointers == NULL) {
+		perror("unable to continue");
+		exit(1);
+	    }
         }
 	pointers[list[i].index] = list[i].name;
 	int n = strlen(list[i].name);

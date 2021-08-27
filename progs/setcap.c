@@ -167,9 +167,12 @@ int main(int argc, char **argv)
 	    }
 
 	    cap_on_file = cap_get_file(*++argv);
-
 	    if (cap_on_file == NULL) {
 		cap_on_file = cap_from_text("=");
+		if (cap_on_file == NULL) {
+		    perror("unable to use missing capability");
+		    exit(1);
+		}
 	    }
 
 	    cmp = cap_compare(cap_on_file, cap_d);
@@ -252,6 +255,7 @@ int main(int argc, char **argv)
 				argv[0]);
 			exit(1);
 		    }
+		    /* FALLTHROUGH */
 		default:
 		    fprintf(stderr,
 			    "Failed to set capabilities on file '%s': %s\n",

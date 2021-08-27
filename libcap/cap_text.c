@@ -160,6 +160,7 @@ cap_t cap_from_text(const char *str)
 	cap_blks = _LINUX_CAPABILITY_U32S_3;
 	break;
     default:
+	cap_free(res);
 	errno = EINVAL;
 	return NULL;
     }
@@ -403,6 +404,9 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	for (n = 0; n < cmb; n++) {
 	    if (getstateflags(caps, n) == t) {
 	        char *this_cap_name = cap_to_name(n);
+		if (this_cap_name == NULL) {
+		    return NULL;
+		}
 	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
 		    cap_free(this_cap_name);
 		    errno = ERANGE;
@@ -455,6 +459,9 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	for (n = cmb; n < __CAP_MAXBITS; n++) {
 	    if (getstateflags(caps, n) == t) {
 		char *this_cap_name = cap_to_name(n);
+		if (this_cap_name == NULL) {
+		    return NULL;
+		}
 	        if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
 		    cap_free(this_cap_name);
 		    errno = ERANGE;
@@ -554,6 +561,9 @@ char *cap_iab_to_text(cap_iab_t iab)
 cap_iab_t cap_iab_from_text(const char *text)
 {
     cap_iab_t iab = cap_iab_init();
+    if (iab == NULL) {
+	return iab;
+    }
     if (text != NULL) {
 	unsigned flags;
 	for (flags = 0; *text; text++) {

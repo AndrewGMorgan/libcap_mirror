@@ -67,6 +67,9 @@ static int load_groups(const char *user, char ***groups, int *groups_n) {
     }
 
     *groups = calloc(ngrps, sizeof(char *));
+    if (*groups == NULL) {
+	return -1;
+    }
     int g_n = 0, i;
     for (i = 0; i < ngrps; i++) {
 	const struct group *g = getgrgid(grps[i]);

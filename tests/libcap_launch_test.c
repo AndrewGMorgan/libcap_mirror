@@ -40,7 +40,9 @@ struct test_case_s {
 static int clean_out(void *data) {
     cap_t empty;
     empty = cap_init();
-    cap_set_proc(empty);
+    if (cap_set_proc(empty) != 0) {
+	_exit(1);
+    }
     cap_free(empty);
     return 0;
 }
@@ -121,12 +123,16 @@ int main(int argc, char **argv) {
 
     int success = 1, i;
     for (i=0; vs[i].pass_on != NO_MORE; i++) {
+	cap_launch_t attr;
 	const struct test_case_s *v = &vs[i];
 	printf("[%d] test should %s\n", i,
 	       v->result || v->launch_abort ? "generate error" : "work");
-	cap_launch_t attr;
 	if (v->args[0] != NULL) {
 	    attr = cap_new_launcher(v->args[0], v->args, v->envp);
+	    if (attr == NULL) {
+		perror("failed to obtain launcher");
+		exit(1);
+	    }
 	    if (v->callback_fn != NULL) {
 		cap_launcher_callback(attr, v->callback_fn);
 	    }

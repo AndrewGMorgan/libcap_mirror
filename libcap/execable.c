@@ -4,7 +4,7 @@
 SO_MAIN(int argc, char **argv)
 {
     const char *cmd = "This library";
-    if (argv != NULL) {
+    if (argv != NULL && argv[0] != NULL) {
 	cmd = argv[0];
     }
     printf("%s is the shared library version: " LIBRARY_VERSION ".\n"

@@ -101,7 +101,16 @@ static void display_current_iab(void)
     char *text;
 
     iab = cap_iab_get_proc();
+    if (iab == NULL) {
+	perror("failed to get IAB for process");
+	exit(1);
+    }
     text = cap_iab_to_text(iab);
+    if (text == NULL) {
+	perror("failed to obtain text for IAB");
+	cap_free(iab);
+	exit(1);
+    }
     printf("Current IAB: %s\n", text);
     cap_free(text);
     cap_free(iab);
@@ -436,6 +445,10 @@ int main(int argc, char *argv[], char *envp[])
     child = 0;
 
     char *temp_name = cap_to_name(cap_max_bits() - 1);
+    if (temp_name == NULL) {
+	perror("obtaining highest capability name");
+	exit(1);
+    }
     if (temp_name[0] != 'c') {
 	printf("WARNING: libcap needs an update (cap=%d should have a name).\n",
 	       cap_max_bits() - 1);
@@ -1014,6 +1027,10 @@ int main(int argc, char *argv[], char *envp[])
 		const char **lines = explanations[cap];
 		int j;
 		char *name = cap_to_name(cap);
+		if (name == NULL) {
+		    perror("invalid named cap");
+		    exit(1);
+		}
 		char *match = strcasestr(name, argv[i]+10);
 		cap_free(name);
 		if (match != NULL) {

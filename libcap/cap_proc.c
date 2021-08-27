@@ -723,6 +723,10 @@ static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
     cap_value_t c;
     int raising = 0;
 
+    if (temp == NULL) {
+	return -1;
+    }
+
     for (i = 0; i < _LIBCAP_CAPABILITY_U32S; i++) {
 	__u32 newI = iab->i[i];
 	__u32 oldIP = temp->u[i].flat[CAP_INHERITABLE] |

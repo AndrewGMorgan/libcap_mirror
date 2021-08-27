@@ -16,6 +16,10 @@ static void *thread_fork_exit(void *data) {
     usleep(1234);
     pid_t pid = fork();
     cap_t start = cap_get_proc();
+    if (start == NULL) {
+	perror("FAILED: unable to start");
+	exit(1);
+    }
     if (pid == 0) {
 	cap_set_proc(start);
 	exit(0);
@@ -27,6 +31,7 @@ static void *thread_fork_exit(void *data) {
 	exit(1);
     }
     cap_set_proc(start);
+    cap_free(start);
     return NULL;
 }
 
@@ -35,6 +40,10 @@ int main(int argc, char **argv) {
     printf("hello libcap and libpsx ");
     fflush(stdout);
     cap_t start = cap_get_proc();
+    if (start == NULL) {
+	perror("FAILED: to actually start");
+	exit(1);
+    }
     pthread_t ignored[10];
     for (i = 0; i < 10; i++) {
 	pthread_create(&ignored[i], NULL, thread_fork_exit, NULL);

@@ -107,6 +107,10 @@ pthread_key_t psx_action_key;
  */
 static void *psx_do_registration(void) {
     registered_thread_t *node = calloc(1, sizeof(registered_thread_t));
+    if (node == NULL) {
+	perror("unable to register psx handler");
+	_exit(1);
+    }
     pthread_mutex_init(&node->mu, NULL);
     node->thread = pthread_self();
     pthread_setspecific(psx_action_key, node);
