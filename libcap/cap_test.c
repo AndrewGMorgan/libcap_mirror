@@ -5,11 +5,13 @@
 
 static cap_value_t top;
 
-static int cf(cap_value_t x) {
+static int cf(cap_value_t x)
+{
     return top - x - 1;
 }
 
-static int test_cap_bits(void) {
+static int test_cap_bits(void)
+{
     static cap_value_t vs[] = {
 	5, 6, 11, 12, 15, 16, 17, 38, 41, 63, 64, __CAP_MAXBITS+3, 0, -1
     };
@@ -35,10 +37,12 @@ static int test_cap_bits(void) {
     return failed;
 }
 
-static int test_cap_flags(void) {
+static int test_cap_flags(void)
+{
     cap_t c, d;
     cap_flag_t f = CAP_INHERITABLE, t;
     cap_value_t v;
+    int retval = 0;
 
     c = cap_init();
     if (c == NULL) {
@@ -49,7 +53,8 @@ static int test_cap_flags(void) {
     for (v = 0; v < __CAP_MAXBITS; v += 3) {
 	if (cap_set_flag(c, CAP_INHERITABLE, 1, &v, CAP_SET)) {
 	    printf("unable to set inheritable bit %d\n", v);
-	    return -1;
+	    retval = -1;
+	    goto drop_c;
 	}
     }
 
@@ -57,24 +62,36 @@ static int test_cap_flags(void) {
     for (t = CAP_EFFECTIVE; t <= CAP_INHERITABLE; t++) {
 	if (cap_fill(c, t, f)) {
 	    printf("cap_fill failed %d -> %d\n", f, t);
-	    return -1;
+	    retval = -1;
+	    goto drop_d;
 	}
 	if (cap_clear_flag(c, f)) {
 	    printf("cap_fill unable to clear flag %d\n", f);
-	    return -1;
+	    retval = -1;
+	    goto drop_d;
 	}
 	f = t;
     }
     if (cap_compare(c, d)) {
 	printf("permuted cap_fill()ing failed to perform net no-op\n");
-	return -1;
+	retval = -1;
     }
-    cap_free(d);
-    cap_free(c);
-    return 0;
+
+drop_d:
+    if (cap_free(d) != 0) {
+	perror("failed to free d");
+	retval = -1;
+    }
+drop_c:
+    if (cap_free(c) != 0) {
+	perror("failed to free c");
+	retval = -1;
+    }
+    return retval;
 }
 
-static int test_short_bits(void) {
+static int test_short_bits(void)
+{
     int result = 0;
     char *tmp;
     int n = asprintf(&tmp, "%d", __CAP_MAXBITS);
@@ -90,12 +107,87 @@ static int test_short_bits(void) {
     return result;
 }
 
+static int noop(void *data)
+{
+    return -1;
+}
+
+static int test_alloc(void)
+{
+    int retval = 0;
+    cap_t c;
+    cap_iab_t iab;
+    cap_launch_t launcher;
+
+    c = cap_init();
+    if (c == NULL) {
+	perror("failed to allocate a cap_t");
+	return -1;
+    }
+
+    iab = cap_iab_init();
+    if (iab == NULL) {
+	perror("failed to allocate a cap_iab_t");
+	retval = -1;
+	goto drop_c;
+    }
+
+    launcher = cap_func_launcher(noop);
+    if (launcher == NULL) {
+	perror("failde to allocate a launcher");
+	retval = -1;
+	goto drop_iab;
+    }
+
+    cap_launcher_set_chroot(launcher, "/tmp");
+    if (cap_launcher_set_iab(launcher, iab) != NULL) {
+	printf("unable to replace iab in launcher\n");
+	retval = -1;
+	goto drop_iab;
+    }
+
+    iab = cap_launcher_set_iab(launcher, cap_iab_init());
+    if (iab == NULL) {
+	printf("unable to recover iab in launcher\n");
+	retval = -1;
+	goto drop_launcher;
+    }
+
+drop_launcher:
+    if (cap_free(launcher)) {
+	perror("failed to free launcher");
+	retval = -1;
+    }
+
+drop_iab:
+    if (!cap_free(2+(__u32 *) iab)) {
+	printf("unable to recognize bad cap_iab_t pointer\n");
+	retval = -1;
+    }
+    if (cap_free(iab)) {
+	perror("failed to free iab");
+	retval = -1;
+    }
+
+drop_c:
+    if (!cap_free(1+(__u32 *)c)) {
+	printf("unable to recognize bad cap_t pointer\n");
+	retval = -1;
+    }
+    if (cap_free(c)) {
+	perror("failed to free c");
+	retval = -1;
+    }
+    return retval;
+}
+
 int main(int argc, char **argv) {
     int result = 0;
 
     result = test_cap_bits() | result;
     result = test_cap_flags() | result;
     result = test_short_bits() | result;
+    result = test_alloc() | result;
 
     if (result) {
 	printf("cap_test FAILED\n");

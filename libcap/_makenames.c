@@ -45,7 +45,7 @@ int main(void)
 	if (maxcaps <= list[i].index) {
 	    maxcaps = list[i].index + 1;
 	}
-        if (list[i].index >= pointers_avail) {
+        if (pointers == NULL || list[i].index >= pointers_avail) {
 	    int was = pointers_avail * sizeof(char *);
 	    pointers_avail = 2 * list[i].index + 1;
 	    pointers = recalloc(pointers, was, pointers_avail * sizeof(char *));

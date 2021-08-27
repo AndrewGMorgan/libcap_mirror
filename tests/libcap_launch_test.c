@@ -120,6 +120,10 @@ int main(int argc, char **argv) {
     };
 
     cap_t orig = cap_get_proc();
+    if (orig == NULL) {
+	perror("failed to get process capabilities");
+	exit(1);
+    }
 
     int success = 1, i;
     for (i=0; vs[i].pass_on != NO_MORE; i++) {
@@ -201,6 +205,10 @@ int main(int argc, char **argv) {
     }
 
     cap_t final = cap_get_proc();
+    if (final == NULL) {
+	perror("unable to get final capabilities");
+	exit(1);
+    }
     if (cap_compare(orig, final)) {
 	char *was = cap_to_text(orig, NULL);
 	char *is = cap_to_text(final, NULL);

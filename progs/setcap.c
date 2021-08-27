@@ -85,9 +85,12 @@ int main(int argc, char **argv)
 		" (old libcap?)\n");
     }
 
+    cap_t cap_d = NULL;
     while (--argc > 0) {
 	const char *text;
-	cap_t cap_d;
+
+	cap_free(cap_d);
+	cap_d = NULL;
 
 	if (!strcmp(*++argv, "-q")) {
 	    quiet = 1;
@@ -109,7 +112,8 @@ int main(int argc, char **argv)
 	}
 	if (!strcmp(*argv, "-n")) {
 	    if (argc < 2) {
-		fprintf(stderr, "usage: .. -n <rootid> .. - rootid!=0 file caps");
+		fprintf(stderr,
+			"usage: .. -n <rootid> .. - rootid!=0 file caps");
 		exit(1);
 	    }
 	    --argc;
@@ -122,6 +126,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!strcmp(*argv, "-r")) {
+	    cap_free(cap_d);
 	    cap_d = NULL;
 	} else {
 	    if (!strcmp(*argv,"-")) {
@@ -144,11 +149,9 @@ int main(int argc, char **argv)
 	    }
 #ifdef DEBUG
 	    {
-		ssize_t length;
-		const char *result;
-
-		result = cap_to_text(cap_d, &length);
+		char *result = cap_to_text(cap_d, NULL);
 		fprintf(stderr, "caps set to: [%s]\n", result);
+		cap_free(result)
 	    }
 #endif
 	}
@@ -163,12 +166,16 @@ int main(int argc, char **argv)
 	    int cmp;
 
 	    if (cap_d == NULL) {
-		cap_d = cap_from_text("=");
+		cap_d = cap_init();
+		if (cap_d == NULL) {
+		    perror("unable to obtain empty capability");
+		    exit(1);
+		}
 	    }
 
 	    cap_on_file = cap_get_file(*++argv);
 	    if (cap_on_file == NULL) {
-		cap_on_file = cap_from_text("=");
+		cap_on_file = cap_init();
 		if (cap_on_file == NULL) {
 		    perror("unable to use missing capability");
 		    exit(1);
@@ -264,9 +271,9 @@ int main(int argc, char **argv)
 		}
 	    }
 	}
-	if (cap_d) {
-	    cap_free(cap_d);
-	}
+    }
+    if (cap_d) {
+	cap_free(cap_d);
     }
 
     exit(0);

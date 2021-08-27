@@ -36,7 +36,7 @@ SO_MAIN(int argc, char **argv)
 	return;
     }
 
-    if (argc > 2 || strcmp(argv[1], "--help")) {
+    if (argc > 2 || argv[1] == NULL || strcmp(argv[1], "--help")) {
 	printf("\n%s only supports the optional argument --help\n", cmd);
 	exit(1);
     }

@@ -438,13 +438,17 @@ static cap_value_t raise_cap_setpcap[] = {CAP_SETPCAP};
 
 static int _cap_set_mode(struct syscaller_s *sc, cap_mode_t flavor)
 {
-    cap_t working = cap_get_proc();
+    int ret;
     unsigned secbits = CAP_SECURED_BITS_AMBIENT;
+    cap_t working = cap_get_proc();
 
-    int ret = cap_set_flag(working, CAP_EFFECTIVE,
-			   1, raise_cap_setpcap, CAP_SET);
-    ret = ret | _cap_set_proc(sc, working);
+    if (working == NULL) {
+	_cap_debug("getting current process' capabilities failed");
+	return -1;
+    }
 
+    ret = cap_set_flag(working, CAP_EFFECTIVE, 1, raise_cap_setpcap, CAP_SET) |
+	_cap_set_proc(sc, working);
     if (ret == 0) {
 	cap_flag_t c;
 
@@ -520,7 +524,7 @@ cap_mode_t cap_get_mode(void)
 
     /* validate ambient is not set */
     int olderrno = errno;
-    int ret = 0;
+    int ret = 0, cf;
     cap_value_t c;
     for (c = 0; !ret; c++) {
 	ret = cap_get_ambient(c);
@@ -529,6 +533,7 @@ cap_mode_t cap_get_mode(void)
 	    if (c && secbits != CAP_SECURED_BITS_AMBIENT) {
 		return CAP_MODE_UNCERTAIN;
 	    }
+	    ret = 0;
 	    break;
 	}
 	if (ret) {
@@ -536,11 +541,22 @@ cap_mode_t cap_get_mode(void)
 	}
     }
 
+    /*
+     * Explore how capabilities differ from empty.
+     */
     cap_t working = cap_get_proc();
     cap_t empty = cap_init();
-    int cf = cap_compare(empty, working);
+    if (working == NULL || empty == NULL) {
+	_cap_debug("working=%p, empty=%p - need both non-NULL", working, empty);
+	ret = -1;
+    } else {
+	cf = cap_compare(empty, working);
+    }
     cap_free(empty);
     cap_free(working);
+    if (ret != 0) {
+	return CAP_MODE_UNCERTAIN;
+    }
 
     if (CAP_DIFFERS(cf, CAP_INHERITABLE)) {
 	return CAP_MODE_PURE1E;
@@ -566,6 +582,10 @@ static int _cap_setuid(struct syscaller_s *sc, uid_t uid)
 {
     const cap_value_t raise_cap_setuid[] = {CAP_SETUID};
     cap_t working = cap_get_proc();
+    if (working == NULL) {
+	return -1;
+    }
+
     (void) cap_set_flag(working, CAP_EFFECTIVE,
 			1, raise_cap_setuid, CAP_SET);
     /*
@@ -621,6 +641,10 @@ static int _cap_setgroups(struct syscaller_s *sc,
 {
     const cap_value_t raise_cap_setgid[] = {CAP_SETGID};
     cap_t working = cap_get_proc();
+    if (working == NULL) {
+	return -1;
+    }
+
     (void) cap_set_flag(working, CAP_EFFECTIVE,
 			1, raise_cap_setgid, CAP_SET);
     /*
@@ -718,10 +742,9 @@ cap_iab_t cap_iab_get_proc(void)
  */
 static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 {
-    int ret, i;
-    cap_t working, temp = cap_get_proc();
+    int ret, i, raising = 0;
     cap_value_t c;
-    int raising = 0;
+    cap_t working, temp = cap_get_proc();
 
     if (temp == NULL) {
 	return -1;
@@ -737,6 +760,10 @@ static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
     }
 
     working = cap_dup(temp);
+    if (working == NULL) {
+	ret = -1;
+	goto defer;
+    }
     if (raising) {
 	ret = cap_set_flag(working, CAP_EFFECTIVE,
 			   1, raise_cap_setpcap, CAP_SET);
@@ -861,6 +888,10 @@ static int _cap_chroot(struct syscaller_s *sc, const char *root)
 {
     const cap_value_t raise_cap_sys_chroot[] = {CAP_SYS_CHROOT};
     cap_t working = cap_get_proc();
+    if (working == NULL) {
+	return -1;
+    }
+
     (void) cap_set_flag(working, CAP_EFFECTIVE,
 			1, raise_cap_sys_chroot, CAP_SET);
     int ret = _cap_set_proc(sc, working);

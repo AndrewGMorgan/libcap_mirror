@@ -89,6 +89,10 @@ static void display_current(void)
     char *text;
 
     all = cap_get_proc();
+    if (all == NULL) {
+	perror("failed to get process capabilities");
+	exit(1);
+    }
     text = cap_to_text(all, NULL);
     printf("Current: %s\n", text);
     cap_free(text);
@@ -922,6 +926,10 @@ int main(int argc, char *argv[], char *envp[])
 		exit(1);
 	    }
 	    orig = cap_get_proc();
+	    if (orig == NULL) {
+		perror("failed to get process capabilities");
+		exit(1);
+	    }
 	    if (cap_get_flag(orig, cap, CAP_PERMITTED, &enabled) || !enabled) {
 		fprintf(stderr, "cap[%s] not permitted\n", argv[i]+8);
 		exit(1);
@@ -938,6 +946,10 @@ int main(int argc, char *argv[], char *envp[])
 		exit(1);
 	    }
 	    orig = cap_get_proc();
+	    if (orig == NULL) {
+		perror("failed to get process capabilities");
+		exit(1);
+	    }
 	    if (cap_get_flag(orig, cap, CAP_INHERITABLE, &enabled)
 		|| !enabled) {
 		fprintf(stderr, "cap[%s] not inheritable\n", argv[i]+8);

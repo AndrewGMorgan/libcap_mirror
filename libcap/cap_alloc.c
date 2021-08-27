@@ -41,7 +41,6 @@ struct _cap_alloc_s {
 /*
  * Obtain a blank set of capabilities
  */
-
 cap_t cap_init(void)
 {
     struct _cap_alloc_s *raw_data;
@@ -222,8 +221,14 @@ int cap_free(void *data_p)
     case CAP_S_MAGIC:
 	break;
     case CAP_LAUNCH_MAGIC:
-	(void) cap_free(&data->u.launcher.iab);
-	(void) cap_free(&data->u.launcher.chroot);
+	if (cap_free(data->u.launcher.iab) != 0) {
+	    return -1;
+	}
+	data->u.launcher.iab = NULL;
+	if (cap_free(data->u.launcher.chroot) != 0) {
+	    return -1;
+	}
+	data->u.launcher.chroot = NULL;
 	break;
     default:
 	_cap_debug("don't recognize what we're supposed to liberate");
