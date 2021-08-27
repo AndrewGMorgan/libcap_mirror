@@ -121,13 +121,20 @@ ifeq ($(CGO_REQUIRED),0)
 endif
 	$(SUDO) ../progs/tcapsh-static --cap-uid=$$(id -u) --caps="cap_setpcap=ep" --iab="^cap_setpcap" -- -c ./b210613
 
+# As of libcap-2.55 We stopped installing the cap and psx packages as
+# part of the install.  Most distribution's packagers skip the Go
+# builds, so it was not well used any way. The new hotness is to just
+# use Go modules and download the packages from a tagged release in
+# the git repository. For an example of how to do this from scratch:
+#
+#   https://sites.google.com/site/fullycapable/getting-started-with-go/building-go-programs-that-manipulate-capabilities
+#
+# For those brave souls that do include the Go build (testing) as part
+# of their packaging, we reward them with a copy of the captree
+# utility!
 install: all
-	rm -rf $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
-	mkdir -p $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
-	install -m 0644 vendor/$(IMPORTDIR)/psx/* $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/psx
-	mkdir -p $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap
-	rm -rf $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap/*
-	install -m 0644 vendor/$(IMPORTDIR)/cap/* $(FAKEROOT)$(GOPKGDIR)/$(IMPORTDIR)/cap
+	mkdir -p -m 0755 $(FAKEROOT)$(SBINDIR)
+	install -m 0755 captree $(FAKEROOT)$(SBINDIR)
 
 clean:
 	rm -f *.o *.so *~ mknames ok good-names.go

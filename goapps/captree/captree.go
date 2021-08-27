@@ -267,6 +267,10 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string) {
 func main() {
 	flag.Parse()
 
+	// Just in case the user wants to override this, we set the
+	// cap package up to find it.
+	cap.ProcRoot(*proc)
+
 	pids := make(map[string]*task)
 	pids["0"] = &task{
 		cmd: "<kernel>",

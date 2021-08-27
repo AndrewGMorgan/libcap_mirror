@@ -366,11 +366,26 @@ func parseHex(hex string, invert bool) []uint32 {
 	return result
 }
 
+var procRoot = "/proc"
+
+// ProcRoot sets the local mount point for the Linux /proc filesystem.
+// It defaults to "/proc", but might be mounted elsewhere on any given
+// system. The function returns the previous value of the local mount
+// point. If the user attempts to set it to "", the value is left
+// unchanged.
+func ProcRoot(path string) string {
+	was := procRoot
+	if path != "" {
+		procRoot = path
+	}
+	return was
+}
+
 // IABGetPID returns the IAB tuple of a specified process. The kernel
 // ABI does not support this query via system calls, so the function
 // works by parsing the /proc/<pid>/status file content.
 func IABGetPID(pid int) (*IAB, error) {
-	tf := fmt.Sprintf("/proc/%d/status", pid)
+	tf := fmt.Sprintf("%s/%d/status", procRoot, pid)
 	d, err := ioutil.ReadFile(tf)
 	if err != nil {
 		return nil, err
