@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8,2019 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2019,2021 Andrew G Morgan <morgan@kernel.org>
  *
  * This file deals with allocation and deallocation of internal
  * capability sets as specified by POSIX.1e (formerlly, POSIX 6).
@@ -25,24 +25,38 @@ cap_value_t cap_max_bits(void) {
 }
 
 /*
+ * capability allocation is all done in terms of this structure.
+ */
+struct _cap_alloc_s {
+    __u32 magic;
+    __u32 size;
+    union {
+	char string_start; /* enough memory is allocated for string */
+	struct _cap_struct set;
+	struct cap_iab_s iab;
+	struct cap_launch_s launcher;
+    } u;
+};
+
+/*
  * Obtain a blank set of capabilities
  */
 
 cap_t cap_init(void)
 {
-    __u32 *raw_data;
+    struct _cap_alloc_s *raw_data;
     cap_t result;
 
-    raw_data = calloc(1, sizeof(__u32) + sizeof(*result));
+    raw_data = calloc(1, sizeof(struct _cap_alloc_s));
     if (raw_data == NULL) {
 	_cap_debug("out of memory");
 	errno = ENOMEM;
 	return NULL;
     }
+    raw_data->magic = CAP_T_MAGIC;
+    raw_data->size = sizeof(struct _cap_alloc_s);
 
-    *raw_data = CAP_T_MAGIC;
-    result = (cap_t) (raw_data + 1);
-
+    result = &raw_data->u.set;
     result->head.version = _LIBCAP_CAPABILITY_VERSION;
     capget(&result->head, NULL);      /* load the kernel-capability version */
 
@@ -72,26 +86,30 @@ cap_t cap_init(void)
  * This is an internal library function to duplicate a string and
  * tag the result as something cap_free can handle.
  */
-
 char *_libcap_strdup(const char *old)
 {
-    __u32 *raw_data;
+    struct _cap_alloc_s *raw_data;
+    size_t len;
 
     if (old == NULL) {
 	errno = EINVAL;
 	return NULL;
     }
-
-    raw_data = malloc( sizeof(__u32) + strlen(old) + 1 );
+    len = strlen(old) + 1 + 2*sizeof(__u32);
+    if ((len & 0xffffffff) != len) {
+	errno = EINVAL;
+	return NULL;
+    }
+    raw_data = calloc(1, len);
     if (raw_data == NULL) {
 	errno = ENOMEM;
 	return NULL;
     }
+    raw_data->magic = CAP_S_MAGIC;
+    raw_data->size = (__u32) len;
+    strcpy(&raw_data->u.string_start, old);
 
-    *(raw_data++) = CAP_S_MAGIC;
-    strcpy((char *) raw_data, old);
-
-    return ((char *) raw_data);
+    return &raw_data->u.string_start;
 }
 
 /*
@@ -99,12 +117,12 @@ char *_libcap_strdup(const char *old)
  * malloc()'d memory. It is the responsibility of the user to call
  * cap_free() to liberate it.
  */
-
 cap_t cap_dup(cap_t cap_d)
 {
     cap_t result;
 
-    if (!good_cap_t(cap_d)) {
+    __u32 *magic_p = -2 + (__u32 *) cap_d;
+    if (*magic_p != CAP_T_MAGIC) {
 	_cap_debug("bad argument");
 	errno = EINVAL;
 	return NULL;
@@ -121,14 +139,16 @@ cap_t cap_dup(cap_t cap_d)
     return result;
 }
 
-cap_iab_t cap_iab_init(void) {
-    __u32 *base = calloc(1, sizeof(__u32) + sizeof(struct cap_iab_s));
+cap_iab_t cap_iab_init(void)
+{
+    struct _cap_alloc_s *base = calloc(1, sizeof(struct _cap_alloc_s));
     if (base == NULL) {
 	_cap_debug("out of memory");
 	return NULL;
     }
-    *(base++) = CAP_IAB_MAGIC;
-    return (cap_iab_t) base;
+    base->magic = CAP_IAB_MAGIC;
+    base->size = sizeof(struct _cap_alloc_s);
+    return &base->u.iab;
 }
 
 /*
@@ -141,13 +161,15 @@ cap_iab_t cap_iab_init(void) {
 cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
 			      const char * const *envp)
 {
-    __u32 *data = calloc(1, sizeof(__u32) + sizeof(struct cap_launch_s));
+    struct _cap_alloc_s *data = calloc(1, sizeof(struct _cap_alloc_s));
     if (data == NULL) {
 	_cap_debug("out of memory");
 	return NULL;
     }
-    *(data++) = CAP_LAUNCH_MAGIC;
-    struct cap_launch_s *attr = (struct cap_launch_s *) data;
+    data->magic = CAP_LAUNCH_MAGIC;
+    data->size = sizeof(struct _cap_alloc_s);
+
+    struct cap_launch_s *attr = &data->u.launcher;
     attr->arg0 = arg0;
     attr->argv = argv;
     attr->envp = envp;
@@ -163,69 +185,55 @@ cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
  */
 cap_launch_t cap_func_launcher(int (callback_fn)(void *detail))
 {
-    __u32 *data = calloc(1, sizeof(__u32) + sizeof(struct cap_launch_s));
+    struct _cap_alloc_s *data = calloc(1, sizeof(struct _cap_alloc_s));
     if (data == NULL) {
 	_cap_debug("out of memory");
 	return NULL;
     }
-    *(data++) = CAP_LAUNCH_MAGIC;
-    struct cap_launch_s *attr = (struct cap_launch_s *) data;
+    data->magic = CAP_LAUNCH_MAGIC;
+    data->size = sizeof(struct _cap_alloc_s);
+
+    struct cap_launch_s *attr = &data->u.launcher;
     attr->custom_setup_fn = callback_fn;
     return attr;
 }
 
 /*
- * Scrub and then liberate an internal capability set.
+ * Scrub and then liberate the recognized allocated object.
  */
-
 int cap_free(void *data_p)
 {
-    if (!data_p)
-	return 0;
-
-    if (good_cap_t(data_p)) {
-	data_p = -1 + (__u32 *) data_p;
-	memset(data_p, 0, sizeof(__u32) + sizeof(struct _cap_struct));
-	free(data_p);
-	data_p = NULL;
+    if (!data_p) {
 	return 0;
     }
 
-    if (good_cap_string(data_p)) {
-	size_t length = strlen(data_p) + sizeof(__u32);
-     	data_p = -1 + (__u32 *) data_p;
-     	memset(data_p, 0, length);
-     	free(data_p);
-     	data_p = NULL;
-     	return 0;
+    /* confirm alignment */
+    if ((sizeof(uintptr_t)-1) & (uintptr_t) data_p) {
+	_cap_debug("whatever we're cap_free()ing it isn't aligned right: %p",
+		   data_p);
+	errno = EINVAL;
+	return -1;
     }
 
-    if (good_cap_iab_t(data_p)) {
-	size_t length = sizeof(struct cap_iab_s) + sizeof(__u32);
-	data_p = -1 + (__u32 *) data_p;
-	memset(data_p, 0, length);
-	free(data_p);
-	data_p = NULL;
-	return 0;
+    struct _cap_alloc_s *data = (void *) (-2 + (__u32 *) data_p);
+    switch (data->magic) {
+    case CAP_T_MAGIC:
+    case CAP_IAB_MAGIC:
+    case CAP_S_MAGIC:
+	break;
+    case CAP_LAUNCH_MAGIC:
+	(void) cap_free(&data->u.launcher.iab);
+	(void) cap_free(&data->u.launcher.chroot);
+	break;
+    default:
+	_cap_debug("don't recognize what we're supposed to liberate");
+	errno = EINVAL;
+	return -1;
     }
 
-    if (good_cap_launch_t(data_p)) {
-	cap_launch_t launcher = data_p;
-	if (launcher->iab) {
-	    cap_free(launcher->iab);
-	}
-	if (launcher->chroot) {
-	    cap_free(launcher->chroot);
-	}
-	size_t length = sizeof(struct cap_iab_s) + sizeof(__u32);
-	data_p = -1 + (__u32 *) data_p;
-	memset(data_p, 0, length);
-	free(data_p);
-	data_p = NULL;
-	return 0;
-    }
-
-    _cap_debug("don't recognize what we're supposed to liberate");
-    errno = EINVAL;
-    return -1;
+    memset(data, 0, data->size);
+    free(data);
+    data_p = NULL;
+    data = NULL;
+    return 0;
 }

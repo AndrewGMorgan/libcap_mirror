@@ -133,6 +133,10 @@ struct _cap_struct {
 /* launcher magic for cap_free */
 #define CAP_LAUNCH_MAGIC 0xCA91A
 
+#define magic_of(x)        (*(-2 + (const __u32 *) x))
+#define good_cap_t(x)      (CAP_T_MAGIC   == magic_of(x))
+#define good_cap_iab_t(x)  (CAP_IAB_MAGIC == magic_of(x))
+
 /*
  * kernel API cap set abstraction
  */
@@ -140,16 +144,6 @@ struct _cap_struct {
 #define raise_cap(x, set)    u[(x) >> 5].flat[set]       |=  (1u << ((x)&31))
 #define lower_cap(x, set)    u[(x) >> 5].flat[set]       &= ~(1u << ((x)&31))
 #define isset_cap(y, x, set) ((y)->u[(x) >> 5].flat[set] &   (1u << ((x)&31)))
-
-/*
- * Private definitions for internal use by the library.
- */
-
-#define __libcap_check_magic(c,magic) ((c) && *(-1+(__u32 *)(c)) == (magic))
-#define good_cap_t(c)        __libcap_check_magic(c, CAP_T_MAGIC)
-#define good_cap_string(c)   __libcap_check_magic(c, CAP_S_MAGIC)
-#define good_cap_iab_t(c)    __libcap_check_magic(c, CAP_IAB_MAGIC)
-#define good_cap_launch_t(c) __libcap_check_magic(c, CAP_LAUNCH_MAGIC)
 
 /*
  * These match CAP_DIFFERS() expectations
