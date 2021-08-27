@@ -118,6 +118,7 @@ static int test_alloc(void)
     cap_t c;
     cap_iab_t iab;
     cap_launch_t launcher;
+    char *old_root;
 
     c = cap_init();
     if (c == NULL) {
@@ -150,6 +151,31 @@ static int test_alloc(void)
     if (iab == NULL) {
 	printf("unable to recover iab in launcher\n");
 	retval = -1;
+	goto drop_launcher;
+    }
+
+    old_root = cap_proc_root("blah");
+    if (old_root == NULL || strcmp(old_root, "/proc") != 0) {
+	printf("bad initial proc_root [%s]\n", old_root);
+	retval = -1;
+    }
+    if (cap_free(old_root)) {
+	perror("unable to free old proc root");
+	retval = -1;
+    }
+    if (retval) {
+	goto drop_launcher;
+    }
+    old_root = cap_proc_root("/proc");
+    if (strcmp(old_root, "blah") != 0) {
+	printf("bad proc_root value [%s]\n", old_root);
+	retval = -1;
+    }
+    if (cap_free(old_root)) {
+	perror("unable to free replacement proc root");
+	retval = -1;
+    }
+    if (retval) {
 	goto drop_launcher;
     }
 

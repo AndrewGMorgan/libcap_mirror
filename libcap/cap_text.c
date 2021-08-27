@@ -667,6 +667,31 @@ static __u32 _parse_vec_string(__u32 *vals, const char *c, int invert)
     return ~0;
 }
 
+/*
+ * libcap believes this is the root of the mounted "/proc"
+ * filesystem
+ */
+static char *_cap_proc_dir;
+
+/*
+ * cap_proc_root reads and (optionally: when root != NULL) changes
+ * libcap's notion of where the "/proc" filesystem is mounted. It
+ * defaults to the value "/proc". Note, this is a global value and not
+ * considered thread safe to write - so the client should take
+ * suitable care when changing it. Further, libcap will allocate
+ * memory for storing the replacement root, and it is this memory that
+ * is returned. So, when changing the value, the caller should
+ * cap_free(the-return-value) when done with it.
+ */
+char *cap_proc_root(const char *root)
+{
+    char *old = _cap_proc_dir;
+    if (root != NULL) {
+	_cap_proc_dir = _libcap_strdup(root);
+    }
+    return old;
+}
+
 #define PROC_LINE_MAX (8 + 8*_LIBCAP_CAPABILITY_U32S + 100)
 /*
  * cap_iab_get_pid fills an IAB tuple from the content of
@@ -680,7 +705,7 @@ cap_iab_t cap_iab_get_pid(pid_t pid)
     FILE *file;
     char line[PROC_LINE_MAX];
 
-    if (asprintf(&path, "/proc/%d/status", pid) <= 0) {
+    if (asprintf(&path, "%s/%d/status", _cap_proc_dir, pid) <= 0) {
 	return NULL;
     }
     file = fopen(path, "r");

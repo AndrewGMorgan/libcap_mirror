@@ -54,6 +54,22 @@ typedef int cap_value_t;
 extern cap_value_t cap_max_bits(void);
 
 /*
+ * cap_proc_root reads and (optionally: when root != NULL) changes
+ * libcap's notion of where the "/proc" filesystem is mounted. It
+ * defaults to the value "/proc".
+ *
+ * Note, this is a global value and not considered thread safe to
+ * write - so the client should take suitable care when changing
+ * it.
+ *
+ * Further, libcap will allocate a memory copy for storing the
+ * replacement root, and it is this kind of memory that is returned.
+ * So, when changing the value, the caller should
+ * cap_free(the-return-value) when done with it.
+ */
+extern char *cap_proc_root(const char *root);
+
+/*
  * Set identifiers
  */
 typedef enum {
