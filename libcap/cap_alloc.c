@@ -98,7 +98,11 @@ char *_libcap_strdup(const char *old)
 	return NULL;
     }
     len = strlen(old) + 1 + 2*sizeof(__u32);
+    if (len < sizeof(struct _cap_alloc_s)) {
+	len = sizeof(struct _cap_alloc_s);
+    }
     if ((len & 0xffffffff) != len) {
+	_cap_debug("len is too long for libcap to manage");
 	errno = EINVAL;
 	return NULL;
     }

@@ -120,6 +120,8 @@ static int test_alloc(void)
     cap_launch_t launcher;
     char *old_root;
 
+    printf("test_alloc\n");
+
     c = cap_init();
     if (c == NULL) {
 	perror("failed to allocate a cap_t");
@@ -180,12 +182,14 @@ static int test_alloc(void)
     }
 
 drop_launcher:
+    printf("test_alloc: drop_launcher\n");
     if (cap_free(launcher)) {
 	perror("failed to free launcher");
 	retval = -1;
     }
 
 drop_iab:
+    printf("test_alloc: drop_iab\n");
     if (!cap_free(2+(__u32 *) iab)) {
 	printf("unable to recognize bad cap_iab_t pointer\n");
 	retval = -1;
@@ -196,7 +200,8 @@ drop_iab:
     }
 
 drop_c:
-    if (!cap_free(1+(__u32 *)c)) {
+    printf("test_alloc: drop_cap\n");
+    if (!cap_free(1+(__u32 *) c)) {
 	printf("unable to recognize bad cap_t pointer\n");
 	retval = -1;
     }

@@ -54,7 +54,8 @@ GOPKGDIR=$(prefix)/share/gocode/src
 # From here on out, the Go module packages should always remain
 # backwardly compatible. I will only resort to using major version 2
 # etc if Go's syntax dramatically changes in a backwards incompatible
-# manner. (Let's hope not.)
+# manner. (Let's hope not. If that happens, I'll also drop deprecated
+# API functions.)
 GOMAJOR=1
 
 # Compilation specifics
@@ -152,11 +153,11 @@ endif
 #
 #    make RAISE_SETFCAP=yes install
 #
-# This is now defaulted to no because some distributions have started
-# shipping with all users blessed with full inheritable sets which makes
-# no sense whatsoever!
+# This is now defaulted to no because some distributions started
+# shipping with all users blessed with full inheritable sets which
+# makes no sense whatsoever!
 #
-# Indeed, it looks alarmingly like these distributions are recreating
+# Indeed, it looked alarmingly like these distributions were recreating
 # the environment for what became known as the sendmail-capabilities
 # bug from 2000:
 #
