@@ -34,7 +34,6 @@ struct _cap_alloc_s {
     __u32 magic;
     __u32 size;
     union {
-	char string_start; /* enough memory is allocated for string */
 	struct _cap_struct set;
 	struct cap_iab_s iab;
 	struct cap_launch_s launcher;
@@ -90,7 +89,8 @@ cap_t cap_init(void)
  */
 char *_libcap_strdup(const char *old)
 {
-    struct _cap_alloc_s *raw_data;
+    struct _cap_alloc_s *header;
+    char *raw_data;
     size_t len;
 
     if (old == NULL) {
@@ -106,16 +106,19 @@ char *_libcap_strdup(const char *old)
 	errno = EINVAL;
 	return NULL;
     }
+
     raw_data = calloc(1, len);
     if (raw_data == NULL) {
 	errno = ENOMEM;
 	return NULL;
     }
-    raw_data->magic = CAP_S_MAGIC;
-    raw_data->size = (__u32) len;
-    strcpy(&raw_data->u.string_start, old);
+    header = (void *) raw_data;
+    header->magic = CAP_S_MAGIC;
+    header->size = (__u32) len;
 
-    return &raw_data->u.string_start;
+    raw_data += 2*sizeof(__u32);
+    strcpy(raw_data, old);
+    return raw_data;
 }
 
 /*
@@ -221,7 +224,8 @@ int cap_free(void *data_p)
 	return -1;
     }
 
-    struct _cap_alloc_s *data = (void *) (-2 + (__u32 *) data_p);
+    void *base = (void *) (-2 + (__u32 *) data_p);
+    struct _cap_alloc_s *data = base;
     switch (data->magic) {
     case CAP_T_MAGIC:
     case CAP_IAB_MAGIC:
@@ -243,9 +247,14 @@ int cap_free(void *data_p)
 	return -1;
     }
 
-    memset(data, 0, data->size);
-    free(data);
+    /*
+     * operate here with respect to base, to avoid tangling with the
+     * automated buffer overflow detection.
+     */
+    memset(base, 0, data->size);
+    free(base);
     data_p = NULL;
     data = NULL;
+    base = NULL;
     return 0;
 }
