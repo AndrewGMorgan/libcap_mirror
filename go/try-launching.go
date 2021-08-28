@@ -20,6 +20,8 @@ func tryLaunching() {
 	}
 	root := cwd[:strings.LastIndex(cwd, "/")]
 
+	hasSysAdmin, _ := cap.GetBound(cap.SYS_ADMIN)
+
 	vs := []struct {
 		args       []string
 		fail       bool
@@ -38,7 +40,7 @@ func tryLaunching() {
 			uid:    123,
 			gid:    456,
 			groups: []int{1, 2, 3},
-			fail:   syscall.Getuid() != 0,
+			fail:   syscall.Getuid() != 0 || !hasSysAdmin,
 		},
 		{
 			args:   []string{"/ok"},

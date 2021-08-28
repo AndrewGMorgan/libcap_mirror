@@ -967,6 +967,17 @@ int main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "cap[%s] not in ambient vector\n", argv[i]+8);
 		exit(1);
 	    }
+	} else if (!strncmp("--has-b=", argv[i], 8)) {
+	    cap_value_t cap;
+	    if (cap_from_name(argv[i]+8, &cap) < 0) {
+		fprintf(stderr, "cap[%s] not recognized by library\n",
+			argv[i] + 8);
+		exit(1);
+	    }
+	    if (!cap_get_bound(cap)) {
+		fprintf(stderr, "cap[%s] not in bounding vector\n", argv[i]+8);
+		exit(1);
+	    }
 	} else if (!strncmp("--is-uid=", argv[i], 9)) {
 	    unsigned value;
 	    uid_t uid;
@@ -1075,11 +1086,13 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --current      show current caps and IAB vectors\n"
 		   "  --decode=xxx   decode a hex string to a list of caps\n"
 		   "  --delamb=xxx   remove xxx,... capabilities from ambient\n"
+		   "  --drop=xxx     drop xxx,... caps from bounding set\n"
 		   "  --explain=xxx  explain what capability xxx permits\n"
 		   "  --forkfor=<n>  fork and make child sleep for <n> sec\n"
 		   "  --gid=<n>      set gid to <n> (hint: id <username>)\n"
 		   "  --groups=g,... set the supplemental groups\n"
 		   "  --has-a=xxx    exit 1 if capability xxx not ambient\n"
+		   "  --has-b=xxx    exit 1 if capability xxx not dropped\n"
 		   "  --has-ambient  exit 1 unless ambient vector supported\n"
 		   "  --has-i=xxx    exit 1 if capability xxx not inheritable\n"
 		   "  --has-p=xxx    exit 1 if capability xxx not permitted\n"

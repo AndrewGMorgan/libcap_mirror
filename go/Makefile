@@ -110,7 +110,7 @@ endif
 # requiring that the hosting kernel supports user namespaces for the
 # regular test case.
 sudotest: test ../progs/tcapsh-static b210613
-	./gowns --ns -- -c "echo gowns runs with user namespace"
+	../progs/tcapsh-static --has-b=cap_sys_admin || exit 0 && ./gowns --ns -- -c "echo gowns runs with user namespace"
 	./try-launching
 ifeq ($(CGO_REQUIRED),0)
 	./try-launching-cgo

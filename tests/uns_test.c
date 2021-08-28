@@ -62,6 +62,17 @@ int main(int argc, char **argv)
     static const char id_map[] = "0 1 1\n1 2 1\n2 0 1\n3 3 49999997\n";
     cap_value_t fscap = CAP_SETFCAP;
     cap_t orig = cap_get_proc();
+    cap_flag_value_t present;
+
+    if (cap_get_flag(orig, CAP_SYS_ADMIN, CAP_EFFECTIVE, &present) != 0) {
+	perror("failed to read a capability flag");
+	exit(1);
+    }
+    if (present != CAP_SET) {
+	fprintf(stderr,
+		"environment missing cap_sys_admin - exploit not testable\n");
+	exit(0);
+    }
 
     /* Run with this one lowered */
     cap_set_flag(orig, CAP_EFFECTIVE, 1, &fscap, CAP_CLEAR);

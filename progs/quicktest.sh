@@ -79,7 +79,7 @@ fail_capsh --mode=NOPRIV --print --mode=PURE1E
 fail_capsh --user=nobody --mode=NOPRIV --print -- ./privileged
 
 # simple IAB setting (no ambient) in pure1e mode.
-pass_capsh --mode=PURE1E --iab='!%cap_chown,cap_sys_admin'
+pass_capsh --mode=PURE1E --iab='!%cap_chown,cap_setuid'
 
 # Explore keep_caps support
 pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
@@ -94,14 +94,14 @@ pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 # from setuid root to capable luser (as per wireshark/dumpcap 0.99.7)
 # This test is subtle. It is testing that a change to self, dropping
 # euid=0 back to that of the luser keeps capabilities.
-pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --print --uid=1 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
+pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_bind_service=ip\" --print --uid=1 --print --caps=\"cap_net_raw,cap_net_bind_service=pie\" --print"
 
 # this test is a change of user to a new user, note we need to raise
 # the cap_setuid capability (libcap has a function for that) in this case.
-pass_capsh --uid=1 -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_admin=ip cap_setuid=p\" --print --cap-uid=2 --print --caps=\"cap_net_raw,cap_net_admin=pie\" --print"
+pass_capsh --uid=1 -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_bind_service=ip cap_setuid=p\" --print --cap-uid=2 --print --caps=\"cap_net_raw,cap_net_bind_service=pie\" --print"
 
 # This fails, on 2.6.24, but shouldn't
-pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_admin=ip\" --uid=1 --forkfor=10 --caps= --print --killit=9 --print"
+pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_bind_service=ip\" --uid=1 --forkfor=10 --caps= --print --killit=9 --print"
 
 # only continue with these if --secbits is supported
 ./capsh --secbits=0x2f > /dev/null 2>&1
@@ -214,8 +214,8 @@ EOF
     pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=1"
 
     # validate IAB setting with an ambient capability
-    pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_sys_admin'
-    fail_capsh --mode=PURE1E --iab='!%cap_chown,^cap_sys_admin'
+    pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_setuid'
+    fail_capsh --mode=PURE1E --iab='!%cap_chown,^cap_setuid'
 fi
 /bin/rm -f ./privileged
 

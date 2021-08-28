@@ -14,7 +14,6 @@
  * returned as the contents of *raised.  The capability is from one of
  * the sets stored in cap_d as specified by set and value
  */
-
 int cap_get_flag(cap_t cap_d, cap_value_t value, cap_flag_t set,
 		 cap_flag_value_t *raised)
 {
