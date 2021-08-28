@@ -121,16 +121,19 @@ static int test_alloc(void)
     char *old_root;
 
     printf("test_alloc\n");
+    fflush(stdout);
 
     c = cap_init();
     if (c == NULL) {
 	perror("failed to allocate a cap_t");
+	fflush(stderr);
 	return -1;
     }
 
     iab = cap_iab_init();
     if (iab == NULL) {
 	perror("failed to allocate a cap_iab_t");
+	fflush(stderr);
 	retval = -1;
 	goto drop_c;
     }
@@ -138,6 +141,7 @@ static int test_alloc(void)
     launcher = cap_func_launcher(noop);
     if (launcher == NULL) {
 	perror("failde to allocate a launcher");
+	fflush(stderr);
 	retval = -1;
 	goto drop_iab;
     }
@@ -145,6 +149,7 @@ static int test_alloc(void)
     cap_launcher_set_chroot(launcher, "/tmp");
     if (cap_launcher_set_iab(launcher, iab) != NULL) {
 	printf("unable to replace iab in launcher\n");
+	fflush(stdout);
 	retval = -1;
 	goto drop_iab;
     }
@@ -152,6 +157,7 @@ static int test_alloc(void)
     iab = cap_launcher_set_iab(launcher, cap_iab_init());
     if (iab == NULL) {
 	printf("unable to recover iab in launcher\n");
+	fflush(stdout);
 	retval = -1;
 	goto drop_launcher;
     }
@@ -159,10 +165,12 @@ static int test_alloc(void)
     old_root = cap_proc_root("blah");
     if (old_root == NULL || strcmp(old_root, "/proc") != 0) {
 	printf("bad initial proc_root [%s]\n", old_root);
+	fflush(stdout);
 	retval = -1;
     }
     if (cap_free(old_root)) {
 	perror("unable to free old proc root");
+	fflush(stderr);
 	retval = -1;
     }
     if (retval) {
@@ -171,10 +179,12 @@ static int test_alloc(void)
     old_root = cap_proc_root("/proc");
     if (strcmp(old_root, "blah") != 0) {
 	printf("bad proc_root value [%s]\n", old_root);
+	fflush(stdout);
 	retval = -1;
     }
     if (cap_free(old_root)) {
 	perror("unable to free replacement proc root");
+	fflush(stderr);
 	retval = -1;
     }
     if (retval) {
@@ -183,30 +193,38 @@ static int test_alloc(void)
 
 drop_launcher:
     printf("test_alloc: drop_launcher\n");
+    fflush(stdout);
     if (cap_free(launcher)) {
 	perror("failed to free launcher");
+	fflush(stderr);
 	retval = -1;
     }
 
 drop_iab:
     printf("test_alloc: drop_iab\n");
+    fflush(stdout);
     if (!cap_free(2+(__u32 *) iab)) {
 	printf("unable to recognize bad cap_iab_t pointer\n");
+	fflush(stdout);
 	retval = -1;
     }
     if (cap_free(iab)) {
 	perror("failed to free iab");
+	fflush(stderr);
 	retval = -1;
     }
 
 drop_c:
     printf("test_alloc: drop_cap\n");
+    fflush(stdout);
     if (!cap_free(1+(__u32 *) c)) {
 	printf("unable to recognize bad cap_t pointer\n");
+	fflush(stdout);
 	retval = -1;
     }
     if (cap_free(c)) {
 	perror("failed to free c");
+	fflush(stderr);
 	retval = -1;
     }
     return retval;
@@ -215,10 +233,20 @@ drop_c:
 int main(int argc, char **argv) {
     int result = 0;
 
+    printf("test_cap_bits: being called\n");
+    fflush(stdout);
     result = test_cap_bits() | result;
+    printf("test_cap_flags: being called\n");
+    fflush(stdout);
     result = test_cap_flags() | result;
+    printf("test_short_bits: being called\n");
+    fflush(stdout);
     result = test_short_bits() | result;
+    printf("test_alloc: being called\n");
+    fflush(stdout);
     result = test_alloc() | result;
+    printf("tested\n");
+    fflush(stdout);
 
     if (result) {
 	printf("cap_test FAILED\n");
