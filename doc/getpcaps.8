@@ -1,5 +1,5 @@
 .\"                                      Hey, EMACS: -*- nroff -*-
-.TH GETPCAPS 8 "2020-01-04"
+.TH GETPCAPS 8 "2020-08-29"
 .\" Please adjust this date whenever revising the manpage.
 .SH NAME
 getpcaps \- display process capabilities
@@ -36,15 +36,22 @@ default terminal fonts.
 .TP
 .B \-\-iab
 Displays IAB tuple capabilities from the process. The output format
-here is unique. Double quotes encase the regular process capabilities
-and square brackets encase the IAB tuple.
+here is the text format described in \fBcap_iab\fR(3). Double
+quotes encase the regular process capabilities and square brackets
+encase the IAB tuple. This format is also used by \fBcaptree\fR(8).
+.SH "REPORTING BUGS"
+Please report bugs via:
+.TP
+https://bugzilla.kernel.org/buglist.cgi?component=libcap&list_id=1090757
 .SH SEE ALSO
 .BR capsh (1),
+.BR cap_from_text (3),
+.BR cap_iab (3),
 .BR capabilities (7),
+.BR captree (8),
 .BR getcap (8),
-.BR setcap (8)
 and
-.BR cap_iab (3).
+.BR setcap (8).
 .SH AUTHOR
 This manual page was originally written by Robert Bihlmeyer
 <robbe@debian.org>, for the Debian GNU/Linux system (but may be used

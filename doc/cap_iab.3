@@ -1,4 +1,4 @@
-.TH CAP_IAB 3 "2021-03-10" "" "Linux Programmer's Manual"
+.TH CAP_IAB 3 "2021-08-29" "" "Linux Programmer's Manual"
 .SH NAME
 .nf
 #include <sys/capability.h>
@@ -60,8 +60,8 @@ from the handshake inheritance between pre-exec* process and
 file-capability bestowed executable of the traditional capability
 mechanism.
 .PP
-The convolution rules for IAB style inheritance are: I'=I; A'= A & ~B;
-P'=A & ~B. Where P etc are the pre-exec values and P' etc are the
+The convolution rules for IAB style inheritance are: I'=I; A'=A&I;
+P'=A&I&P. Where P etc are the pre-exec values and P' etc are the
 post-exec values.
 .PP
 With an understanding of these convolution rules, we can explain how
@@ -87,8 +87,8 @@ cap_iab_t should be freed with
 .BR cap_iab_set_proc ()
 can be used to set the IAB value carried by the current process. Such
 a setting will fail if the process is insufficiently capable. The
-process requires CAP_SETPCAP and a superset of P values over the A and
-I vectors.
+process requires CAP_SETPCAP raised in the E flag and a superset of P
+and I values over those in the A vectors.
 .sp
 .BR cap_iab_to_text ()
 will convert an IAB set to a canonical text representation. The
@@ -103,12 +103,12 @@ previous function). The returned IAB set should be freed with
 The text format accepted by
 .BR cap_iab_from_text ()
 is a comma separated list of capability values. Each capability is
-prefixed by nothing (or %) (Inh); ! (Bound); ^ (Amb). Or, some
-combination thereof. Since the Amb vector is constrained to be no
-greater than the Inh set, ^ is equivalent to %^. Further, unless B is
-non-zero, % can be omitted. The following are legal text
-representations: "!%cap_chown" (Bound but Inh),
-"!cap_setuid,^cap_chown" (Bound, Inh+Amb). "cap_setuid,!cap_chown"
+prefixed by nothing (or %) (Inh); ! (Bound, but think Blocked); ^
+(Amb). Or, some combination thereof.  Since the Amb vector is
+constrained to be no greater than the Inh vector, ^ is equivalent to
+%^. Further, unless B is non-zero, % can be omitted. The following are
+legal text representations: "!%cap_chown" (Bound but Inh),
+"!cap_chown,^cap_chown" (Bound, Inh+Amb). "cap_setuid,!cap_chown"
 (Inh, Bound). As noted above, this text representation is the syntax
 for the \fIpam_cap.so\fP config file.
 .sp
@@ -172,7 +172,10 @@ work. Instead the \fIpam_cap.so\fP config syntax was generalized into
 a whole set of libcap functions for bundling together all three
 naively inheritable capabilities: the IAB set. The support for this
 debuted in libcap-2.33.
-
+.SH "REPORTING BUGS"
+Please report bugs via:
+.TP
+https://bugzilla.kernel.org/buglist.cgi?component=libcap&list_id=1090757
 .SH "SEE ALSO"
 .BR libcap (3),
 .BR cap_launch (3),
