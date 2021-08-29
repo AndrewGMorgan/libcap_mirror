@@ -58,6 +58,12 @@
 //
 //   $ captree 0
 //
+// To view a specific binary (as named in /proc/<PID>/status as 'Name:
+// ...'), matched by a glob, try this:
+//
+//   $ captree 'cap*ree'
+//
+// The quotes might be needed to avoid the '*' confusing your shell.
 package main
 
 import (
@@ -65,6 +71,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -74,7 +81,9 @@ import (
 )
 
 var (
-	proc = flag.String("proc", "/proc", "root of proc filesystem")
+	proc    = flag.String("proc", "/proc", "root of proc filesystem")
+	depth   = flag.Int("depth", 0, "how many processes deep (0=all)")
+	verbose = flag.Bool("verbose", false, "display empty capabilities")
 )
 
 type task struct {
@@ -168,7 +177,7 @@ var empty = cap.NewSet()
 var noiab = cap.IABInit()
 
 // rDump prints out the tree of processes rooted at pid.
-func rDump(pids map[string]*task, pid, stub, lstub, estub string) {
+func rDump(pids map[string]*task, pid, stub, lstub, estub string, depth int) {
 	info, ok := pids[pid]
 	if !ok {
 		fmt.Println("[PID:", pid, "not found]")
@@ -177,14 +186,14 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string) {
 	c := ""
 	set := info.cap
 	if set != nil {
-		if val, _ := set.Cf(empty); val != 0 {
+		if val, _ := set.Cf(empty); val != 0 || *verbose {
 			c = fmt.Sprintf(" %q", set)
 		}
 	}
 	iab := ""
 	tup := info.iab
 	if tup != nil {
-		if val, _ := tup.Cf(noiab); val.Has(cap.Bound) || val.Has(cap.Amb) {
+		if val, _ := tup.Cf(noiab); val.Has(cap.Bound) || val.Has(cap.Amb) || *verbose {
 			iab = fmt.Sprintf(" [%s]", tup)
 		}
 	}
@@ -233,19 +242,25 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string) {
 		c := ""
 		set := this.cap
 		if set != nil {
-			if val, _ := set.Cf(empty); val != 0 {
+			if val, _ := set.Cf(empty); val != 0 || *verbose {
 				c = fmt.Sprintf(" %q", set)
 			}
 		}
 		iab := ""
 		tup := this.iab
 		if tup != nil {
-			if val, _ := tup.Cf(noiab); val.Has(cap.Bound) || val.Has(cap.Amb) {
+			if val, _ := tup.Cf(noiab); val.Has(cap.Bound) || val.Has(cap.Amb) || *verbose {
 				iab = fmt.Sprintf(" [%s]", tup)
 			}
 		}
 		fmt.Printf("%s%s:>-%s{%s}%s%s\n", stub, estub, this.cmd, strings.Join(same, ","), c, iab)
 		misc = nmisc
+	}
+	if depth == 1 {
+		return
+	}
+	if depth > 1 {
+		depth--
 	}
 	x := info.children
 	sort.Slice(x, func(i, j int) bool {
@@ -260,8 +275,32 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string) {
 		if i+1 == len(x) {
 			estub = "  "
 		}
-		rDump(pids, cid, stub, lstub, estub)
+		rDump(pids, cid, stub, lstub, estub, depth)
 	}
+}
+
+func findPIDs(list []string, pids map[string]*task, glob string) <-chan string {
+	finds := make(chan string)
+	go func() {
+		defer close(finds)
+		found := false
+		// search for PIDs, if found exit.
+		for _, pid := range list {
+			match, _ := filepath.Match(glob, pids[pid].cmd)
+			if !match {
+				continue
+			}
+			found = true
+			finds <- pid
+		}
+		if found {
+			return
+		}
+		// TODO if no processes found, should we search the
+		// threads?
+		fmt.Printf("no process matched %q\n", glob)
+	}()
+	return finds
 }
 
 func main() {
@@ -318,6 +357,12 @@ func main() {
 	}
 
 	for _, pid := range args {
-		rDump(pids, pid, "", "--", "  ")
+		if _, err := strconv.ParseUint(pid, 10, 64); err == nil {
+			rDump(pids, pid, "", "--", "  ", *depth)
+			continue
+		}
+		for pid := range findPIDs(list, pids, pid) {
+			rDump(pids, pid, "", "--", "  ", *depth)
+		}
 	}
 }
