@@ -22,10 +22,10 @@ DEPS = ../libcap/libcap.a
 endif
 
 ../libcap/libcap.a:
-	make -C ../libcap libcap.a
+	$(MAKE) -C ../libcap libcap.a
 
 ../libcap/libcap.so:
-	make -C ../libcap libcap.so
+	$(MAKE) -C ../libcap libcap.so
 
 $(BUILD): %: %.o $(DEPS)
 	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)

@@ -18,10 +18,10 @@ DEPS=../libcap/libcap.a ../libcap/libpsx.a
 all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree compare-cap try-launching psx-signals
 
 $(DEPS):
-	make -C ../libcap all
+	$(MAKE) -C ../libcap all
 
 ../progs/tcapsh-static:
-	make -C ../progs tcapsh-static
+	$(MAKE) -C ../progs tcapsh-static
 
 vendor/$(IMPORTDIR) vendor/modules.txt:
 	mkdir -p "vendor/$(IMPORTDIR)"
@@ -39,7 +39,7 @@ vendor/$(IMPORTDIR)/cap: vendor/modules.txt
 	touch ../cap
 
 $(topdir)/libcap/cap_names.h:
-	make -C $(topdir)/libcap cap_names.h
+	$(MAKE) -C $(topdir)/libcap cap_names.h
 
 good-names.go: $(topdir)/libcap/cap_names.h vendor/$(IMPORTDIR)/cap mknames.go
 	CC="$(CC)" $(GO) run -mod=vendor mknames.go --header=$< --textdir=$(topdir)/doc/values | gofmt > $@ || rm -f $@
@@ -59,7 +59,7 @@ compare-cap: compare-cap.go CAPGOPACKAGE
 web: ../goapps/web/web.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build -mod=vendor -o $@ $<
 ifeq ($(RAISE_GO_FILECAP),yes)
-	make -C ../progs setcap
+	$(MAKE) -C ../progs setcap
 	$(SUDO) ../progs/setcap cap_setpcap,cap_net_bind_service=p web
 	@echo "NOTE: RAISED cap_setpcap,cap_net_bind_service ON web binary"
 endif

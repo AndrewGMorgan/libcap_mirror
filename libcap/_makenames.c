@@ -26,7 +26,7 @@ struct {
  * indicated extended empty space.
  */
 static void *recalloc(void *p, int was, int is) {
-    void *n = realloc(p, is);
+    char *n = realloc(p, is);
     if (!n) {
 	fputs("out of memory", stderr);
 	exit(1);
