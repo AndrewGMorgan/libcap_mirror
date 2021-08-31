@@ -76,14 +76,14 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 #   CPPFLAGS used for building .o files from .c & .h files
 #   CFLAGS used when building libraries from .o, .c and .h files
 
-COPTS ?= -O2
-CFLAGS ?= $(COPTS)
-CPPFLAGS += -Dlinux $(WARNINGS) $(DEBUG) $(DEFINES) $(LIBCAP_INCLUDES)
-LDFLAGS ?= #-g
-DEBUG = -g #-DDEBUG
+DEBUG = # -g -DDEBUG
 WARNINGS=-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wcast-align \
         -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs       \
 	-Winline -Wshadow
+COPTS ?= -O2
+CFLAGS ?= $(COPTS) $(WARNINGS) $(DEBUG)
+CPPFLAGS += -Dlinux $(DEFINES) $(LIBCAP_INCLUDES)
+LDFLAGS ?= # -g
 
 BUILD_CC ?= $(CC)
 BUILD_LD ?= $(BUILD_CC) -Wl,-x -shared
