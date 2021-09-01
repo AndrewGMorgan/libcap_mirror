@@ -223,7 +223,8 @@ int main(int argc, char *argv[]) {
 	exit(1);
     }
     if (read_capabilities_for_user("morgan", "/dev/null") != NULL) {
-	printf("/dev/null is not a valid config file\n");
+	printf("/dev/null should return no capabilities\n");
+	exit(1);
     }
 
     /*
@@ -236,6 +237,10 @@ int main(int argc, char *argv[]) {
     if (getuid() != 0) {
 	cap_free(orig);
 	printf("test_pam_cap: OK! (Skipping privileged tests (uid!=0))\n");
+	exit(0);
+    }
+    if (argc == 1) {
+	printf("test_pam_cap: OK (kick the tires test)\n");
 	exit(0);
     }
 
