@@ -55,20 +55,18 @@ lazylink.so: lazylink.c ../libcap/execable.h ../libcap/loader.txt
 endif
 endif
 
-pam_cap.o: pam_cap.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
 ../libcap/libcap.a:
 	$(MAKE) -C ../libcap libcap.a
 
+# Avoid $(LDFLAGS) here to avoid conflicts with --static for a in-tree
+# test binary.
 test_pam_cap: test_pam_cap.c pam_cap.c ../libcap/libcap.a
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ test_pam_cap.c $(LIBCAPLIB) --static
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ test_pam_cap.c $(LIBCAPLIB) --static
 
-testlink: test.c pam_cap.o
+testlink: test.o pam_cap.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ -lpam -ldl $(LIBCAPLIB)
 
 test: testlink test_pam_cap pam_cap.so
-	$(MAKE) testlink
 	./test_pam_cap
 	LD_LIBRARY_PATH=../libcap ./pam_cap.so
 	LD_LIBRARY_PATH=../libcap ./pam_cap.so --help

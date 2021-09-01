@@ -10,7 +10,7 @@ shell: exit
 	./test-kernel.sh
 
 exit: exit.c
-	$(CC) -O2 $< -o $@ --static
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ --static
 
 all:
 	@echo cd to kdebug to test a kernel build

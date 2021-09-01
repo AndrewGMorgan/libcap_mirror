@@ -104,9 +104,6 @@ $(STAPSXLIBNAME): $(PSXOBJS) include/sys/psx_syscall.h
 
 ifeq ($(SHARED),yes)
 
-empty: empty.c
-	$(CC) -o $@ $<
-
 loader.txt: empty
 	$(OBJCOPY) --dump-section .interp=$@ $< /dev/null
 
@@ -134,7 +131,7 @@ cap_text.o: cap_text.c $(USE_GPERF_OUTPUT) $(INCLS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE_GPERF_OUTPUT) -c $< -o $@
 
 cap_test: cap_test.c libcap.h $(CAPOBJS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< $(CAPOBJS) -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< $(CAPOBJS) -o $@
 
 libcapsotest: $(CAPLIBNAME)
 	./$(CAPLIBNAME)

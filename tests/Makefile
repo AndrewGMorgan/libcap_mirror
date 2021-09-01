@@ -105,20 +105,17 @@ run_exploit_test: exploit noexploit
 	@echo exploit should fail
 	$(SUDO) ./noexploit ; if [ $$? -eq 0 ]; then exit 0; else exit 1 ; fi
 
-exploit.o: exploit.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
-
 exploit: exploit.o $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) -lpthread
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) -lpthread
 
 # Note, for some reason, the order of libraries is important to avoid
 # the exploit working for dynamic linking.
 noexploit: exploit.o $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB)
 
 # This one runs in a chroot with no shared library files.
 noop: noop.c
-	$(CC) $(CFLAGS) $< -o $@ --static
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ --static
 
 clean:
 	rm -f psx_test libcap_psx_test libcap_launch_test uns_test *~
