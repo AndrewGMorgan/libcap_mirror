@@ -66,17 +66,17 @@ run_psx_test: psx_test
 	./psx_test
 
 psx_test: psx_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB)
 
 run_libcap_psx_test: libcap_psx_test
 	./libcap_psx_test
 
 libcap_psx_test: libcap_psx_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB)
 
 # privileged
 uns_test: uns_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB)
 
 run_uns_test: uns_test
 	echo exit | $(SUDO) ./uns_test
@@ -88,13 +88,13 @@ run_libcap_psx_launch_test: libcap_psx_launch_test ../progs/tcapsh-static
 	$(SUDO) ./libcap_psx_launch_test
 
 libcap_launch_test: libcap_launch_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB)
 
 # This varies only slightly from the above insofar as it currently
 # only links in the pthreads fork support. TODO() we need to change
 # the source to do something interesting with pthreads.
 libcap_psx_launch_test: libcap_launch_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DWITH_PTHREADS $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -DWITH_PTHREADS $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB)
 
 
 # This test demonstrates that libpsx is needed to secure multithreaded
@@ -109,12 +109,12 @@ exploit.o: exploit.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 exploit: exploit.o $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) -lpthread $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) -lpthread
 
 # Note, for some reason, the order of libraries is important to avoid
 # the exploit working for dynamic linking.
 noexploit: exploit.o $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB)
 
 # This one runs in a chroot with no shared library files.
 noop: noop.c

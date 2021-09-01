@@ -28,7 +28,7 @@ endif
 	$(MAKE) -C ../libcap libcap.so
 
 $(BUILD): %: %.o $(DEPS)
-	$(CC) $(CFLAGS) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBCAPLIB)
 
 %.o: %.c $(INCS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
@@ -49,8 +49,10 @@ capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
 	diff -u capshdoc.h $@ || (rm $@ ; exit 1)
 
 capsh: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) $(LDFLAGS) -o $@ $< $(LIBCAPLIB)
 
+# Statically linked with minimal linkage flags to enable running in a
+# chroot and in other in-tree testing contexts.
 tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) --static
 

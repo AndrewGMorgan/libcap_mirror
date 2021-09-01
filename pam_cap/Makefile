@@ -20,7 +20,7 @@ execable.o: execable.c ../libcap/execable.h ../libcap/loader.txt
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBCAP_VERSION=\"libcap-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" -c execable.c -o $@
 
 pam_cap.so: pam_cap.o execable.o pam_cap_linkopts
-	cat pam_cap_linkopts | xargs -e $(LD) -o $@ pam_cap.o execable.o $(LIBCAPLIB) $(LDFLAGS)
+	cat pam_cap_linkopts | xargs -e $(LD) $(LDFLAGS) -o $@ pam_cap.o execable.o $(LIBCAPLIB)
 
 # Some distributions force link everything at compile time, and don't
 # take advantage of libpam's dlopen runtime options to resolve ill
@@ -51,7 +51,7 @@ pam_cap_linkopts: lazylink.so
 	./lazylink.so || echo "-lpam" >> $@
 
 lazylink.so: lazylink.c ../libcap/execable.h ../libcap/loader.txt
-	$(LD) -o $@ $(CFLAGS) $(CPPFLAGS) lazylink.c -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" $(LDFLAGS) -Wl,-e,__so_start
+	$(LD) -o $@ $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) lazylink.c -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" -Wl,-e,__so_start
 endif
 endif
 
@@ -62,10 +62,10 @@ pam_cap.o: pam_cap.c
 	$(MAKE) -C ../libcap libcap.a
 
 test_pam_cap: test_pam_cap.c pam_cap.c ../libcap/libcap.a
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ test_pam_cap.c $(LIBCAPLIB) $(LDFLAGS) --static
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ test_pam_cap.c $(LIBCAPLIB) --static
 
 testlink: test.c pam_cap.o
-	$(CC) $(CFLAGS) -o $@ $+ -lpam -ldl $(LIBCAPLIB) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ -lpam -ldl $(LIBCAPLIB)
 
 test: testlink test_pam_cap pam_cap.so
 	$(MAKE) testlink
