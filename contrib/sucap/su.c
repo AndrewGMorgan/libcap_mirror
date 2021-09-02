@@ -1352,7 +1352,7 @@ static int perform_launch_and_cleanup(cap_t all, int is_login,
     char * const * shell_env;
     cap_launch_t launcher;
     pid_t child;
-
+    cap_iab_t iab;
 
     /*
      * Break up the shell command into a command and arguments
@@ -1387,6 +1387,16 @@ static int perform_launch_and_cleanup(cap_t all, int is_login,
 	return PAM_SYSTEM_ERR;
     }
 
+    iab = cap_iab_get_proc();
+    if (iab == NULL) {
+	D(("failed to read IAB value of process"));
+	return PAM_SYSTEM_ERR;
+    }
+    if (cap_set_proc(all) != 0) {
+	D(("failed to restore process capabilities"));
+	return PAM_SYSTEM_ERR;
+    }
+
     launcher = cap_new_launcher(shell_args[0],
 				(const char * const *) &shell_args[1],
 				(const char * const *) shell_env);
@@ -1394,7 +1404,7 @@ static int perform_launch_and_cleanup(cap_t all, int is_login,
 	D(("failed to initialize launcher"));
 	return PAM_SYSTEM_ERR;
     }
-    cap_launcher_set_iab(launcher, cap_iab_get_proc());
+    cap_launcher_set_iab(launcher, iab);
     cap_launcher_callback(launcher, launch_callback_fn);
 
     child = cap_launch(launcher, pamh);
@@ -1446,6 +1456,7 @@ int main(int argc, char *argv[])
 
     all = cap_get_proc();
     cap_fill(all, CAP_EFFECTIVE, CAP_PERMITTED);
+    cap_clear_flag(all, CAP_INHERITABLE);
 
     checkfds();
 
@@ -1553,7 +1564,7 @@ int main(int argc, char *argv[])
 	goto utmp_closer;
     }
 
-    status = perform_launch_and_cleanup(t_caps, is_login, shell, command);
+    status = perform_launch_and_cleanup(all, is_login, shell, command);
     close_session(pamh, all);
 
 utmp_closer:
