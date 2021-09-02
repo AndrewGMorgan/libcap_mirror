@@ -84,11 +84,13 @@ var (
 	proc    = flag.String("proc", "/proc", "root of proc filesystem")
 	depth   = flag.Int("depth", 0, "how many processes deep (0=all)")
 	verbose = flag.Bool("verbose", false, "display empty capabilities")
+	color   = flag.Bool("color", false, "color the targeted process(es) red")
 )
 
 type task struct {
 	mu       sync.Mutex
 	viewed   bool
+	depth    int
 	pid      string
 	cmd      string
 	cap      *cap.Set
@@ -106,6 +108,13 @@ var (
 	wg sync.WaitGroup
 	mu sync.Mutex
 )
+
+func highlight(text string) string {
+	if !*color {
+		return text
+	}
+	return fmt.Sprint("\033[31m", text, "\033[0m")
+}
 
 func (ts *task) fill(pid string, n int, thread bool) {
 	defer wg.Done()
@@ -178,10 +187,10 @@ var empty = cap.NewSet()
 var noiab = cap.IABInit()
 
 // rDump prints out the tree of processes rooted at pid.
-func rDump(pids map[string]*task, pid, stub, lstub, estub string, depth int) {
+func rDump(pids map[string]*task, requested map[string]bool, pid, stub, lstub, estub string, depth int) {
 	info, ok := pids[pid]
 	if !ok {
-		fmt.Println("[PID:", pid, "not found]")
+		panic("programming error")
 		return
 	}
 	if info.viewed {
@@ -226,12 +235,22 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string, depth int) {
 	if len(same) != 0 {
 		tids = fmt.Sprintf("+{%s}", strings.Join(same, ","))
 	}
-	fmt.Printf("%s%s%s(%s%s)%s%s\n", stub, lstub, info.cmd, pid, tids, c, iab)
+	hPID := pid
+	if requested[pid] {
+		hPID = highlight(pid)
+		requested[pid] = false
+	}
+	fmt.Printf("%s%s%s(%s%s)%s%s\n", stub, lstub, info.cmd, hPID, tids, c, iab)
 	// loop over any threads that differ in capability state.
 	for len(misc) != 0 {
 		this := misc[0]
 		var nmisc []*task
-		same := []string{this.pid}
+		var hPID = this.pid
+		if requested[this.pid] {
+			hPID = highlight(this.pid)
+			requested[this.pid] = false
+		}
+		same := []string{hPID}
 		for _, t := range misc[1:] {
 			if val, _ := this.cap.Cf(t.cap); val != 0 {
 				nmisc = append(nmisc, t)
@@ -245,7 +264,12 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string, depth int) {
 				nmisc = append(nmisc, t)
 				continue
 			}
-			same = append(same, t.pid)
+			hPID = t.pid
+			if requested[t.pid] {
+				hPID = highlight(t.pid)
+				requested[t.pid] = false
+			}
+			same = append(same, hPID)
 		}
 		c := ""
 		set := this.cap
@@ -283,7 +307,7 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string, depth int) {
 		if i+1 == len(x) {
 			estub = "  "
 		}
-		rDump(pids, cid, stub, lstub, estub, depth)
+		rDump(pids, requested, cid, stub, lstub, estub, depth)
 	}
 }
 
@@ -304,11 +328,20 @@ func findPIDs(list []string, pids map[string]*task, glob string) <-chan string {
 		if found {
 			return
 		}
-		// TODO if no processes found, should we search the
-		// threads?
 		fmt.Printf("no process matched %q\n", glob)
 	}()
 	return finds
+}
+
+func setDepth(pids map[string]*task, pid string) int {
+	if pid == "0" {
+		return 0
+	}
+	x := pids[pid]
+	if x.depth == 0 {
+		x.depth = setDepth(pids, x.parent) + 1
+	}
+	return x.depth
 }
 
 func main() {
@@ -345,6 +378,7 @@ func main() {
 
 	var list []string
 	for pid, ts := range pids {
+		setDepth(pids, pid)
 		list = append(list, pid)
 		if pid == "0" {
 			continue
@@ -353,9 +387,15 @@ func main() {
 			pts.children = append(pts.children, pid)
 		}
 	}
+
 	sort.Slice(list, func(i, j int) bool {
-		a, _ := strconv.Atoi(list[i])
-		b, _ := strconv.Atoi(list[j])
+		x, y := pids[list[i]], pids[list[j]]
+		if x.depth > y.depth {
+			return false
+		}
+		// Break tie with numerical order
+		a, _ := strconv.Atoi(x.pid)
+		b, _ := strconv.Atoi(y.pid)
 		return a < b
 	})
 
@@ -364,13 +404,45 @@ func main() {
 		args = []string{"1"}
 	}
 
+	wanted := make(map[string]int)
+	requested := make(map[string]bool)
 	for _, pid := range args {
 		if _, err := strconv.ParseUint(pid, 10, 64); err == nil {
-			rDump(pids, pid, "", "--", "  ", *depth)
+			requested[pid] = true
+			if info, ok := pids[pid]; ok {
+				wanted[pid] = info.depth
+				continue
+			}
+			if requested[pid] {
+				continue
+			}
+			requested[pid] = true
 			continue
 		}
 		for pid := range findPIDs(list, pids, pid) {
-			rDump(pids, pid, "", "--", "  ", *depth)
+			requested[pid] = true
+			if info, ok := pids[pid]; ok {
+				wanted[pid] = info.depth
+			}
+		}
+	}
+
+	var noted []string
+	for pid, _ := range wanted {
+		noted = append(noted, pid)
+	}
+	sort.Slice(noted, func(i, j int) bool {
+		return wanted[noted[i]] < wanted[noted[j]]
+	})
+
+	// We've boiled down the processes to a unique set of targets.
+	for _, pid := range noted {
+		rDump(pids, requested, pid, "", "--", "  ", *depth)
+	}
+
+	for pid, missed := range requested {
+		if missed {
+			fmt.Println("[PID", pid, "not found]")
 		}
 	}
 }
