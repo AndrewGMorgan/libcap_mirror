@@ -88,6 +88,7 @@ var (
 
 type task struct {
 	mu       sync.Mutex
+	viewed   bool
 	pid      string
 	cmd      string
 	cap      *cap.Set
@@ -183,6 +184,13 @@ func rDump(pids map[string]*task, pid, stub, lstub, estub string, depth int) {
 		fmt.Println("[PID:", pid, "not found]")
 		return
 	}
+	if info.viewed {
+		// This process (tree) has already been viewed so skip
+		// repeating it.
+		return
+	}
+	info.viewed = true
+
 	c := ""
 	set := info.cap
 	if set != nil {
