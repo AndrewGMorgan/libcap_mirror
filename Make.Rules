@@ -1,7 +1,7 @@
 # Common version number defines for libcap
 LIBTITLE=libcap
 VERSION=2
-MINOR=55
+MINOR=56
 
 #
 ## Optional prefixes:
