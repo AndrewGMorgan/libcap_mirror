@@ -71,6 +71,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -84,7 +85,8 @@ var (
 	proc    = flag.String("proc", "/proc", "root of proc filesystem")
 	depth   = flag.Int("depth", 0, "how many processes deep (0=all)")
 	verbose = flag.Bool("verbose", false, "display empty capabilities")
-	color   = flag.Bool("color", false, "color the targeted process(es) red")
+	color   = flag.Bool("color", true, "color targeted PIDs on tty in red")
+	colour  = flag.Bool("colour", true, "colour targeted PIDs on tty in red")
 )
 
 type task struct {
@@ -105,15 +107,24 @@ func (ts *task) String() string {
 }
 
 var (
-	wg sync.WaitGroup
-	mu sync.Mutex
+	wg      sync.WaitGroup
+	mu      sync.Mutex
+	colored bool
 )
 
-func highlight(text string) string {
-	if !*color {
-		return text
+func isATTY() bool {
+	s, err := os.Stdout.Stat()
+	if err == nil && (s.Mode()&os.ModeCharDevice) != 0 {
+		return true
 	}
-	return fmt.Sprint("\033[31m", text, "\033[0m")
+	return false
+}
+
+func highlight(text string) string {
+	if colored {
+		return fmt.Sprint("\033[31m", text, "\033[0m")
+	}
+	return text
 }
 
 func (ts *task) fill(pid string, n int, thread bool) {
@@ -347,6 +358,9 @@ func setDepth(pids map[string]*task, pid string) int {
 func main() {
 	flag.Parse()
 
+	// Honor the command line request if possible.
+	colored = *color && *colour && isATTY()
+
 	// Just in case the user wants to override this, we set the
 	// cap package up to find it.
 	cap.ProcRoot(*proc)
@@ -356,11 +370,11 @@ func main() {
 		cmd: "<kernel>",
 	}
 
+	// Ingest the entire process tree
 	fs, err := ioutil.ReadDir(*proc)
 	if err != nil {
 		log.Fatalf("unable to open %q: %v", *proc, err)
 	}
-
 	for _, f := range fs {
 		pid := f.Name()
 		n, err := strconv.ParseInt(pid, 10, 64)
@@ -388,15 +402,16 @@ func main() {
 		}
 	}
 
+	// Sort the proccess tree by tree depth - shallowest first,
+	// with numerical order breaking ties.
 	sort.Slice(list, func(i, j int) bool {
 		x, y := pids[list[i]], pids[list[j]]
-		if x.depth > y.depth {
-			return false
+		if x.depth == y.depth {
+			a, _ := strconv.Atoi(x.pid)
+			b, _ := strconv.Atoi(y.pid)
+			return a < b
 		}
-		// Break tie with numerical order
-		a, _ := strconv.Atoi(x.pid)
-		b, _ := strconv.Atoi(y.pid)
-		return a < b
+		return x.depth < y.depth
 	})
 
 	args := flag.Args()
