@@ -1,5 +1,5 @@
 .\"                                      Hey, EMACS: -*- nroff -*-
-.TH CAPTREE 8 "2021-08-29"
+.TH CAPTREE 8 "2021-09-02"
 .\" Please adjust this date whenever revising the manpage.
 .SH NAME
 captree \- display process tree capabilities
@@ -45,6 +45,13 @@ Displays the process tree to a depth of
 .IR n .
 Note, the default value for this parameter is 0, which implies
 infinite depth.
+.TP
+.BI \-\-colo[u]r =false
+Colo[u]rs the targeted PIDs, if stdout is a TTY, in red. This option
+defaults to true when running via a TTY. The \fB--color\fI=false\fR
+argument will suppress this color. Piping the output into some other
+program will also suppress the use of colo[u]r.
+
 .SH REPORTING BUGS
 Please report bugs via:
 .TP
