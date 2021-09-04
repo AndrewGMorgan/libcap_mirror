@@ -78,10 +78,11 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 
 DEBUG = # -g -DDEBUG
 WARNINGS=-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wcast-align \
-        -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs       \
+	-Wstrict-prototypes -Wmissing-prototypes -Wnested-externs       \
 	-Winline -Wshadow
 COPTS ?= -O2
-CFLAGS ?= $(COPTS) $(WARNINGS) $(DEBUG)
+CFLAGS ?= $(COPTS) $(DEBUG)
+CFLAGS += $(WARNINGS)
 CPPFLAGS += -Dlinux $(DEFINES) $(LIBCAP_INCLUDES)
 LDFLAGS ?= # -g
 
