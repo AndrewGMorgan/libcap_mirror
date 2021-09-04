@@ -8,12 +8,10 @@ include ../Make.Rules
 #
 
 all:
-	$(MAKE) libcap_launch_test uns_test
-ifeq ($(PTHREADS),yes)
-	$(MAKE) psx_test libcap_psx_test libcap_psx_launch_test
-endif
+	@echo leave test building to test target
 
-install: all
+install:
+	@echo nothing to install from tests
 
 ifeq ($(DYNAMIC),yes)
 LINKEXTRA=-Wl,-rpath,../libcap
