@@ -72,7 +72,7 @@ test: testlink test_pam_cap pam_cap.so
 	LD_LIBRARY_PATH=../libcap ./pam_cap.so --help
 	@echo "module can be run as an executable!"
 
-sudotest: test test_pam_cap
+sudotest: test_pam_cap
 	$(SUDO) ./test_pam_cap root 0x0 0x0 0x0 config=./capability.conf
 	$(SUDO) ./test_pam_cap root 0x0 0x0 0x0 config=./sudotest.conf
 	$(SUDO) ./test_pam_cap alpha 0x0 0x0 0x0 config=./capability.conf

@@ -8,7 +8,7 @@ include Make.Rules
 # flags
 #
 
-all install clean: %: %-here
+all test sudotest install clean: %: %-here
 	$(MAKE) -C libcap $@
 ifneq ($(PAM_CAP),no)
 	$(MAKE) -C pam_cap $@
@@ -20,9 +20,12 @@ endif
 	$(MAKE) -C tests $@
 	$(MAKE) -C progs $@
 	$(MAKE) -C doc $@
-	$(MAKE) -C kdebug $@
 
 all-here:
+
+test-here:
+
+sudotest-here:
 
 install-here:
 
@@ -41,29 +44,8 @@ distclean: clean
 release: distclean
 	cd .. && ln -s libcap libcap-$(VERSION).$(MINOR) && tar cvf libcap-$(VERSION).$(MINOR).tar --exclude patches libcap-$(VERSION).$(MINOR)/* && rm libcap-$(VERSION).$(MINOR)
 
-test: all
-	$(MAKE) -C libcap $@
-	$(MAKE) -C tests $@
-ifneq ($(PAM_CAP),no)
-	$(MAKE) -C pam_cap $@
-endif
-ifeq ($(GOLANG),yes)
-	$(MAKE) -C go $@
-endif
-	$(MAKE) -C progs $@
-
 ktest: all
 	$(MAKE) -C kdebug test
-
-sudotest: all
-	$(MAKE) -C tests $@
-ifneq ($(PAM_CAP),no)
-	$(MAKE) -C pam_cap $@
-endif
-ifeq ($(GOLANG),yes)
-	$(MAKE) -C go $@
-endif
-	$(MAKE) -C progs $@
 
 distcheck:
 	./distcheck.sh

@@ -42,7 +42,8 @@ ifeq ($(RAISE_SETFCAP),yes)
 	$(FAKEROOT)$(SBINDIR)/setcap cap_setfcap=i $(FAKEROOT)$(SBINDIR)/setcap
 endif
 
-test: $(PROGS) capsh
+test:
+	@echo "no program tests without privilege, try 'make sudotest'"
 
 capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
 	./mkcapshdoc.sh > $@
@@ -60,7 +61,7 @@ uns_test: ../tests/uns_test.c
 	$(MAKE) -C ../tests uns_test
 	cp ../tests/uns_test .
 
-sudotest: test tcapsh-static uns_test
+sudotest: tcapsh-static uns_test
 	$(SUDO) $(LDPATH) ./quicktest.sh
 
 clean:

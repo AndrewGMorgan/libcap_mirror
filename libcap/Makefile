@@ -148,6 +148,9 @@ ifeq ($(PTHREADS),yes)
 endif
 endif
 
+sudotest:
+	@echo no sudotests for libcap
+
 install: install-static
 ifeq ($(SHARED),yes)
 	$(MAKE) install-shared

@@ -32,6 +32,12 @@ MANS = $(MAN1S) $(MAN3S) $(MAN8S)
 
 all: $(MANS)
 
+test:
+	@echo no doc tests available
+
+sudotest:
+	@echo no doc sudotests available
+
 .PHONY: html
 html:
 	mkdir -p html

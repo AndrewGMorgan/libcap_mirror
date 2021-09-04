@@ -14,8 +14,9 @@ IMPORTDIR=kernel.org/pub/linux/libs/security/libcap
 PKGDIR=pkg/$(GOOSARCH)/$(IMPORTDIR)
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
+TESTS=compare-cap try-launching psx-signals
 
-all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree compare-cap try-launching psx-signals
+all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree
 
 $(DEPS):
 	$(MAKE) -C ../libcap all
@@ -93,7 +94,7 @@ endif
 b210613: b210613.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build -mod=vendor $<
 
-test: all
+test: all $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/psx
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
