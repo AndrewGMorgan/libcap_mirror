@@ -91,15 +91,20 @@ Following this command, the effective capabilities will be cleared,
 but the permitted set will not be, so the running program is still
 privileged.
 .TP
-.B \-\-modes
-Lists all of the libcap modes supported by
-.BR \-\-mode .
+.B \-\-mode
+Display the prevailing libcap mode as guessed by the
+.BR cap_get_mode (3)
+function.
 .TP
 .BR \-\-mode= <mode>
 Force the program into a
 .BR cap_set_mode (3)
 security mode. This is a set of securebits and prevailing capability
 arrangement recommended for its pre-determined security stance.
+.TP
+.B \-\-modes
+Lists all of the libcap modes supported by
+.BR \-\-mode= <mode>.
 .TP
 .BR \-\-inmode= <mode>
 Confirm that the prevailing mode is that specified in

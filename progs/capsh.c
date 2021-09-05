@@ -611,30 +611,38 @@ int main(int argc, char *argv[], char *envp[])
 		printf(" %s", m);
 	    }
 	    printf("\n");
-	} else if (!strncmp("--mode=", argv[i], 7)) {
-	    const char *target = argv[i]+7;
-	    cap_mode_t c;
-	    int found = 0;
-	    for (c = 1; ; c++) {
-		const char *m = cap_mode_name(c);
-		if (!strcmp("UNKNOWN", m)) {
-		    found = 0;
-		    break;
+	} else if (!strncmp("--mode", argv[i], 6)) {
+	    if (argv[i][6] == '=') {
+		const char *target = argv[i]+7;
+		cap_mode_t c;
+		int found = 0;
+		for (c = 1; ; c++) {
+		    const char *m = cap_mode_name(c);
+		    if (!strcmp("UNKNOWN", m)) {
+			found = 0;
+			break;
+		    }
+		    if (!strcmp(m, target)) {
+			found = 1;
+			break;
+		    }
 		}
-		if (!strcmp(m, target)) {
-		    found = 1;
-		    break;
+		if (!found) {
+		    printf("unsupported mode: %s\n", target);
+		    exit(1);
 		}
-	    }
-	    if (!found) {
-		printf("unsupported mode: %s\n", target);
-		exit(1);
-	    }
-	    int ret = cap_set_mode(c);
-	    if (ret != 0) {
-		printf("failed to set mode [%s]: %s\n",
-		       target, strerror(errno));
-		exit(1);
+		int ret = cap_set_mode(c);
+		if (ret != 0) {
+		    printf("failed to set mode [%s]: %s\n",
+			   target, strerror(errno));
+		    exit(1);
+		}
+	    } else if (argv[i][6]) {
+		printf("unrecognized command [%s]\n", argv[i]);
+		goto usage;
+	    } else {
+		cap_mode_t m = cap_get_mode();
+		printf("Mode: %s\n", cap_mode_name(m));
 	    }
 	} else if (!strncmp("--inmode=", argv[i], 9)) {
 	    const char *target = argv[i]+9;
@@ -1106,8 +1114,9 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --keep=<n>     set keep-capability bit to <n>\n"
 		   "  --killit=<n>   send signal(n) to child\n"
 		   "  --license      display license info\n"
-		   "  --modes        list libcap named capability modes\n"
-		   "  --mode=<xxx>   set capability mode to <xxx>\n"
+		   "  --mode         display current libcap mode\n"
+		   "  --mode=<xxx>   set libcap mode to <xxx>\n"
+		   "  --modes        list libcap named modes\n"
 		   "  --no-new-privs set sticky process privilege limiter\n"
 		   "  --noamb        reset (drop) all ambient capabilities\n"
 		   "  --print        display capability relevant state\n"
