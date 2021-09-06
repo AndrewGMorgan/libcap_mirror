@@ -49,7 +49,7 @@ static int do_getcap(const char *fname, const struct stat *stbuf,
 
     cap_d = cap_get_file(fname);
     if (cap_d == NULL) {
-	if (errno != ENODATA) {
+	if (errno != ENODATA && errno != ENOTSUP) {
 	    fprintf(stderr, "Failed to get capabilities of file '%s' (%s)\n",
 		    fname, strerror(errno));
 	} else if (verbose) {
