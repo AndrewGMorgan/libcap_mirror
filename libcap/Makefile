@@ -130,7 +130,7 @@ endif
 cap_text.o: cap_text.c $(USE_GPERF_OUTPUT) $(INCLS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDE_GPERF_OUTPUT) -c $< -o $@
 
-cap_test: cap_test.c libcap.h $(CAPOBJS)
+cap_test: cap_test.c $(INCLS) $(CAPOBJS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< $(CAPOBJS) -o $@
 
 libcapsotest: $(CAPLIBNAME)

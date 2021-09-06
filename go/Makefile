@@ -94,7 +94,7 @@ endif
 b210613: b210613.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build -mod=vendor $<
 
-test: all $(TESTS)
+test: setid gowns captree $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/psx
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
