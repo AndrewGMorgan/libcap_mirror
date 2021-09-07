@@ -176,7 +176,7 @@ the current process. In all cases,
 is deactivated when an
 .BR exec ()
 is performed. See
-.B \-\-secbits
+.BR \-\-secbits and \-\-mode
 for ways to disable this feature.
 .TP
 .BI \-\-secbits= N
@@ -184,16 +184,17 @@ Set the security-bits for the program.
 This is done using the
 .BR prctl (2)
 .B PR_SET_SECUREBITS
-operation.
-The list of supported bits and their meaning can be found in
-the
+operation.  The list of supported bits and their meaning can be found
+in the
 .B <sys/secbits.h>
 header file. The program will list these bits via the
 .B \-\-print
-command.
-The argument is expressed as a numeric bitmask,
-in any of the formats permitted by
+command.  The argument is expressed as a numeric bitmask, in any of
+the formats permitted by
 .BR strtoul (3).
+An alternative to this bit-twiddling is embedded in the
+.B \-\-mode*
+commandline arguments.
 .TP
 .BI \-\-chroot= /some/path
 Execute the
@@ -227,6 +228,18 @@ Give a brief textual description of what privileges the specified
 capability makes available to a running program. Note, instead of
 \fIcap_xxx\fP, one can provide a decimal number and \fBcapsh\fP will
 look up the corresponding capability's description.
+.TP
+.BI \-\-shell =/full/path
+This option changes the shell that is invoked when the argument
+\fB==\fP is encountered.
+.TP
+.BI \-\-strict
+This option toggles the suppression of subsequent attempts to fixup
+\fB\-\-caps=\fP and \fB\-\-inh=\fP arguments. That is, when the
+prevailing Effective flag does not contain \fBCAP_SETPCAP\fB the to be
+raised Inheritable Flag values (in strict mode) are limited to those
+in the Permitted set. The strict mode defaults to off. Supplying this
+argument an even number of times restores this default behavior.
 .TP
 .BI \-\-suggest= phrase
 Scan each of the textual descriptions of capabilities, known to

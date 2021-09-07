@@ -130,7 +130,22 @@ fail_capsh --secbits=47 --print -- -c "./capsh --uid=$nouid"
 pass_capsh --secbits=0x2f --print -- -c "./privileged --uid=$nouid"
 
 # observe that the bounding set can be used to suppress this forced capability
-fail_capsh --drop=cap_setuid --secbits=0x2f --print -- -c "./privileged --uid=$nouid"
+fail_capsh --drop=cap_setuid --secbits=0x2f --print -- \
+	   -c "./privileged --uid=$nouid"
+
+# observe that effective cap_setpcap is required to drop bset
+fail_capsh --caps="=ep cap_setpcap-ep" --drop=cap_setuid --current
+pass_capsh --strict --caps="cap_setpcap=ep" --drop=cap_setuid --current
+fail_capsh --strict --caps="cap_setpcap=p" --drop=cap_setuid --current
+fail_capsh --strict --caps="=ep cap_setpcap-e" --drop=cap_setuid --current
+
+# observe that effective cap_setpcap is required to raise non-p bits
+fail_capsh --strict --caps="cap_setpcap=p" --inh=cap_chown --current
+# non-strict mode and capsh figures it out
+pass_capsh --caps="cap_setpcap=p" --inh=cap_chown --current
+
+# permitted bits can be raised in inheritable flag without being effective.
+pass_capsh --strict --caps="cap_chown=p" --inh=cap_chown --current
 
 # change the way the capability is obtained (make it inheritable)
 ./setcap cap_setuid,cap_setgid=ei ./privileged
@@ -199,7 +214,8 @@ echo "no capabilities [\$caps] for this shell script"
 exit 1
 EOF
     /bin/chmod +x hack.sh
-    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- ./hack.sh
+    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- \
+	       ./hack.sh
 
     /bin/rm -f hack.sh
 
@@ -207,11 +223,24 @@ EOF
     # This is sort of the opposite of privileged - it should ensure that
     # the file can never acquire privilege by the ambient method.
     ./setcap = ./privileged
-    fail_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=1"
+    fail_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- \
+	       -c "./privileged --print --uid=1"
+
+    pass_capsh --keep=1 --uid=$nouid --strict \
+	       --caps="cap_setuid=p cap_setpcap=ep" \
+	       --inh=cap_setuid --addamb=cap_setuid --current
+
+    # No effective capabilities are needed to raise or lower ambient values.
+    pass_capsh --keep=1 --uid=$nouid --strict --caps="cap_setuid=p" \
+	       --inh=cap_setuid --addamb=cap_setuid --current
+    pass_capsh --keep=1 --uid=$nouid --strict --iab="!^cap_setuid" \
+	       --caps="cap_setuid=pi" --current --delamb=cap_setuid --current
+
 
     # finally remove the capability from the privileged binary and try again.
     ./setcap -r ./privileged
-    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- -c "./privileged --print --uid=1"
+    pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- \
+	       -c "./privileged --print --uid=1"
 
     # validate IAB setting with an ambient capability
     pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_setuid'
@@ -250,7 +279,8 @@ if [ -f ../go/compare-cap ]; then
 	echo "FAILED to execute go binary"
 	exit 1
     fi
-    LD_LIBRARY_PATH=../libcap ./compare-cap 2>&1 | grep "skipping file cap tests"
+    LD_LIBRARY_PATH=../libcap ./compare-cap 2>&1 | \
+	grep "skipping file cap tests"
     if [ $? -eq 0 ]; then
 	echo "FAILED not engaging file cap tests"
     fi

@@ -191,29 +191,42 @@ static void arg_print(void)
 static const cap_value_t raise_setpcap[1] = { CAP_SETPCAP };
 static const cap_value_t raise_chroot[1] = { CAP_SYS_CHROOT };
 
-static void push_pcap(cap_t *orig_p, cap_t *raised_for_setpcap_p)
+static cap_t will_need_setpcap(int strict)
 {
-    /*
-     * We need to do this here because --inh=XXX may have reset
-     * orig and it isn't until we are within the --drop code that
-     * we know what the prevailing (orig) pI value is.
-     */
+    cap_flag_value_t enabled;
+    cap_t raised = NULL;
+
+    if (strict) {
+	return NULL;
+    }
+
+    raised = cap_get_proc();
+    if (raised == NULL) {
+	perror("Capabilities not available");
+	exit(1);
+    }
+    if (cap_get_flag(raised, CAP_SETPCAP, CAP_EFFECTIVE, &enabled) != 0) {
+	perror("Unable to check CAP_EFFECTIVE CAP_SETPCAP value");
+	exit(1);
+    }
+    if (enabled != CAP_SET) {
+	cap_set_flag(raised, CAP_EFFECTIVE, 1, raise_setpcap, CAP_SET);
+    } else {
+	/* no need to raise - since already raised */
+	cap_free(raised);
+	raised = NULL;
+    }
+    return raised;
+}
+
+static void push_pcap(int strict, cap_t *orig_p, cap_t *raised_for_setpcap_p)
+{
     *orig_p = cap_get_proc();
     if (NULL == *orig_p) {
 	perror("Capabilities not available");
 	exit(1);
     }
-
-    *raised_for_setpcap_p = cap_dup(*orig_p);
-    if (NULL == *raised_for_setpcap_p) {
-	fprintf(stderr, "modification requires CAP_SETPCAP\n");
-	exit(1);
-    }
-    if (cap_set_flag(*raised_for_setpcap_p, CAP_EFFECTIVE, 1,
-		     raise_setpcap, CAP_SET) != 0) {
-	perror("unable to select CAP_SETPCAP");
-	exit(1);
-    }
+    *raised_for_setpcap_p = will_need_setpcap(strict);
 }
 
 static void pop_pcap(cap_t orig, cap_t raised_for_setpcap)
@@ -222,23 +235,24 @@ static void pop_pcap(cap_t orig, cap_t raised_for_setpcap)
     cap_free(orig);
 }
 
-static void arg_drop(const char *arg_names)
+static void arg_drop(int strict, const char *arg_names)
 {
     char *ptr;
     cap_t orig, raised_for_setpcap;
     char *names;
 
-    push_pcap(&orig, &raised_for_setpcap);
+    push_pcap(strict, &orig, &raised_for_setpcap);
     if (strcmp("all", arg_names) == 0) {
 	unsigned j = 0;
 	while (CAP_IS_SUPPORTED(j)) {
 	    int status;
-	    if (cap_set_proc(raised_for_setpcap) != 0) {
+	    if (raised_for_setpcap != NULL &&
+		cap_set_proc(raised_for_setpcap) != 0) {
 		perror("unable to raise CAP_SETPCAP for BSET changes");
 		exit(1);
 	    }
 	    status = cap_drop_bound(j);
-	    if (cap_set_proc(orig) != 0) {
+	    if (raised_for_setpcap != NULL && cap_set_proc(orig) != 0) {
 		perror("unable to lower CAP_SETPCAP post BSET change");
 		exit(1);
 	    }
@@ -271,12 +285,13 @@ static void arg_drop(const char *arg_names)
 	    fprintf(stderr, "capability [%s] is unknown to libcap\n", ptr);
 	    exit(1);
 	}
-	if (cap_set_proc(raised_for_setpcap) != 0) {
+	if (raised_for_setpcap != NULL &&
+	    cap_set_proc(raised_for_setpcap) != 0) {
 	    perror("unable to raise CAP_SETPCAP for BSET changes");
 	    exit(1);
 	}
 	status = cap_drop_bound(cap);
-	if (cap_set_proc(orig) != 0) {
+	if (raised_for_setpcap != NULL && cap_set_proc(orig) != 0) {
 	    perror("unable to lower CAP_SETPCAP post BSET change");
 	    exit(1);
 	}
@@ -292,23 +307,15 @@ static void arg_drop(const char *arg_names)
 static void arg_change_amb(const char *arg_names, cap_flag_value_t set)
 {
     char *ptr;
-    cap_t orig, raised_for_setpcap;
+    cap_t orig;
     char *names;
 
-    push_pcap(&orig, &raised_for_setpcap);
+    orig = cap_get_proc();
     if (strcmp("all", arg_names) == 0) {
 	unsigned j = 0;
 	while (CAP_IS_SUPPORTED(j)) {
 	    int status;
-	    if (cap_set_proc(raised_for_setpcap) != 0) {
-		perror("unable to raise CAP_SETPCAP for AMBIENT changes");
-		exit(1);
-	    }
 	    status = cap_set_ambient(j, set);
-	    if (cap_set_proc(orig) != 0) {
-		perror("unable to lower CAP_SETPCAP post AMBIENT change");
-		exit(1);
-	    }
 	    if (status != 0) {
 		char *name_ptr;
 
@@ -320,7 +327,7 @@ static void arg_change_amb(const char *arg_names, cap_flag_value_t set)
 	    }
 	    j++;
 	}
-	pop_pcap(orig, raised_for_setpcap);
+	cap_free(orig);
 	return;
     }
 
@@ -338,22 +345,14 @@ static void arg_change_amb(const char *arg_names, cap_flag_value_t set)
 	    fprintf(stderr, "capability [%s] is unknown to libcap\n", ptr);
 	    exit(1);
 	}
-	if (cap_set_proc(raised_for_setpcap) != 0) {
-	    perror("unable to raise CAP_SETPCAP for AMBIENT changes");
-	    exit(1);
-	}
 	status = cap_set_ambient(cap, set);
-	if (cap_set_proc(orig) != 0) {
-	    perror("unable to lower CAP_SETPCAP post AMBIENT change");
-	    exit(1);
-	}
 	if (status != 0) {
 	    fprintf(stderr, "failed to %s ambient [%s=%u]\n",
 		    set == CAP_CLEAR ? "clear":"raise", ptr, cap);
 	    exit(1);
 	}
     }
-    pop_pcap(orig, raised_for_setpcap);
+    cap_free(orig);
     free(names);
 }
 
@@ -444,6 +443,7 @@ int main(int argc, char *argv[], char *envp[])
 {
     pid_t child;
     unsigned i;
+    int strict = 0;
     const char *shell = SHELL;
 
     child = 0;
@@ -461,7 +461,7 @@ int main(int argc, char *argv[], char *envp[])
 
     for (i=1; i<argc; ++i) {
 	if (!strncmp("--drop=", argv[i], 7)) {
-	    arg_drop(argv[i]+7);
+	    arg_drop(strict, argv[i]+7);
 	} else if (!strncmp("--dropped=", argv[i], 10)) {
 	    cap_value_t cap;
 	    if (cap_from_name(argv[i]+10, &cap) < 0) {
@@ -476,7 +476,7 @@ int main(int argc, char *argv[], char *envp[])
 	    }
 	} else if (!strcmp("--has-ambient", argv[i])) {
 	    if (!CAP_AMBIENT_SUPPORTED()) {
-		fprintf(stderr, "ambient set not supported\n");
+		perror("ambient set not supported");
 		exit(1);
 	    }
 	} else if (!strncmp("--addamb=", argv[i], 9)) {
@@ -485,7 +485,7 @@ int main(int argc, char *argv[], char *envp[])
 	    arg_change_amb(argv[i]+9, CAP_CLEAR);
 	} else if (!strncmp("--noamb", argv[i], 7)) {
 	    if (cap_reset_ambient() != 0) {
-		fprintf(stderr, "failed to reset ambient set\n");
+		perror("failed to reset ambient set");
 		exit(1);
 	    }
 	} else if (!strncmp("--inh=", argv[i], 6)) {
@@ -493,24 +493,11 @@ int main(int argc, char *argv[], char *envp[])
 	    char *text;
 	    char *ptr;
 
-	    all = cap_get_proc();
-	    if (all == NULL) {
-		perror("Capabilities not available");
-		exit(1);
-	    }
+	    push_pcap(strict, &all, &raised_for_setpcap);
 	    if (cap_clear_flag(all, CAP_INHERITABLE) != 0) {
 		perror("libcap:cap_clear_flag() internal error");
 		exit(1);
 	    }
-
-	    raised_for_setpcap = cap_dup(all);
-	    if ((raised_for_setpcap != NULL)
-		&& (cap_set_flag(raised_for_setpcap, CAP_EFFECTIVE, 1,
-				 raise_setpcap, CAP_SET) != 0)) {
-		cap_free(raised_for_setpcap);
-		raised_for_setpcap = NULL;
-	    }
-
 	    text = cap_to_text(all, NULL);
 	    cap_free(all);
 	    if (text == NULL) {
@@ -527,13 +514,13 @@ int main(int argc, char *argv[], char *envp[])
 	    } else {
 		strcpy(ptr, text);
 	    }
+	    cap_free(text);
 
 	    all = cap_from_text(ptr);
 	    if (all == NULL) {
 		perror("Fatal error internalizing capabilities");
 		exit(1);
 	    }
-	    cap_free(text);
 	    free(ptr);
 
 	    if (raised_for_setpcap != NULL) {
@@ -551,45 +538,29 @@ int main(int argc, char *argv[], char *envp[])
 		perror("Unable to set inheritable capabilities");
 		exit(1);
 	    }
-	    /*
-	     * Since status is based on orig, we don't want to restore
-	     * the previous value of 'all' again here!
-	     */
-
 	    cap_free(all);
+	} else if (!strcmp("--strict", argv[i])) {
+	    strict = !strict;
 	} else if (!strncmp("--caps=", argv[i], 7)) {
 	    cap_t all, raised_for_setpcap;
 
-	    raised_for_setpcap = cap_get_proc();
-	    if (raised_for_setpcap == NULL) {
-		perror("Capabilities not available");
-		exit(1);
-	    }
-
-	    if ((raised_for_setpcap != NULL)
-		&& (cap_set_flag(raised_for_setpcap, CAP_EFFECTIVE, 1,
-				 raise_setpcap, CAP_SET) != 0)) {
-		cap_free(raised_for_setpcap);
-		raised_for_setpcap = NULL;
-	    }
-
+	    raised_for_setpcap = will_need_setpcap(strict);
 	    all = cap_from_text(argv[i]+7);
 	    if (all == NULL) {
 		fprintf(stderr, "unable to interpret [%s]\n", argv[i]);
 		exit(1);
 	    }
-
 	    if (raised_for_setpcap != NULL) {
 		/*
-		 * This is only for the case that pP does not contain
-		 * the requested change to pI.. Failing here is not
-		 * indicative of the cap_set_proc(all) failing (always).
+		 * This is actually only for the case that pP does not
+		 * contain the requested change to pI.. Failing here
+		 * is not always indicative of the cap_set_proc(all)
+		 * failing.
 		 */
 		(void) cap_set_proc(raised_for_setpcap);
 		cap_free(raised_for_setpcap);
 		raised_for_setpcap = NULL;
 	    }
-
 	    if (cap_set_proc(all) != 0) {
 		fprintf(stderr, "Unable to set capabilities [%s]\n", argv[i]);
 		exit(1);
@@ -598,7 +569,6 @@ int main(int argc, char *argv[], char *envp[])
 	     * Since status is based on orig, we don't want to restore
 	     * the previous value of 'all' again here!
 	     */
-
 	    cap_free(all);
 	} else if (!strcmp("--modes", argv[i])) {
 	    cap_mode_t c;
@@ -1122,6 +1092,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --print        display capability relevant state\n"
 		   "  --secbits=<n>  write a new value for securebits\n"
 		   "  --shell=/xx/yy use /xx/yy instead of " SHELL " for --\n"
+		   "  --strict       toggle --caps, --drop and --inh fixups\n"
 		   "  --suggest=text search cap descriptions for text\n"
 		   "  --supports=xxx exit 1 if capability xxx unsupported\n"
 		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
