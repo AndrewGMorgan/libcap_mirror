@@ -57,7 +57,7 @@ func (sc *syscaller) setSecbits(s Secbits) error {
 
 // Set attempts to force the process Secbits to a value. This function
 // will raise cap.SETPCAP in order to achieve this operation, and will
-// completely lower the Effective  vector of the process returning.
+// completely lower the Effective Flag of the process upon returning.
 func (s Secbits) Set() error {
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)
@@ -234,11 +234,11 @@ func (sc *syscaller) setUID(uid int) error {
 // all other variants of UID (EUID etc) to the specified value without
 // dropping the privilege of the current process. This function will
 // raise cap.SETUID in order to achieve this operation, and will
-// completely lower the Effective vector of the process before
+// completely lower the Effective Flag of the process before
 // returning. Unlike the traditional method of dropping privilege when
-// changing from [E]UID=0 to some other UID, this function only
-// performs a change of UID cap.SETUID is available, and the action
-// does not alter the Permitted Flag of the process' Set.
+// changing from [E]UID=0 to some other UID, this function only can
+// perform any change of UID if cap.SETUID is available, and this
+// operation will not alter the Permitted Flag of the process' Set.
 func SetUID(uid int) error {
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)

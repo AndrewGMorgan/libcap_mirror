@@ -229,20 +229,22 @@ func (c *Set) packFileCap() ([]byte, error) {
 // (*os.File).Fd(). This function can also be used to delete a file's
 // capabilities, by calling with c = nil.
 //
-// Note, Linux does not store the full Effective Value Flag in the
-// metadata for the file. Only a single Effective bit is stored in
-// this metadata. This single bit is non-zero if the Effective vector
-// has any overlapping bits with the Permitted or Inheritable vector
-// of c. This may appear suboptimal, but the reasoning behind it is
-// sound. Namely, the purpose of the Effective bit it to support
-// capabability unaware binaries that will only work if they magically
-// launch with the needed bits already raised (this bit is sometimes
-// referred to simply as the 'legacy' bit). Without *full* support for
-// capability manipulation, as it is provided in this "../libcap/cap"
-// package, this was the only way for Go programs to make use of
+// Note, Linux does not store the full Effective Flag in the metadata
+// for the file. Only a single Effective bit is stored in this
+// metadata. This single bit is non-zero if the Effective Flag has any
+// overlapping bits with the Permitted or Inheritable Flags of c. This
+// may appear suboptimal, but the reasoning behind it is sound.
+// Namely, the purpose of the Effective bit it to support capabability
+// unaware binaries that will only work if they magically launch with
+// the needed Values already raised (this bit is sometimes referred to
+// simply as the 'legacy' bit).
+//
+// Historical note: without *full* support for runtime capability
+// manipulation, as it is provided in this "../libcap/cap" package,
+// this was previously the only way for Go programs to make use of
 // file capabilities.
 //
-// The preferred way a binary will actually manipulate its
+// The preferred way that a binary will actually manipulate its
 // file-acquired capabilities is to carefully and deliberately use
 // this package (or libcap, assisted by libpsx, for threaded C/C++
 // family code).
@@ -272,7 +274,7 @@ func (c *Set) SetFd(file *os.File) error {
 // capabilities, by calling with c = nil.
 //
 // Note, see the comment for SetFd() for some non-obvious behavior of
-// Linux for the Effective Value vector on the modified file.
+// Linux for the Effective Flag on the modified file.
 func (c *Set) SetFile(path string) error {
 	fi, err := os.Stat(path)
 	if err != nil {

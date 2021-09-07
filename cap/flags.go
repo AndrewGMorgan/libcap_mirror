@@ -2,8 +2,8 @@ package cap
 
 import "errors"
 
-// GetFlag determines if the requested bit is enabled in the Flag
-// vector of the capability Set.
+// GetFlag determines if the requested Value is enabled in the
+// specified Flag of the capability Set.
 func (c *Set) GetFlag(vec Flag, val Value) (bool, error) {
 	if c == nil || len(c.flat) == 0 {
 		// Checked this first, because otherwise we are sure
@@ -96,10 +96,10 @@ func (c *Set) Fill(to, from Flag) error {
 // ErrBadValue indicates a bad capability value was specified.
 var ErrBadValue = errors.New("bad capability value")
 
-// bitOf converts from a Value into the offset and mask for a
-// specific Value bit in the compressed (kernel ABI) representation of
-// a capability vector. If the requested bit is unsupported, an error
-// is returned.
+// bitOf converts from a Value into the offset and mask for a specific
+// Value bit in the compressed (kernel ABI) representation of a
+// capabilities. If the requested bit is unsupported, an error is
+// returned.
 func bitOf(vec Flag, val Value) (uint, uint32, error) {
 	if vec > Inheritable || val > Value(words*32) {
 		return 0, 0, ErrBadValue
@@ -126,7 +126,7 @@ func allMask(index uint) (mask uint32) {
 }
 
 // forceFlag sets 'all' capability values (supported by the kernel) of
-// a flag vector to enable.
+// a specified Flag to enable.
 func (c *Set) forceFlag(vec Flag, enable bool) error {
 	if c == nil || len(c.flat) == 0 || vec > Inheritable {
 		return ErrBadSet
@@ -143,8 +143,7 @@ func (c *Set) forceFlag(vec Flag, enable bool) error {
 	return nil
 }
 
-// ClearFlag clears a specific vector of Values associated with the
-// specified Flag.
+// ClearFlag clears all the Values associated with the specified Flag.
 func (c *Set) ClearFlag(vec Flag) error {
 	return c.forceFlag(vec, false)
 }
