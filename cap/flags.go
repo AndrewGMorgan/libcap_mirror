@@ -148,12 +148,35 @@ func (c *Set) ClearFlag(vec Flag) error {
 	return c.forceFlag(vec, false)
 }
 
-// Compare returns 0 if c and d are identical in content. Otherwise,
-// this function returns a non-zero value of 3 independent bits:
-// (differE ? 1:0) | (differP ? 2:0) | (differI ? 4:0). The Differs()
-// function can be used to test for a difference in a specific Flag.
+// Compare returns 0 if c and d are identical in content.
 //
-// This function is deprecated in favor of (*Set).Cf().
+// Deprecated: Replace with (*Set).Cf().
+//
+// Example, replace this:
+//
+//    diff, err := a.Compare(b)
+//    if err != nil {
+//      return err
+//    }
+//    if diff == 0 {
+//      return nil
+//    }
+//    if diff & (1 << Effective) {
+//      log.Print("a and b difference includes Effective values")
+//    }
+//
+// with this:
+//
+//    diff, err := a.Cf(b)
+//    if err != nil {
+//      return err
+//    }
+//    if diff == 0 {
+//      return nil
+//    }
+//    if diff.Has(Effective) {
+//      log.Print("a and b difference includes Effective values")
+//    }
 func (c *Set) Compare(d *Set) (uint, error) {
 	u, err := c.Cf(d)
 	return uint(u), err

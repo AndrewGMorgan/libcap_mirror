@@ -79,7 +79,17 @@ func NewIAB() *IAB {
 	}
 }
 
-// IABInit is a deprecated alias for the NewIAB function.
+// IABInit allocates a new IAB tuple.
+//
+// Deprecated: Replace with NewIAB.
+//
+// Example, replace this:
+//
+//    iab := IABInit()
+//
+// with this:
+//
+//    iab := NewIAB()
 func IABInit() *IAB {
 	return NewIAB()
 }
