@@ -129,7 +129,7 @@ ifeq ($(GOLANG),yes)
 GOROOT ?= $(shell $(GO) env GOROOT)
 GOCGO ?= $(shell if [ "$(shell $(GO) env CGO_ENABLED)" = 1 ]; then echo yes ; else echo no ; fi)
 GOOSARCH ?= $(shell $(GO) env GOHOSTOS)_$(shell $(GO) env GOHOSTARCH)
-CGO_REQUIRED=$(shell $(topdir)/go/cgo-required.sh $(GO))
+CGO_REQUIRED := $(shell $(topdir)/go/cgo-required.sh $(GO))
 ifeq ($(CGO_REQUIRED),1)
 # Strictly speaking go1.15 doesn't need this, but 1.16 is when the
 # real golang support arrives for non-cgo support, so drop the last
@@ -138,6 +138,7 @@ CGO_LDFLAGS_ALLOW := CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
 endif
 CGO_CFLAGS := -I$(topdir)/libcap/include
 CGO_LDFLAGS := -L$(topdir)/libcap
+GO_BUILD_FLAGS :=
 endif
 endif
 
