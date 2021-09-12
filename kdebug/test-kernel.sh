@@ -13,7 +13,7 @@ function die {
 }
 
 pushd ..
-make test || die "failed to make test of libcap tree"
+make all test sudotest || die "failed to make all test sudotest of libcap tree"
 make -C progs tcapsh-static || die "failed to make progs/tcapsh-static"
 popd
 
