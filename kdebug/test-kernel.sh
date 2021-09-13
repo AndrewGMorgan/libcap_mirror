@@ -13,8 +13,9 @@ function die {
 }
 
 pushd ..
-make all test sudotest || die "failed to make all test sudotest of libcap tree"
+make all test || die "failed to make all test of libcap tree"
 make -C progs tcapsh-static || die "failed to make progs/tcapsh-static"
+make -C tests uns_test
 popd
 
 # Assumes desired make *config (eg. make defconfig) is already done.
