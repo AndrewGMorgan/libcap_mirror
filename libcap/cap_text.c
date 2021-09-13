@@ -674,6 +674,19 @@ static __u32 _parse_vec_string(__u32 *vals, const char *c, int invert)
 static char *_cap_proc_dir;
 
 /*
+ * If the constructor is called (see cap_alloc.c) then we'll need the
+ * corresponding destructor.
+ */
+__attribute__((destructor (300))) static void _cleanup_libcap(void)
+{
+    if (_cap_proc_dir == NULL) {
+	return;
+    }
+    cap_free(_cap_proc_dir);
+    _cap_proc_dir = NULL;
+}
+
+/*
  * cap_proc_root reads and (optionally: when root != NULL) changes
  * libcap's notion of where the "/proc" filesystem is mounted. It
  * defaults to the value "/proc". Note, this is a global value and not
