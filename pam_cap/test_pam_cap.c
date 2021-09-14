@@ -134,31 +134,35 @@ struct vargs {
 static int test_arg_parsing(void) {
     static struct vargs vs[] = {
 	{
-	    { 1, 0, 0, NULL, NULL, NULL },
+	    { 1, 0, 0, 0, NULL, NULL, NULL },
 	    { "debug", NULL }
 	},
 	{
-	    { 0, 1, 0, NULL, NULL, NULL },
+	    { 0, 1, 0, 0, NULL, NULL, NULL },
 	    { "keepcaps", NULL }
 	},
 	{
-	    { 0, 0, 1, NULL, NULL, NULL },
+	    { 0, 0, 1, 0, NULL, NULL, NULL },
 	    { "autoauth", NULL }
 	},
 	{
-	    { 1, 0, 1, NULL, NULL, NULL },
+	    { 1, 0, 1, 0, NULL, NULL, NULL },
 	    { "autoauth", "debug", NULL }
 	},
 	{
-	    { 0, 0, 0, NULL, "/over/there", NULL },
+	    { 0, 0, 0, 0, NULL, "/over/there", NULL },
 	    { "config=/over/there", NULL }
 	},
 	{
-	    { 0, 0, 0, NULL, NULL, "^cap_setfcap" },
+	    { 0, 0, 0, 0, NULL, NULL, "^cap_setfcap" },
 	    { "default=^cap_setfcap", NULL }
 	},
 	{
-	    { 0, 0, 0, NULL, NULL, NULL },
+	    { 0, 0, 0, 1, NULL, NULL, NULL },
+	    { "use_session", NULL }
+	},
+	{
+	    { 0, 0, 0, 0, NULL, NULL, NULL },
 	    { NULL }
 	}
     };

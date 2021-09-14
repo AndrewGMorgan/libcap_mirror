@@ -39,10 +39,15 @@ struct pam_cap_s {
     int debug;
     int keepcaps;
     int autoauth;
+    int session;
     const char *user;
     const char *conf_filename;
     const char *fallback;
 };
+
+/*
+ * pam_cap_iab_s is used to capture any cap_iab_t value if it needs to be applied during pam_sm_
+ */
 
 /*
  * load_groups obtains the list all of the groups associated with the
@@ -252,6 +257,12 @@ static int set_capabilities(struct pam_cap_s *cs)
 	 * Best effort to set keep caps - this may help work around
 	 * situations where applications are using a capabilities
 	 * unaware setuid() call.
+	 *
+	 * It isn't needed unless you want to support Ambient vector
+	 * values in the IAB. In this case, it will likely also
+	 * require you use the "use_session" module argument and
+	 * include a "session" line in your PAM config that points to
+	 * pam_cap.so.
 	 */
 	D(("setting keepcaps"));
 	(void) cap_prctlw(PR_SET_KEEPCAPS, 1, 0, 0, 0, 0);
@@ -299,6 +310,8 @@ static void parse_args(int argc, const char **argv, struct pam_cap_s *pcs)
 	    pcs->autoauth = 1;
 	} else if (!strncmp(*argv, "default=", 8)) {
 	    pcs->fallback = 8 + *argv;
+	} else if (!strcmp(*argv, "use_session")) {
+	    pcs->session = 1;
 	} else {
 	    _pam_log(LOG_ERR, "unknown option; %s", *argv);
 	}
@@ -358,23 +371,23 @@ int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 	_pam_drop(conf_caps);
 
 	return PAM_SUCCESS;
-
-    } else {
-
-	D(("there are no capabilities restrictions on this user"));
-	return PAM_IGNORE;
-
     }
+
+    D(("there are no capabilities restrictions on this user"));
+    return PAM_IGNORE;
 }
 
 /*
- * pam_sm_setcred applies inheritable capabilities loaded by the
- * pam_sm_authenticate pass for the user.
+ * pam_sm_setcred optionally applies inheritable capabilities loaded
+ * by the pam_sm_authenticate pass for the user. If it doesn't apply
+ * them directly (because of the "use_session" module argument), it
+ * caches the cap_iab_t value for later use during the
+ * pam_sm_open_session() call.
  */
 int pam_sm_setcred(pam_handle_t *pamh, int flags,
 		   int argc, const char **argv)
 {
-    int retval;
+    int retval = 0;
     struct pam_cap_s pcs;
 
     if (!(flags & (PAM_ESTABLISH_CRED | PAM_REINITIALIZE_CRED))) {
@@ -390,8 +403,50 @@ int pam_sm_setcred(pam_handle_t *pamh, int flags,
 	return PAM_AUTH_ERR;
     }
 
-    retval = set_capabilities(&pcs);
-    memset(&pcs, 0, sizeof(pcs));
+    if (!pcs.session) {
+	retval = set_capabilities(&pcs);
+	memset(&pcs, 0, sizeof(pcs));
+    }
 
     return (retval ? PAM_SUCCESS:PAM_IGNORE);
+}
+
+/*
+ * pam_sm_open_session supports applying the configured cap_iab_t
+ * tuple after the user credentials have been fully applied. This is
+ * for programs where pam_cap.so's auth configuration includes the
+ * "use_session" and "keepcaps" module arguments. Typically, the
+ * latter is needed to coax the application into persisting the
+ * ability to apply the IAB value after a setuid() call by the
+ * application.
+ *
+ * Note, this is only needed in cases where the local system needs to
+ * support adding Ambient capability vector values. For Inheritable
+ * capabilities which survive setuid() in all modes, the existing
+ * module works fine.
+ */
+int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc,
+			const char **argv)
+{
+    int retval;
+    struct pam_cap_s pcs;
+
+    parse_args(argc, argv, &pcs);
+
+    retval = pam_get_item(pamh, PAM_USER, (const void **)&pcs.user);
+    if ((retval != PAM_SUCCESS) || (pcs.user == NULL) || !(pcs.user[0])) {
+	D(("user's name is not set"));
+	return PAM_USER_UNKNOWN;
+    }
+
+    set_capabilities(&pcs);
+    memset(&pcs, 0, sizeof(pcs));
+    return PAM_SUCCESS;
+}
+
+/* pam_sm_close_session is mostly a no-op; it always returns PAM_SUCCESS. */
+int pam_sm_close_session(pam_handle_t *pamh, int flags, int argc,
+			 const char **argv)
+{
+    return PAM_SUCCESS;
 }

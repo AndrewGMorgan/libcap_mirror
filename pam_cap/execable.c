@@ -48,6 +48,7 @@ SO_MAIN(int argc, char **argv)
 	   "config=<file> - override the default config with file\n"
 	   "keepcaps      - workaround for apps that setuid without this\n"
 	   "autoauth      - pam_cap.so to always succeed for the 'auth' phase\n"
-	   "default=<iab> - fallback IAB value if there is no '*' rule\n",
+	   "default=<iab> - fallback IAB value if there is no '*' rule\n"
+	   "use_session   - apply IAB value during session open, not setcred\n",
 	cmd);
 }
