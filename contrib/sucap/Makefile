@@ -1,3 +1,6 @@
+topdir=$(shell pwd)/..
+include ../../Make.Rules
+
 all: su
 
 su: su.c
