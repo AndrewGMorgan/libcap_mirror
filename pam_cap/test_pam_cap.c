@@ -51,6 +51,17 @@ int pam_get_item(const pam_handle_t *pamh, int item_type, const void **item) {
     return 0;
 }
 
+int pam_set_data(pam_handle_t *pamh, const char *module_data_name, void *data,
+		 void (*cleanup)(pam_handle_t *pamh, void *data,
+				 int error_status)) {
+    if (cleanup != iab_apply) {
+	errno = EINVAL;
+	return -1;
+    }
+    cap_free(data);
+    return -1;
+}
+
 int getgrouplist(const char *user, gid_t group, gid_t *groups, int *ngroups) {
     int i,j;
     for (i = 0; i < n_users; i++) {
@@ -159,7 +170,7 @@ static int test_arg_parsing(void) {
 	},
 	{
 	    { 0, 0, 0, 1, NULL, NULL, NULL },
-	    { "use_session", NULL }
+	    { "defer", NULL }
 	},
 	{
 	    { 0, 0, 0, 0, NULL, NULL, NULL },

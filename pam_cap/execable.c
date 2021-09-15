@@ -49,6 +49,6 @@ SO_MAIN(int argc, char **argv)
 	   "keepcaps      - workaround for apps that setuid without this\n"
 	   "autoauth      - pam_cap.so to always succeed for the 'auth' phase\n"
 	   "default=<iab> - fallback IAB value if there is no '*' rule\n"
-	   "use_session   - apply IAB value during session open, not setcred\n",
+	   "defer         - apply IAB value at pam_exit (not via setcred)\n",
 	cmd);
 }
