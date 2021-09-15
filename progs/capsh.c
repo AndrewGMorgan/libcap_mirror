@@ -981,7 +981,7 @@ int main(int argc, char *argv[], char *envp[])
 		exit(1);
 	    }
 	    if (cap_iab_set_proc(iab)) {
-		perror("unable to set IAP vectors");
+		perror("unable to set IAB tuple");
 		exit(1);
 	    }
 	    cap_free(iab);
