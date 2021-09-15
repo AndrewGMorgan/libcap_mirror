@@ -10,6 +10,7 @@ implementation, and to also provide a non-setuid-root worked example
 for testing PAM interaction with libcap and pam_cap.so. The
 expectations for `pam_unix.so` are that it includes this commit:
 
+https://github.com/linux-pam/linux-pam/pull/373/commits/bf9b1d8ad909634000a7356af2d865a79d3f86f3
 
 The original sources were found here:
 
