@@ -196,6 +196,24 @@ static void iab_apply(pam_handle_t *pamh, void *data, int error_status)
     cap_iab_t iab = data;
     int retval = error_status & ~(PAM_DATA_REPLACE|PAM_DATA_SILENT);
 
+#ifdef PAM_DEBUG
+    {
+	cap_t c = cap_get_proc();
+	cap_iab_t tu = cap_iab_get_proc();
+	char *tc, *ttu;
+	tc = cap_to_text(c, NULL);
+	ttu = cap_iab_to_text(tu);
+
+	D(("iab_apply with uid=%d,euid=%d and error_status=0x%08x \"%s\", [%s]",
+	   getuid(), geteuid(), error_status, tc, ttu));
+
+	cap_free(ttu);
+	cap_free(tc);
+	cap_free(tu);
+	cap_free(c);
+    }
+#endif
+
     data = NULL;
     if (error_status & PAM_DATA_REPLACE) {
 	goto done;
