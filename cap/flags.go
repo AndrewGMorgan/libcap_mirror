@@ -208,9 +208,23 @@ func (c *Set) Cf(d *Set) (Diff, error) {
 // Differs processes the result of Compare and determines if the
 // Flag's components were different.
 //
-// Use of this function is deprecated in favor of the (Diff).Has()
-// function, where Diff is returned as a result of the (*Set).Cf()
-// function.
+// Deprecated: Replace with (Diff).Has().
+//
+// Example, replace this:
+//
+//    diff, err := a.Compare(b)
+//    ...
+//    if diff & (1 << Effective) {
+//       ... different effective capabilities ...
+//    }
+//
+// with this:
+//
+//    diff, err := a.Cf(b)
+//    ...
+//    if diff.Has(Effective) {
+//       ... different effective capabilities ...
+//    }
 func Differs(cf uint, vec Flag) bool {
 	return cf&(1<<vec) != 0
 }
