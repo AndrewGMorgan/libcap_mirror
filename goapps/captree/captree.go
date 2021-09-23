@@ -402,7 +402,7 @@ func main() {
 		}
 	}
 
-	// Sort the proccess tree by tree depth - shallowest first,
+	// Sort the process tree by tree depth - shallowest first,
 	// with numerical order breaking ties.
 	sort.Slice(list, func(i, j int) bool {
 		x, y := pids[list[i]], pids[list[j]]
