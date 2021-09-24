@@ -998,6 +998,11 @@ pid_t cap_launch(cap_launch_t attr, void *detail) {
     int ps[2];
     pid_t child;
 
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return -1;
+    }
+
     /* The launch must have a purpose */
     if (attr->custom_setup_fn == NULL &&
 	(attr->arg0 == NULL || attr->argv == NULL)) {

@@ -133,9 +133,10 @@ struct _cap_struct {
 /* launcher magic for cap_free */
 #define CAP_LAUNCH_MAGIC 0xCA91A
 
-#define magic_of(x)        (*(-2 + (const __u32 *) x))
-#define good_cap_t(x)      (CAP_T_MAGIC   == magic_of(x))
-#define good_cap_iab_t(x)  (CAP_IAB_MAGIC == magic_of(x))
+#define magic_of(x)           ((x) ? *(-2 + (const __u32 *) x) : 0)
+#define good_cap_t(x)         (CAP_T_MAGIC   == magic_of(x))
+#define good_cap_iab_t(x)     (CAP_IAB_MAGIC == magic_of(x))
+#define good_cap_launch_t(x)  (CAP_LAUNCH_MAGIC == magic_of(x))
 
 /*
  * kernel API cap set abstraction

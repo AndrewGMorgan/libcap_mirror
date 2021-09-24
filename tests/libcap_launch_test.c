@@ -127,8 +127,12 @@ int main(int argc, char **argv) {
 
     int success = 1, i;
     for (i=0; vs[i].pass_on != NO_MORE; i++) {
-	cap_launch_t attr;
+	cap_launch_t attr = NULL;
 	const struct test_case_s *v = &vs[i];
+	if (cap_launch(attr, NULL) != -1) {
+	    perror("NULL launch didn't fail");
+	    exit(1);
+	}
 	printf("[%d] test should %s\n", i,
 	       v->result || v->launch_abort ? "generate error" : "work");
 	if (v->args[0] != NULL) {

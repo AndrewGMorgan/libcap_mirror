@@ -49,6 +49,14 @@ static int test_cap_flags(void)
 	printf("test_flags failed to allocate a set\n");
 	return -1;
     }
+    if (cap_compare(c, NULL) != -1) {
+	printf("compare to NULL should give invalid\n");
+	return -1;
+    }
+    if (cap_compare(NULL, c) != -1) {
+	printf("compare with NULL should give invalid\n");
+	return -1;
+    }
 
     for (v = 0; v < __CAP_MAXBITS; v += 3) {
 	if (cap_set_flag(c, CAP_INHERITABLE, 1, &v, CAP_SET)) {

@@ -88,16 +88,18 @@ fills the to flag values by copying all of the from flag values.
 compares two full capability sets and, in the spirit of
 .BR memcmp (),
 returns zero if the two capability sets are identical. A positive
-return value,
-.BR status ,
-indicates there is a difference between them. The
-returned value carries further information about which of three sets,
-.I cap_flag_t
-.BR flag ,
-differ. Specifically, the macro
+return
+.I value
+indicates there is a difference between them. The returned
+.I value
+carries further information about the
+.BI "cap_flag_t " flag
+differences. Specifically, the macro
 .B CAP_DIFFERS
-.RI ( status ", " flag )
-evaluates to non-zero if the returned status differs in its
+.RI ( value ", " flag )
+evaluates to non-zero if the returned
+.I value
+differs in its
 .I flag
 components.
 .SH "RETURN VALUE"
