@@ -28,7 +28,7 @@
 //       log.Fatalf("failed to drop privilege: %q -> %q: %v", old, empty, err)
 //   }
 //   now := cap.GetProc()
-//   if cf, _ := now.Compare(empty); cf != 0 {
+//   if cf, _ := now.Cf(empty); cf != 0 {
 //       log.Fatalf("failed to fully drop privilege: have=%q, wanted=%q", now, empty)
 //   }
 //
