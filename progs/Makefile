@@ -61,7 +61,7 @@ uns_test: ../tests/uns_test.c
 	$(MAKE) -C ../tests uns_test
 	cp ../tests/uns_test .
 
-sudotest: tcapsh-static uns_test capsh setcap getcap tcapsh-static
+sudotest: tcapsh-static uns_test capsh setcap getcap getpcaps tcapsh-static
 	$(SUDO) $(LDPATH) ./quicktest.sh
 
 clean:
