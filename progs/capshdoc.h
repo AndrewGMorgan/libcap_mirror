@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #ifdef CAPSHDOC
 #error "don't include this twice"
 #endif
@@ -372,7 +374,7 @@ static const char *explanation40[] = {  /* cap_checkpoint_restore = 40 */
     "also writing to ns_last_pid.",
     NULL
 };
-static const char **explanations[] = {
+const char **explanations[] = {
     explanation0,
     explanation1,
     explanation2,

@@ -4,6 +4,8 @@
 # with the checked in code in the progs directory.
 
 cat<<EOF
+#include <stdio.h>
+
 #ifdef CAPSHDOC
 #error "don't include this twice"
 #endif
@@ -25,7 +27,7 @@ while [ -f "../doc/values/${x}.txt" ]; do
 done
 
 cat<<EOF
-static const char **explanations[] = {
+const char **explanations[] = {
 EOF
 let y=0
 while [ "${y}" -lt "${x}" ]; do
