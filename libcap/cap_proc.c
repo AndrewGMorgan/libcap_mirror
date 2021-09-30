@@ -1021,8 +1021,7 @@ pid_t cap_launch(cap_launch_t attr, void *detail) {
 	close(ps[0]);
 	prctl(PR_SET_NAME, "cap-launcher", 0, 0, 0);
 	_cap_launch(ps[1], attr, detail);
-	/* no return from this function */
-	_exit(1);
+	/* no return from above function */
     }
     close(ps[1]);
     if (child < 0) {

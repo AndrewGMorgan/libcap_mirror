@@ -79,7 +79,7 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 DEBUG = # -g -DDEBUG
 WARNINGS=-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wcast-align \
 	-Wstrict-prototypes -Wmissing-prototypes -Wnested-externs       \
-	-Winline -Wshadow
+	-Winline -Wshadow -Wunreachable-code
 COPTS ?= -O2
 CFLAGS ?= $(COPTS) $(DEBUG)
 CFLAGS += $(WARNINGS)

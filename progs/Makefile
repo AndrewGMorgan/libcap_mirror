@@ -45,17 +45,17 @@ endif
 test:
 	@echo "no program tests without privilege, try 'make sudotest'"
 
-capshdoc.h.cf: capshdoc.h ./mkcapshdoc.sh
+capshdoc.c.cf: capshdoc.c ./mkcapshdoc.sh
 	./mkcapshdoc.sh > $@
-	diff -u capshdoc.h $@ || (rm $@ ; exit 1)
+	diff -u capshdoc.c $@ || (rm $@ ; exit 1)
 
-capsh: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) $(LDFLAGS) -o $@ $< $(LIBCAPLIB)
+capsh: capsh.c capshdoc.c.cf capshdoc.h $(DEPS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) $(LDFLAGS) -o $@ $< capshdoc.c $(LIBCAPLIB)
 
 # Statically linked with minimal linkage flags to enable running in a
 # chroot and in other in-tree testing contexts.
-tcapsh-static: capsh.c capshdoc.h.cf $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< $(LIBCAPLIB) --static
+tcapsh-static: capsh.c capshdoc.c.cf capshdoc.h $(DEPS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) -o $@ $< capshdoc.c $(LIBCAPLIB) --static
 
 uns_test: ../tests/uns_test.c
 	$(MAKE) -C ../tests uns_test
@@ -67,4 +67,4 @@ sudotest: tcapsh-static uns_test capsh setcap getcap getpcaps tcapsh-static
 clean:
 	$(LOCALCLEAN)
 	rm -f *.o $(BUILD) privileged ping hack.sh compare-cap uns_test
-	rm -f capsh tcapsh* capshdoc.h.cf
+	rm -f capsh tcapsh* capshdoc.*.cf

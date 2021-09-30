@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "negative capability (%d) invalid\n", cap);
 		exit(1);
 	    }
-	    if (cap < CAPSH_DOC_LIMIT) {
+	    if (cap < capsh_doc_limit) {
 		describe(cap);
 		continue;
 	    }
@@ -1024,7 +1024,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strncmp("--suggest=", argv[i], 10)) {
 	    cap_value_t cap;
 	    int hits = 0;
-	    for (cap=0; cap < CAPSH_DOC_LIMIT; cap++) {
+	    for (cap=0; cap < capsh_doc_limit; cap++) {
 		const char **lines = explanations[cap];
 		int j;
 		char *name = cap_to_name(cap);

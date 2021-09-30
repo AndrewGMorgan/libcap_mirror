@@ -32,6 +32,8 @@ function do_page () {
     sect="${m#*.}"
     output="${base}-${sect}.md"
 
+    echo "converting ${m}" 1>&2
+
     redir="$(grep '^.so man' "${m}")"
     if [[ $? -eq 0 ]]; then
 	r="${redir#*/}"

@@ -1,15 +1,12 @@
 #!/bin/bash
 # This script generates some C code for inclusion in the capsh binary.
-# The Makefile generally only generates the .h code and compares it
+# The Makefile generally only generates the .c code and compares it
 # with the checked in code in the progs directory.
 
 cat<<EOF
 #include <stdio.h>
 
-#ifdef CAPSHDOC
-#error "don't include this twice"
-#endif
-#define CAPSHDOC
+#include "./capshdoc.h"
 
 /*
  * A line by line explanation of each named capability value
@@ -36,5 +33,6 @@ while [ "${y}" -lt "${x}" ]; do
 done
 cat<<EOF
 };
-#define CAPSH_DOC_LIMIT ${x}
+
+const int capsh_doc_limit = ${x};
 EOF

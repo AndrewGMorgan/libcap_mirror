@@ -350,11 +350,11 @@ func Import(d []byte) (*Set, error) {
 	return c, nil
 }
 
-// To strictly match libcap, this value defaults to 8. Setting it to
-// zero can generate smaller external representations. Such smaller
-// representations can be imported by libcap and the Go package just
-// fine, we just default to the default libcap representation for
-// legacy reasons.
+// MinExtFlagSize defaults to 8 in order to be equivalent to libcap
+// defaults. Setting it to zero can generate smaller external
+// representations. Such smaller representations can be imported by
+// libcap and the Go package just fine, we just default to the default
+// libcap representation for legacy reasons.
 var MinExtFlagSize = uint(8)
 
 // Export exports a Set into a lossless byte array format where it is
