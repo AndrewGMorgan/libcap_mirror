@@ -84,6 +84,22 @@ static int test_cap_flags(void)
 	printf("permuted cap_fill()ing failed to perform net no-op\n");
 	retval = -1;
     }
+    if (cap_fill_flag(NULL, CAP_EFFECTIVE, c, CAP_INHERITABLE) == 0) {
+	printf("filling NULL flag should fail\n");
+	retval = -1;
+    }
+    if (cap_fill_flag(d, CAP_PERMITTED, c, CAP_INHERITABLE) != 0) {
+	perror("filling PERMITEED flag should work");
+	retval = -1;
+    }
+    if (cap_fill_flag(c, CAP_PERMITTED, d, CAP_PERMITTED) != 0) {
+	perror("filling PERMITTED flag from another cap_t should work");
+	retval = -1;
+    }
+    if (cap_compare(c, d)) {
+	printf("permuted cap_fill()ing failed to perform net no-op\n");
+	retval = -1;
+    }
 
 drop_d:
     if (cap_free(d) != 0) {

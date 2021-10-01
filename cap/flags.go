@@ -75,22 +75,39 @@ func (c *Set) Clear() error {
 	return nil
 }
 
-// Fill copies the from flag values into the to flag. With this
-// function, you can raise all of the permitted values in the
-// effective flag with c.Fill(cap.Effective, cap.Permitted).
-func (c *Set) Fill(to, from Flag) error {
-	if c == nil || len(c.flat) == 0 {
+// FillFlag copies the from flag values of ref into the to flag of
+// c. With this function, you can raise all of the permitted values in
+// the c Set from those in ref with c.Fill(cap.Permitted, ref,
+// cap.Permitted).
+func (c *Set) FillFlag(to Flag, ref *Set, from Flag) error {
+	if c == nil || len(c.flat) == 0 || ref == nil || len(ref.flat) == 0 {
 		return ErrBadSet
 	}
 	if to > Inheritable || from > Inheritable {
 		return ErrBadValue
 	}
+
+	// Avoid deadlock by copying to intermediate memory.
+	a := make([]uint32, len(ref.flat))
+	ref.mu.Lock()
+	for i := range ref.flat {
+		a[i] = ref.flat[i][from]
+	}
+	ref.mu.Unlock()
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for i := range c.flat {
-		c.flat[i][to] = c.flat[i][from]
+		c.flat[i][to] = a[i]
 	}
 	return nil
+}
+
+// Fill copies the from flag values into the to flag. With this
+// function, you can raise all of the permitted values in the
+// effective flag with c.Fill(cap.Effective, cap.Permitted).
+func (c *Set) Fill(to, from Flag) error {
+	return c.FillFlag(to, c, from)
 }
 
 // ErrBadValue indicates a bad capability value was specified.

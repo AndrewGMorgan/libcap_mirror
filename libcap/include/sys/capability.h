@@ -135,6 +135,8 @@ extern int     cap_set_flag(cap_t, cap_flag_t, int, const cap_value_t *,
 			    cap_flag_value_t);
 extern int     cap_clear(cap_t);
 extern int     cap_clear_flag(cap_t, cap_flag_t);
+extern int     cap_fill_flag(cap_t cap_d, cap_flag_t to,
+                             const cap_t ref, cap_flag_t from);
 extern int     cap_fill(cap_t, cap_flag_t, cap_flag_t);
 
 #define CAP_DIFFERS(result, flag)  (((result) & (1 << (flag))) != 0)
