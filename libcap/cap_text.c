@@ -669,7 +669,7 @@ static __u32 _parse_vec_string(__u32 *vals, const char *c, int invert)
 
 /*
  * libcap believes this is the root of the mounted "/proc"
- * filesystem
+ * filesystem. (NULL == "/proc".)
  */
 static char *_cap_proc_dir;
 
@@ -695,6 +695,8 @@ __attribute__((destructor (300))) static void _cleanup_libcap(void)
  * memory for storing the replacement root, and it is this memory that
  * is returned. So, when changing the value, the caller should
  * cap_free(the-return-value) when done with it.
+ *
+ * A return value of NULL implies the default is in effect "/proc".
  */
 char *cap_proc_root(const char *root)
 {
@@ -717,8 +719,12 @@ cap_iab_t cap_iab_get_pid(pid_t pid)
     char *path;
     FILE *file;
     char line[PROC_LINE_MAX];
+    const char *proc_root = _cap_proc_dir;
 
-    if (asprintf(&path, "%s/%d/status", _cap_proc_dir, pid) <= 0) {
+    if (proc_root == NULL) {
+	proc_root = "/proc";
+    }
+    if (asprintf(&path, "%s/%d/status", proc_root, pid) <= 0) {
 	return NULL;
     }
     file = fopen(path, "r");

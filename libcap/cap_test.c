@@ -171,7 +171,7 @@ static int test_alloc(void)
     }
 
     old_root = cap_proc_root("blah");
-    if (old_root == NULL || strcmp(old_root, "/proc") != 0) {
+    if (old_root != NULL) {
 	printf("bad initial proc_root [%s]\n", old_root);
 	fflush(stdout);
 	retval = -1;

@@ -55,8 +55,9 @@ extern cap_value_t cap_max_bits(void);
 
 /*
  * cap_proc_root reads and (optionally: when root != NULL) changes
- * libcap's notion of where the "/proc" filesystem is mounted. It
- * defaults to the value "/proc".
+ * libcap's notion of where the "/proc" filesystem is mounted. When
+ * the return value is NULL, it should be interpreted as the
+ * value "/proc".
  *
  * Note, this is a global value and not considered thread safe to
  * write - so the client should take suitable care when changing
@@ -65,7 +66,10 @@ extern cap_value_t cap_max_bits(void);
  * Further, libcap will allocate a memory copy for storing the
  * replacement root, and it is this kind of memory that is returned.
  * So, when changing the value, the caller should
- * cap_free(the-return-value) when done with it.
+ * cap_free(the-return-value) else cause a memory leak.
+ *
+ * Note, the library uses a destructor to clean up the live allocated
+ * value of the working setting.
  */
 extern char *cap_proc_root(const char *root);
 
