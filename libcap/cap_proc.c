@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8,2007,11,19,20 Andrew G Morgan <morgan@kernel.org>
+ * Copyright (c) 1997-8,2007,11,19-21 Andrew G Morgan <morgan@kernel.org>
  *
  * This file deals with getting and setting capabilities on processes.
  */
@@ -183,7 +183,9 @@ static int _cap_set_proc(struct syscaller_s *sc, cap_t cap_d) {
     }
 
     _cap_debug("setting process capabilities");
+    _cap_mu_lock(&cap_d->mutex);
     retval = _libcap_capset(sc, &cap_d->head, &cap_d->u[0].set);
+    _cap_mu_unlock(&cap_d->mutex);
 
     return retval;
 }
@@ -208,9 +210,11 @@ int capgetp(pid_t pid, cap_t cap_d)
 
     _cap_debug("getting process capabilities for proc %d", pid);
 
+    _cap_mu_lock(&cap_d->mutex);
     cap_d->head.pid = pid;
     error = capget(&cap_d->head, &cap_d->u[0].set);
     cap_d->head.pid = 0;
+    _cap_mu_unlock(&cap_d->mutex);
 
     return error;
 }
@@ -252,10 +256,12 @@ int capsetp(pid_t pid, cap_t cap_d)
     }
 
     _cap_debug("setting process capabilities for proc %d", pid);
+    _cap_mu_lock(&cap_d->mutex);
     cap_d->head.pid = pid;
     error = capset(&cap_d->head, &cap_d->u[0].set);
     cap_d->head.version = _LIBCAP_CAPABILITY_VERSION;
     cap_d->head.pid = 0;
+    _cap_mu_unlock(&cap_d->mutex);
 
     return error;
 }

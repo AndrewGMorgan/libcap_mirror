@@ -127,6 +127,7 @@ static int _fcaps_save(struct vfs_ns_cap_data *rawvfscap, cap_t cap_d,
 	errno = EINVAL;
 	return -1;
     }
+    _cap_mu_lock(&cap_d->mutex);
 
     switch (cap_d->head.version) {
     case _LINUX_CAPABILITY_VERSION_1:
@@ -144,14 +145,14 @@ static int _fcaps_save(struct vfs_ns_cap_data *rawvfscap, cap_t cap_d,
 
     default:
 	errno = EINVAL;
-	return -1;
+	_cap_mu_unlock_return(&cap_d->mutex, -1);
     }
 
     if (cap_d->rootid != 0) {
 	if (cap_d->head.version < _LINUX_CAPABILITY_VERSION_3) {
 	    _cap_debug("namespaces with non-0 rootid unsupported by kernel");
 	    errno = EINVAL;
-	    return -1;
+	    _cap_mu_unlock_return(&cap_d->mutex, -1);
 	}
 	magic = VFS_CAP_REVISION_3;
 	tocopy = VFS_CAP_U32_3;
@@ -172,7 +173,7 @@ static int _fcaps_save(struct vfs_ns_cap_data *rawvfscap, cap_t cap_d,
 	     * System does not support these capabilities
 	     */
 	    errno = EINVAL;
-	    return -1;
+	    _cap_mu_unlock_return(&cap_d->mutex, -1);
 	}
 	i++;
     }
@@ -188,7 +189,7 @@ static int _fcaps_save(struct vfs_ns_cap_data *rawvfscap, cap_t cap_d,
 		& (cap_d->u[i].flat[CAP_PERMITTED]
 		   | cap_d->u[i].flat[CAP_INHERITABLE]))) {
 	    errno = EINVAL;
-	    return -1;
+	    _cap_mu_unlock_return(&cap_d->mutex, -1);
 	}
     }
 
@@ -198,7 +199,7 @@ static int _fcaps_save(struct vfs_ns_cap_data *rawvfscap, cap_t cap_d,
 	rawvfscap->magic_etc = FIXUP_32BITS(magic|VFS_CAP_FLAGS_EFFECTIVE);
     }
 
-    return 0;      /* success */
+    _cap_mu_unlock_return(&cap_d->mutex, 0);    /* success */
 }
 
 /*
@@ -269,7 +270,15 @@ cap_t cap_get_file(const char *filename)
 
 uid_t cap_get_nsowner(cap_t cap_d)
 {
-	return cap_d->rootid;
+    uid_t nsowner;
+    if (!good_cap_t(cap_d)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&cap_d->mutex);
+    nsowner = cap_d->rootid;
+    _cap_mu_unlock(&cap_d->mutex);
+    return nsowner;
 }
 
 /*
@@ -337,13 +346,17 @@ int cap_set_file(const char *filename, cap_t cap_d)
 }
 
 /*
- * Set rootid for the file capability sets.
+ * Set nsowner for the file capability set.
  */
-
 int cap_set_nsowner(cap_t cap_d, uid_t rootuid)
 {
-	cap_d->rootid = rootuid;
-	return 0;
+    if (!good_cap_t(cap_d)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&cap_d->mutex);
+    cap_d->rootid = rootuid;
+    _cap_mu_unlock_return(&cap_d->mutex, 0);
 }
 
 #else /* ie. ndef VFS_CAP_U32 */
@@ -380,8 +393,8 @@ int cap_set_file(const char *filename, cap_t cap_d)
 
 int cap_set_nsowner(cap_t cap_d, uid_t rootuid)
 {
-	errno = EINVAL;
-	return -1;
+    errno = EINVAL;
+    return -1;
 }
 
 #endif /* def VFS_CAP_U32 */

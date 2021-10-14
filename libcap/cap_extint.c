@@ -36,40 +36,49 @@ struct cap_ext_struct {
  */
 static size_t _libcap_min_ext_flag_size = CAP_SET_SIZE < 8 ? CAP_SET_SIZE : 8;
 
+static ssize_t _cap_size_locked(cap_t cap_d)
+{
+    size_t j, used;
+    for (j=used=0; j<CAP_SET_SIZE; j+=sizeof(__u32)) {
+	int i;
+	__u32 val = 0;
+	for (i=0; i<NUMBER_OF_CAP_SETS; ++i) {
+	    val |= cap_d->u[j/sizeof(__u32)].flat[i];
+	}
+	if (val == 0) {
+	    continue;
+	}
+	if (val > 0x0000ffff) {
+	    if (val > 0x00ffffff) {
+		used = j+4;
+	    } else {
+		used = j+3;
+	    }
+	} else if (val > 0x000000ff) {
+	    used = j+2;
+	} else {
+	    used = j+1;
+	}
+    }
+    if (used < _libcap_min_ext_flag_size) {
+	used = _libcap_min_ext_flag_size;
+    }
+    return (ssize_t)(CAP_EXT_MAGIC_SIZE + 1+ NUMBER_OF_CAP_SETS * used);
+}
+
 /*
  * return size of external capability set
  */
 ssize_t cap_size(cap_t cap_d)
 {
-    if (good_cap_t(cap_d)) {
-	size_t j, used;
-	for (j=used=0; j<CAP_SET_SIZE; j+=sizeof(__u32)) {
-	    int i;
-	    __u32 val = 0;
-	    for (i=0; i<NUMBER_OF_CAP_SETS; ++i) {
-		val |= cap_d->u[j/sizeof(__u32)].flat[i];
-	    }
-	    if (val == 0) {
-		continue;
-	    }
-	    if (val > 0x0000ffff) {
-		if (val > 0x00ffffff) {
-		    used = j+4;
-		} else {
-		    used = j+3;
-		}
-	    } else if (val > 0x000000ff) {
-		used = j+2;
-	    } else {
-		used = j+1;
-	    }
-	}
-	if (used < _libcap_min_ext_flag_size) {
-	    used = _libcap_min_ext_flag_size;
-	}
-	return (ssize_t)(CAP_EXT_MAGIC_SIZE + 1+ NUMBER_OF_CAP_SETS * used);
+    size_t used;
+    if (!good_cap_t(cap_d)) {
+	return ssizeof(struct cap_ext_struct);
     }
-    return ssizeof(struct cap_ext_struct);
+    _cap_mu_lock(&cap_d->mutex);
+    used = _cap_size_locked(cap_d);
+    _cap_mu_unlock(&cap_d->mutex);
+    return used;
 }
 
 /*
@@ -90,10 +99,11 @@ ssize_t cap_copy_ext(void *cap_ext, cap_t cap_d, ssize_t length)
 	return -1;
     }
 
-    csz = cap_size(cap_d);
+    _cap_mu_lock(&cap_d->mutex);
+    csz = _cap_size_locked(cap_d);
     if (csz > length) {
 	errno = EINVAL;
-	return -1;
+	_cap_mu_unlock_return(&cap_d->mutex, -1);
     }
     len_set = (csz - (CAP_EXT_MAGIC_SIZE+1))/NUMBER_OF_CAP_SETS;
 
@@ -122,7 +132,7 @@ ssize_t cap_copy_ext(void *cap_ext, cap_t cap_d, ssize_t length)
     }
 
     /* All done: return length of external representation */
-    return csz;
+    _cap_mu_unlock_return(&cap_d->mutex, csz);
 }
 
 /*

@@ -122,7 +122,7 @@ char *_libcap_strdup(const char *old)
 
 /*
  * This function duplicates an internal capability set with
- * malloc()'d memory. It is the responsibility of the user to call
+ * calloc()'d memory. It is the responsibility of the user to call
  * cap_free() to liberate it.
  */
 cap_t cap_dup(cap_t cap_d)
@@ -142,7 +142,10 @@ cap_t cap_dup(cap_t cap_d)
 	return NULL;
     }
 
+    _cap_mu_lock(&cap_d->mutex);
     memcpy(result, cap_d, sizeof(*cap_d));
+    _cap_mu_unlock(&cap_d->mutex);
+    _cap_mu_unlock(&result->mutex);
 
     return result;
 }
@@ -227,8 +230,10 @@ int cap_free(void *data_p)
     struct _cap_alloc_s *data = base;
     switch (data->magic) {
     case CAP_T_MAGIC:
-    case CAP_IAB_MAGIC:
+	_cap_mu_lock(&data->u.set.mutex);
+	break;
     case CAP_S_MAGIC:
+    case CAP_IAB_MAGIC:
 	break;
     case CAP_LAUNCH_MAGIC:
 	if (cap_free(data->u.launcher.iab) != 0) {

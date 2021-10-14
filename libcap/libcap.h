@@ -9,6 +9,7 @@
 #define LIBCAP_H
 
 #include <errno.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,6 +114,7 @@ struct _cap_vfs_cap_data {
 
 #define CAP_T_MAGIC 0xCA90D0
 struct _cap_struct {
+    __u8 mutex;
     struct __user_cap_header_struct head;
     union {
 	struct __user_cap_data_struct set;
@@ -121,6 +123,24 @@ struct _cap_struct {
     uid_t rootid;
 };
 
+/*
+ * Elementary exclusive locking primatives for situations where
+ * linking with pthreads needs it, but such linking is not common.
+ *
+ *  _cap_mu_blocked(x) attempts to lock x but if already locked, returns true
+ *  _cap_mu_lock(x)    attempts to lock and waits until the lock is granted
+ *  _cap_mu_unlock(x)  unconditionally unlocks the lock
+ *  _cap_mu_unlock_return(x, y) unlock lock x and return value y
+ */
+#define _cap_mu_blocked(x)          \
+    __atomic_test_and_set((void *)(x), __ATOMIC_SEQ_CST)
+#define _cap_mu_lock(x)             \
+    while (_cap_mu_blocked(x)) sched_yield()
+#define _cap_mu_unlock(x)           \
+    __atomic_clear((void *) (x), __ATOMIC_SEQ_CST)
+#define _cap_mu_unlock_return(x, y) \
+    do { _cap_mu_unlock(x); return (y); } while (0)
+
 /* the maximum bits supportable */
 #define __CAP_MAXBITS (__CAP_BLKS * 32)
 
@@ -128,10 +148,10 @@ struct _cap_struct {
 #define CAP_S_MAGIC 0xCA95D0
 
 /* iab set magic for cap_free */
-#define CAP_IAB_MAGIC 0xCA9AB
+#define CAP_IAB_MAGIC 0xCA91AB
 
 /* launcher magic for cap_free */
-#define CAP_LAUNCH_MAGIC 0xCA91A
+#define CAP_LAUNCH_MAGIC 0xCA91AC
 
 #define magic_of(x)           ((x) ? *(-2 + (const __u32 *) x) : 0)
 #define good_cap_t(x)         (CAP_T_MAGIC   == magic_of(x))
