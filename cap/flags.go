@@ -5,10 +5,10 @@ import "errors"
 // GetFlag determines if the requested Value is enabled in the
 // specified Flag of the capability Set.
 func (c *Set) GetFlag(vec Flag, val Value) (bool, error) {
-	if c == nil || len(c.flat) == 0 {
+	if err := c.good(); err != nil {
 		// Checked this first, because otherwise we are sure
 		// cInit has been called.
-		return false, ErrBadSet
+		return false, err
 	}
 	offset, mask, err := bitOf(vec, val)
 	if err != nil {
@@ -25,10 +25,10 @@ func (c *Set) GetFlag(vec Flag, val Value) (bool, error) {
 // bits be checked for validity and permission by the kernel. If the
 // function returns an error, the Set will not be modified.
 func (c *Set) SetFlag(vec Flag, enable bool, val ...Value) error {
-	if c == nil || len(c.flat) == 0 {
+	if err := c.good(); err != nil {
 		// Checked this first, because otherwise we are sure
 		// cInit has been called.
-		return ErrBadSet
+		return err
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -62,8 +62,8 @@ func (c *Set) SetFlag(vec Flag, enable bool, val ...Value) error {
 
 // Clear fully clears a capability set.
 func (c *Set) Clear() error {
-	if c == nil || len(c.flat) == 0 {
-		return ErrBadSet
+	if err := c.good(); err != nil {
+		return err
 	}
 	// startUp.Do(cInit) is not called here because c cannot be
 	// initialized except via this package and doing that will
@@ -80,8 +80,11 @@ func (c *Set) Clear() error {
 // the c Set from those in ref with c.Fill(cap.Permitted, ref,
 // cap.Permitted).
 func (c *Set) FillFlag(to Flag, ref *Set, from Flag) error {
-	if c == nil || len(c.flat) == 0 || ref == nil || len(ref.flat) == 0 {
-		return ErrBadSet
+	if err := c.good(); err != nil {
+		return err
+	}
+	if err := ref.good(); err != nil {
+		return err
 	}
 	if to > Inheritable || from > Inheritable {
 		return ErrBadValue
@@ -146,7 +149,10 @@ func allMask(index uint) (mask uint32) {
 // forceFlag sets 'all' capability values (supported by the kernel) of
 // a specified Flag to enable.
 func (c *Set) forceFlag(vec Flag, enable bool) error {
-	if c == nil || len(c.flat) == 0 || vec > Inheritable {
+	if err := c.good(); err != nil {
+		return err
+	}
+	if vec > Inheritable {
 		return ErrBadSet
 	}
 	m := uint32(0)
@@ -171,8 +177,8 @@ func (c *Set) ClearFlag(vec Flag) error {
 // (Diff).Has() function can be used to determine how the two
 // capability sets differ.
 func (c *Set) Cf(d *Set) (Diff, error) {
-	if c == nil || len(c.flat) == 0 || d == nil || len(d.flat) == 0 {
-		return 0, ErrBadSet
+	if err := c.good(); err != nil {
+		return 0, err
 	}
 	if c == d {
 		return 0, nil

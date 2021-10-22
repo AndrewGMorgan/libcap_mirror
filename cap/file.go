@@ -369,8 +369,8 @@ var MinExtFlagSize = uint(8)
 // Note, Export() generates exported byte streams that are importable
 // by libcap.cap_copy_int() as well as Import().
 func (c *Set) Export() ([]byte, error) {
-	if c == nil {
-		return nil, ErrBadSet
+	if err := c.good(); err != nil {
+		return nil, err
 	}
 	if MinExtFlagSize > 255 {
 		return nil, ErrOutOfRange

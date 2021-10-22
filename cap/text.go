@@ -85,7 +85,7 @@ func (c *Set) histo(bins []int, patterns []uint, from, limit Value) uint {
 // any given release. Further, it will always be an inverse of
 // cap.FromText().
 func (c *Set) String() string {
-	if c == nil || len(c.flat) == 0 {
+	if err := c.good(); err != nil {
 		return "<invalid>"
 	}
 	bins := make([]int, 8)

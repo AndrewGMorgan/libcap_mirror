@@ -318,10 +318,18 @@ func NewSet() *Set {
 // request of the Set is invalid in some way.
 var ErrBadSet = errors.New("bad capability set")
 
+// good confirms that c looks valid.
+func (c *Set) good() error {
+	if c == nil || len(c.flat) == 0 {
+		return ErrBadSet
+	}
+	return nil
+}
+
 // Dup returns a copy of the specified capability set.
 func (c *Set) Dup() (*Set, error) {
-	if c == nil || len(c.flat) == 0 {
-		return nil, ErrBadSet
+	if err := c.good(); err != nil {
+		return nil, err
 	}
 	n := NewSet()
 	c.mu.RLock()
@@ -355,9 +363,6 @@ func GetProc() *Set {
 // setProc uses syscaller to set process capabilities.  Note, c is
 // either private to or (read) locked by the caller.
 func (sc *syscaller) setProc(c *Set) error {
-	if c == nil || len(c.flat) == 0 {
-		return ErrBadSet
-	}
 	return sc.capwcall(syscall.SYS_CAPSET, &header{magic: magic}, c.flat)
 }
 
@@ -371,6 +376,9 @@ func (sc *syscaller) setProc(c *Set) error {
 // function as part of a (*Launcher).Launch(), the call only sets the
 // capabilities of the thread being used to perform the launch.
 func (c *Set) SetProc() error {
+	if err := c.good(); err != nil {
+		return err
+	}
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)
 	c.mu.RLock()

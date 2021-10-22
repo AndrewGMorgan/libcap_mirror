@@ -81,10 +81,18 @@ func NewIAB() *IAB {
 	}
 }
 
+// good confirms the iab looks to be initialized.
+func (iab *IAB) good() error {
+	if iab == nil || len(iab.i) == 0 || len(iab.i) != words || len(iab.a) != words || len(iab.nb) != words {
+		return ErrBadValue
+	}
+	return nil
+}
+
 // Dup returns a duplicate copy of the IAB.
 func (iab *IAB) Dup() (*IAB, error) {
-	if iab == nil {
-		return nil, ErrBadValue
+	if err := iab.good(); err != nil {
+		return nil, err
 	}
 	v := NewIAB()
 	iab.mu.RLock()
@@ -173,7 +181,7 @@ func IABFromText(text string) (*IAB, error) {
 
 // String serializes an IAB to a string format.
 func (iab *IAB) String() string {
-	if iab == nil {
+	if err := iab.good(); err != nil {
 		return "<invalid>"
 	}
 	var vs []string
@@ -254,8 +262,8 @@ func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 // other bits, so this function carefully performs the the combined
 // operation in the most flexible manner.
 func (iab *IAB) SetProc() error {
-	if iab == nil {
-		return ErrBadValue
+	if err := iab.good(); err != nil {
+		return err
 	}
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)
@@ -267,7 +275,10 @@ func (iab *IAB) SetProc() error {
 // GetVector returns the raised state of the specific capability bit
 // of the indicated vector.
 func (iab *IAB) GetVector(vec Vector, val Value) (bool, error) {
-	if val >= MaxBits() || iab == nil {
+	if err := iab.good(); err != nil {
+		return false, err
+	}
+	if val >= MaxBits() {
 		return false, ErrBadValue
 	}
 	iab.mu.RLock()
@@ -293,8 +304,8 @@ func (iab *IAB) GetVector(vec Vector, val Value) (bool, error) {
 // equivalent to lowering the Bounding vector of the process (when
 // successfully applied with (*IAB).SetProc()).
 func (iab *IAB) SetVector(vec Vector, raised bool, vals ...Value) error {
-	if iab == nil {
-		return ErrBadValue
+	if err := iab.good(); err != nil {
+		return err
 	}
 	iab.mu.Lock()
 	defer iab.mu.Unlock()
@@ -338,8 +349,8 @@ func (iab *IAB) SetVector(vec Vector, raised bool, vals ...Value) error {
 // the bits are inverted from what you might expect - that is lowered
 // bits from the Set will be raised in the Bound vector.
 func (iab *IAB) Fill(vec Vector, c *Set, flag Flag) error {
-	if iab == nil {
-		return ErrBadValue
+	if err := iab.good(); err != nil {
+		return err
 	}
 	// work with a copy to avoid potential deadlock.
 	s, err := c.Dup()
@@ -370,16 +381,16 @@ func (iab *IAB) Fill(vec Vector, c *Set, flag Flag) error {
 // tuples are considered identical. The macroscopic differences can be
 // investigated with (IABDiff).Has().
 func (iab *IAB) Cf(alt *IAB) (IABDiff, error) {
+	if err := iab.good(); err != nil {
+		return 0, err
+	}
 	if iab == alt {
 		return 0, nil
-	}
-	if iab == nil || alt == nil || len(iab.i) != words || len(alt.i) != words || len(iab.a) != words || len(alt.a) != words || len(iab.nb) != words || len(alt.nb) != words {
-		return 0, ErrBadValue
 	}
 	// Avoid holding two locks at once.
 	ref, err := alt.Dup()
 	if err != nil {
-		return 0, ErrBadValue
+		return 0, err
 	}
 	iab.mu.RLock()
 	defer iab.mu.RUnlock()
