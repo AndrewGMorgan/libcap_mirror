@@ -352,6 +352,8 @@ func GetProc() *Set {
 	return c
 }
 
+// setProc uses syscaller to set process capabilities.  Note, c is
+// either private to or (read) locked by the caller.
 func (sc *syscaller) setProc(c *Set) error {
 	if c == nil || len(c.flat) == 0 {
 		return ErrBadSet
@@ -371,6 +373,8 @@ func (sc *syscaller) setProc(c *Set) error {
 func (c *Set) SetProc() error {
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return sc.setProc(c)
 }
 

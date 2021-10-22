@@ -48,6 +48,7 @@ const (
 var combos = []string{"", "e", "p", "ep", "i", "ei", "ip", "eip"}
 
 // histo generates a histogram of flag state combinations.
+// Note: c is locked by or private to the caller.
 func (c *Set) histo(bins []int, patterns []uint, from, limit Value) uint {
 	for v := from; v < limit; v++ {
 		b := uint(v & 31)

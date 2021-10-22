@@ -87,18 +87,19 @@ func (c *Set) FillFlag(to Flag, ref *Set, from Flag) error {
 		return ErrBadValue
 	}
 
-	// Avoid deadlock by copying to intermediate memory.
-	a := make([]uint32, len(ref.flat))
-	ref.mu.Lock()
-	for i := range ref.flat {
-		a[i] = ref.flat[i][from]
+	// Avoid deadlock by using a copy.
+	if c != ref {
+		var err error
+		ref, err = ref.Dup()
+		if err != nil {
+			return err
+		}
 	}
-	ref.mu.Unlock()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for i := range c.flat {
-		c.flat[i][to] = a[i]
+		c.flat[i][to] = ref.flat[i][from]
 	}
 	return nil
 }
@@ -165,6 +166,40 @@ func (c *Set) ClearFlag(vec Flag) error {
 	return c.forceFlag(vec, false)
 }
 
+// Cf returns 0 if c and d are identical. A non-zero Diff value
+// captures a simple macroscopic summary of how they differ. The
+// (Diff).Has() function can be used to determine how the two
+// capability sets differ.
+func (c *Set) Cf(d *Set) (Diff, error) {
+	if c == nil || len(c.flat) == 0 || d == nil || len(d.flat) == 0 {
+		return 0, ErrBadSet
+	}
+	if c == d {
+		return 0, nil
+	}
+	d, err := d.Dup()
+	if err != nil {
+		return 0, err
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	var cf Diff
+	for i := 0; i < words; i++ {
+		if c.flat[i][Effective]^d.flat[i][Effective] != 0 {
+			cf |= effectiveDiff
+		}
+		if c.flat[i][Permitted]^d.flat[i][Permitted] != 0 {
+			cf |= permittedDiff
+		}
+		if c.flat[i][Inheritable]^d.flat[i][Inheritable] != 0 {
+			cf |= inheritableDiff
+		}
+	}
+	return cf, nil
+}
+
 // Compare returns 0 if c and d are identical in content.
 //
 // Deprecated: Replace with (*Set).Cf().
@@ -197,29 +232,6 @@ func (c *Set) ClearFlag(vec Flag) error {
 func (c *Set) Compare(d *Set) (uint, error) {
 	u, err := c.Cf(d)
 	return uint(u), err
-}
-
-// Cf returns 0 if c and d are identical. A non-zero Diff value
-// captures a simple macroscopic summary of how they differ. The
-// (Diff).Has() function can be used to determine how the two
-// capability sets differ.
-func (c *Set) Cf(d *Set) (Diff, error) {
-	if c == nil || len(c.flat) == 0 || d == nil || len(d.flat) == 0 {
-		return 0, ErrBadSet
-	}
-	var cf Diff
-	for i := 0; i < words; i++ {
-		if c.flat[i][Effective]^d.flat[i][Effective] != 0 {
-			cf |= effectiveDiff
-		}
-		if c.flat[i][Permitted]^d.flat[i][Permitted] != 0 {
-			cf |= permittedDiff
-		}
-		if c.flat[i][Inheritable]^d.flat[i][Inheritable] != 0 {
-			cf |= inheritableDiff
-		}
-	}
-	return cf, nil
 }
 
 // Differs processes the result of Compare and determines if the

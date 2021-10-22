@@ -164,6 +164,8 @@ func (c *Set) GetNSOwner() (int, error) {
 	if magic < kv3 {
 		return 0, ErrBadMagic
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.nsRoot, nil
 }
 
@@ -187,6 +189,9 @@ func (c *Set) SetNSOwner(uid int) {
 // attributes, the process is a little lossy with respect to effective
 // bits.
 func (c *Set) packFileCap() ([]byte, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var magic uint32
 	switch words {
 	case 1:
@@ -255,8 +260,8 @@ func (c *Set) SetFd(file *os.File) error {
 		}
 		return nil
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	d, err := c.packFileCap()
 	if err != nil {
 		return err
@@ -297,8 +302,8 @@ func (c *Set) SetFile(path string) error {
 		}
 		return nil
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	d, err := c.packFileCap()
 	if err != nil {
 		return err
@@ -372,8 +377,8 @@ func (c *Set) Export() ([]byte, error) {
 	}
 	b := new(bytes.Buffer)
 	binary.Write(b, binary.LittleEndian, ExtMagic)
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	var n = uint(0)
 	for i, f := range c.flat {
 		if nn := 4 * uint(i); nn+4 > n {
