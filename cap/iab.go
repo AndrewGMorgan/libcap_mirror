@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // omask returns the offset and mask for a specific capability.
@@ -20,6 +21,7 @@ func omask(c Value) (uint, uint32) {
 // Value from the process' Bounding set. This convention is used to
 // support the empty IAB as being mostly harmless.
 type IAB struct {
+	mu       sync.RWMutex
 	a, i, nb []uint32
 }
 
@@ -77,6 +79,20 @@ func NewIAB() *IAB {
 		a:  make([]uint32, words),
 		nb: make([]uint32, words),
 	}
+}
+
+// Dup returns a duplicate copy of the IAB.
+func (iab *IAB) Dup() (*IAB, error) {
+	if iab == nil {
+		return nil, ErrBadValue
+	}
+	v := NewIAB()
+	iab.mu.RLock()
+	defer iab.mu.RUnlock()
+	copy(v.i, iab.i)
+	copy(v.a, iab.a)
+	copy(v.nb, iab.nb)
+	return v, nil
 }
 
 // IABInit allocates a new IAB tuple.
@@ -161,6 +177,8 @@ func (iab *IAB) String() string {
 		return "<invalid>"
 	}
 	var vs []string
+	iab.mu.RLock()
+	defer iab.mu.RUnlock()
 	for c := Value(0); c < Value(maxValues); c++ {
 		offset, mask := omask(c)
 		i := (iab.i[offset] & mask) != 0
@@ -182,6 +200,8 @@ func (iab *IAB) String() string {
 	return strings.Join(vs, ",")
 }
 
+// iabSetProc uses a syscaller to apply an IAB tuple to the process.
+// The iab is known to be locked by the caller.
 func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 	temp := GetProc()
 	var raising uint32
@@ -234,17 +254,24 @@ func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 // other bits, so this function carefully performs the the combined
 // operation in the most flexible manner.
 func (iab *IAB) SetProc() error {
+	if iab == nil {
+		return ErrBadValue
+	}
 	state, sc := scwStateSC()
 	defer scwSetState(launchBlocked, state, -1)
+	iab.mu.RLock()
+	defer iab.mu.RUnlock()
 	return sc.iabSetProc(iab)
 }
 
 // GetVector returns the raised state of the specific capability bit
 // of the indicated vector.
 func (iab *IAB) GetVector(vec Vector, val Value) (bool, error) {
-	if val >= MaxBits() {
+	if val >= MaxBits() || iab == nil {
 		return false, ErrBadValue
 	}
+	iab.mu.RLock()
+	defer iab.mu.RUnlock()
 	offset, mask := omask(val)
 	switch vec {
 	case Inh:
@@ -266,6 +293,11 @@ func (iab *IAB) GetVector(vec Vector, val Value) (bool, error) {
 // equivalent to lowering the Bounding vector of the process (when
 // successfully applied with (*IAB).SetProc()).
 func (iab *IAB) SetVector(vec Vector, raised bool, vals ...Value) error {
+	if iab == nil {
+		return ErrBadValue
+	}
+	iab.mu.Lock()
+	defer iab.mu.Unlock()
 	for _, val := range vals {
 		if val >= Value(maxValues) {
 			return ErrBadValue
@@ -306,18 +338,25 @@ func (iab *IAB) SetVector(vec Vector, raised bool, vals ...Value) error {
 // the bits are inverted from what you might expect - that is lowered
 // bits from the Set will be raised in the Bound vector.
 func (iab *IAB) Fill(vec Vector, c *Set, flag Flag) error {
-	if len(c.flat) != 0 || flag > Inheritable {
-		return ErrBadSet
+	if iab == nil {
+		return ErrBadValue
 	}
+	// work with a copy to avoid potential deadlock.
+	s, err := c.Dup()
+	if err != nil {
+		return err
+	}
+	iab.mu.Lock()
+	defer iab.mu.Unlock()
 	for i := 0; i < words; i++ {
-		flat := c.flat[i][flag]
+		flat := s.flat[i][flag]
 		switch vec {
 		case Inh:
 			iab.i[i] = flat
-			iab.a[i] &= ^flat
+			iab.a[i] &= flat
 		case Amb:
 			iab.a[i] = flat
-			iab.i[i] |= ^flat
+			iab.i[i] |= flat
 		case Bound:
 			iab.nb[i] = ^flat
 		default:
@@ -337,16 +376,23 @@ func (iab *IAB) Cf(alt *IAB) (IABDiff, error) {
 	if iab == nil || alt == nil || len(iab.i) != words || len(alt.i) != words || len(iab.a) != words || len(alt.a) != words || len(iab.nb) != words || len(alt.nb) != words {
 		return 0, ErrBadValue
 	}
+	// Avoid holding two locks at once.
+	ref, err := alt.Dup()
+	if err != nil {
+		return 0, ErrBadValue
+	}
+	iab.mu.RLock()
+	defer iab.mu.RUnlock()
 
 	var cf IABDiff
 	for i := 0; i < words; i++ {
-		if iab.i[i] != alt.i[i] {
+		if iab.i[i] != ref.i[i] {
 			cf |= iBits
 		}
-		if iab.a[i] != alt.a[i] {
+		if iab.a[i] != ref.a[i] {
 			cf |= aBits
 		}
-		if iab.nb[i] != alt.nb[i] {
+		if iab.nb[i] != ref.nb[i] {
 			cf |= bBits
 		}
 	}

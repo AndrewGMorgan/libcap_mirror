@@ -200,17 +200,19 @@ func TestIAB(t *testing.T) {
 		t.Fatalf("failed to get init's capabilities: %v", err)
 	}
 	iab := NewIAB()
-	iab.Fill(Amb, one, Permitted)
+	if err := iab.Fill(Amb, one, Permitted); err != nil {
+		t.Fatalf("failed to fill Amb from Permitted: %v", err)
+	}
 	for i := 0; i < words; i++ {
 		if iab.i[i] != iab.a[i] {
-			t.Errorf("[%d] i=0x%08x != a=0x%08x", i, iab.i[i], iab.a[i])
+			t.Errorf("[%d: %q] i=0x%08x != a=0x%08x", i, one, iab.i[i], iab.a[i])
 		}
 	}
 	one.ClearFlag(Inheritable)
 	iab.Fill(Inh, one, Inheritable)
 	for i := 0; i < words; i++ {
 		if iab.i[i] != iab.a[i] {
-			t.Errorf("[%d] i=0x%08x != a=0x%08x", i, iab.i[i], iab.a[i])
+			t.Errorf("[%d: %q] i=0x%08x != a=0x%08x", i, one, iab.i[i], iab.a[i])
 		}
 	}
 

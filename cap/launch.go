@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -15,6 +16,8 @@ import (
 // Note, go1.10 is the earliest version of the Go toolchain that can
 // support this abstraction.
 type Launcher struct {
+	mu sync.RWMutex
+
 	// Note, path and args must be set, or callbackFn. They cannot
 	// both be empty. In such cases .Launch() will error out.
 	path string
@@ -108,11 +111,21 @@ func FuncLauncher(fn func(interface{}) error) *Launcher {
 // Launch() invocation and can communicate contextual info to and from
 // the callback and the main process.
 func (attr *Launcher) Callback(fn func(*syscall.ProcAttr, interface{}) error) {
+	if attr == nil {
+		return
+	}
+	attr.mu.Lock()
+	defer attr.mu.Unlock()
 	attr.callbackFn = fn
 }
 
 // SetUID specifies the UID to be used by the launched command.
 func (attr *Launcher) SetUID(uid int) {
+	if attr == nil {
+		return
+	}
+	attr.mu.Lock()
+	defer attr.mu.Unlock()
 	attr.changeUIDs = true
 	attr.uid = uid
 }
@@ -120,6 +133,11 @@ func (attr *Launcher) SetUID(uid int) {
 // SetGroups specifies the GID and supplementary groups for the
 // launched command.
 func (attr *Launcher) SetGroups(gid int, groups []int) {
+	if attr == nil {
+		return
+	}
+	attr.mu.Lock()
+	defer attr.mu.Unlock()
 	attr.changeGIDs = true
 	attr.gid = gid
 	attr.groups = groups
@@ -127,20 +145,37 @@ func (attr *Launcher) SetGroups(gid int, groups []int) {
 
 // SetMode specifies the libcap Mode to be used by the launched command.
 func (attr *Launcher) SetMode(mode Mode) {
+	if attr == nil {
+		return
+	}
+	attr.mu.Lock()
+	defer attr.mu.Unlock()
 	attr.changeMode = true
 	attr.mode = mode
 }
 
-// SetIAB specifies the AIB capability vectors to be inherited by the
+// SetIAB specifies the IAB capability vectors to be inherited by the
 // launched command. A nil value means the prevailing vectors of the
-// parent will be inherited.
+// parent will be inherited. Note, a duplicate of the provided IAB
+// tuple is actually stored, so concurrent modification of the iab
+// value does not affect the launcher.
 func (attr *Launcher) SetIAB(iab *IAB) {
-	attr.iab = iab
+	if attr == nil {
+		return
+	}
+	attr.mu.Lock()
+	defer attr.mu.Unlock()
+	attr.iab, _ = iab.Dup()
 }
 
 // SetChroot specifies the chroot value to be used by the launched
 // command. An empty value means no-change from the prevailing value.
 func (attr *Launcher) SetChroot(root string) {
+	if attr == nil {
+		return
+	}
+	attr.mu.Lock()
+	defer attr.mu.Unlock()
 	attr.chroot = root
 }
 
@@ -283,6 +318,8 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 		}
 	}
 	if attr.iab != nil {
+		// Note, since .iab is a private copy we don't need to
+		// lock it around this call.
 		if err = singlesc.iabSetProc(attr.iab); err != nil {
 			goto abort
 		}
@@ -343,6 +380,11 @@ func (attr *Launcher) Launch(data interface{}) (int, error) {
 	if !LaunchSupported {
 		return -1, ErrNoLaunch
 	}
+	if attr == nil {
+		return -1, ErrLaunchFailed
+	}
+	attr.mu.RLock()
+	defer attr.mu.RUnlock()
 	if attr.callbackFn == nil && (attr.path == "" || len(attr.args) == 0) {
 		return -1, ErrLaunchFailed
 	}
