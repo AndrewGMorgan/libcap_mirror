@@ -270,6 +270,7 @@ struct cap_iab_s {
  * multithreaded applications.
  */
 struct cap_launch_s {
+    __u8 mutex;
     /*
      * Once forked but before active privilege is changed, this
      * function (if non-NULL) is called.

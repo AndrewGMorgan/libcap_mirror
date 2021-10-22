@@ -8,17 +8,18 @@ cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
 
 cap_launch_t cap_func_launcher(int (callback_fn)(void *detail));
 
-void cap_launcher_callback(cap_launch_t attr,
+int cap_launcher_callback(cap_launch_t attr,
     int (callback_fn)(void *detail));
-void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor);
+int cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor);
 cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab);
-void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot);
+int cap_launcher_set_chroot(cap_launch_t attr, const char *chroot);
 
 #include <sys/types.h>
 
 pid_t cap_launch(cap_launch_t attr, void *detail);
-void cap_launcher_setuid(cap_launch_t attr, uid_t uid);
-void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
+int cap_launcher_setuid(cap_launch_t attr, uid_t uid);
+int cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
+    int ngroups, const gid_t *groups);
 .fi
 .sp
 Link with \fI\-lcap\fP.
@@ -155,7 +156,8 @@ should be considered an error.
 .BR cap_launch ()
 returns -1 in the case of an error.
 .PP
-In all such cases consult
+In all such cases a return value of 0 implies success. In other cases,
+consult
 .BR errno (3)
 for further details.
 .SH "HISTORY"

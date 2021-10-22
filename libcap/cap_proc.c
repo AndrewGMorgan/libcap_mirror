@@ -842,41 +842,69 @@ int cap_iab_set_proc(cap_iab_t iab)
  * considered to have failed and the launch will be aborted - further,
  * errno will be communicated to the parent.
  */
-void cap_launcher_callback(cap_launch_t attr, int (callback_fn)(void *detail))
+int cap_launcher_callback(cap_launch_t attr, int (callback_fn)(void *detail))
 {
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&attr->mutex);
     attr->custom_setup_fn = callback_fn;
+    _cap_mu_unlock(&attr->mutex);
+    return 0;
 }
 
 /*
  * cap_launcher_setuid primes the launcher to attempt a change of uid.
  */
-void cap_launcher_setuid(cap_launch_t attr, uid_t uid)
+int cap_launcher_setuid(cap_launch_t attr, uid_t uid)
 {
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&attr->mutex);
     attr->uid = uid;
     attr->change_uids = 1;
+    _cap_mu_unlock(&attr->mutex);
+    return 0;
 }
 
 /*
  * cap_launcher_setgroups primes the launcher to attempt a change of
  * gid and groups.
  */
-void cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
-			    int ngroups, const gid_t *groups)
+int cap_launcher_setgroups(cap_launch_t attr, gid_t gid,
+			   int ngroups, const gid_t *groups)
 {
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&attr->mutex);
     attr->gid = gid;
     attr->ngroups = ngroups;
     attr->groups = groups;
     attr->change_gids = 1;
+    _cap_mu_unlock(&attr->mutex);
+    return 0;
 }
 
 /*
  * cap_launcher_set_mode primes the launcher to attempt a change of
  * mode.
  */
-void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
+int cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
 {
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&attr->mutex);
     attr->mode = flavor;
     attr->change_mode = 1;
+    _cap_mu_unlock(&attr->mutex);
+    return 0;
 }
 
 /*
@@ -888,6 +916,11 @@ void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
  */
 cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
 {
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return NULL;
+    }
+    _cap_mu_lock(&attr->mutex);
     cap_iab_t old = attr->iab;
     attr->iab = iab;
     if (old != NULL) {
@@ -896,6 +929,7 @@ cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
     if (iab != NULL) {
 	_cap_mu_lock(&iab->mutex);
     }
+    _cap_mu_unlock(&attr->mutex);
     return old;
 }
 
@@ -903,9 +937,16 @@ cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
  * cap_launcher_set_chroot sets the intended chroot for the launched
  * child.
  */
-void cap_launcher_set_chroot(cap_launch_t attr, const char *chroot)
+int cap_launcher_set_chroot(cap_launch_t attr, const char *chroot)
 {
+    if (!good_cap_launch_t(attr)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&attr->mutex);
     attr->chroot = _libcap_strdup(chroot);
+    _cap_mu_unlock(&attr->mutex);
+    return 0;
 }
 
 static int _cap_chroot(struct syscaller_s *sc, const char *root)
@@ -928,6 +969,9 @@ static int _cap_chroot(struct syscaller_s *sc, const char *root)
 	    }
 	} else {
 	    ret = chroot(root);
+	}
+	if (ret == 0) {
+	    ret = chdir("/");
 	}
     }
     int olderrno = errno;
@@ -1026,16 +1070,17 @@ pid_t cap_launch(cap_launch_t attr, void *detail) {
 	errno = EINVAL;
 	return -1;
     }
+    _cap_mu_lock(&attr->mutex);
 
     /* The launch must have a purpose */
     if (attr->custom_setup_fn == NULL &&
 	(attr->arg0 == NULL || attr->argv == NULL)) {
 	errno = EINVAL;
-	return -1;
+	_cap_mu_unlock_return(&attr->mutex, -1);
     }
 
     if (pipe2(ps, O_CLOEXEC) != 0) {
-	return -1;
+	_cap_mu_unlock_return(&attr->mutex, -1);
     }
 
     child = fork();
@@ -1047,6 +1092,9 @@ pid_t cap_launch(cap_launch_t attr, void *detail) {
 	_cap_launch(ps[1], attr, detail);
 	/* no return from above function */
     }
+
+    /* child has its own copy, and parent no longer needs it locked. */
+    _cap_mu_unlock(&attr->mutex);
     close(ps[1]);
     if (child < 0) {
 	goto defer;
