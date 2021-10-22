@@ -5,6 +5,8 @@
 
 cap_iab_t cap_iab_init(void);
 
+cap_iab_t cap_iab_dup(cap_iab_t iab);
+
 cap_iab_t cap_iab_get_proc(void);
 
 cap_iab_t cap_iab_get_pid(pid_t pid);
@@ -70,6 +72,11 @@ returns an empty IAB value. That is a \fImostly-harmless\fP tuple. It
 will not block any Permitted file capabilities through exec, but it
 won't bestow any either. The returned \fIcap_iab_t\fP should be freed
 with
+.BR cap_free (3).
+.sp
+.BR cap_iab_dup ()
+returns a copy of the specified IAB value.  The returned cap_iab_t
+should be freed with
 .BR cap_free (3).
 .sp
 .BR cap_iab_get_proc ()

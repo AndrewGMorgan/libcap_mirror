@@ -22,7 +22,7 @@ MAN3S = cap_init.3 cap_free.3 cap_dup.3 \
 	cap_launcher_set_chroot.3 cap_launcher_set_mode.3 \
 	cap_launcher_setgroups.3 cap_launcher_setuid.3 \
 	cap_launcher_set_iab.3 cap_new_launcher.3 \
-	cap_iab.3 cap_iab_init.3 cap_iab_compare.3 \
+	cap_iab.3 cap_iab_init.3 cap_iab_dup.3 cap_iab_compare.3 \
 	cap_iab_get_proc.3 cap_iab_get_pid.3 cap_iab_set_proc.3 \
 	cap_iab_to_text.3 cap_iab_from_text.3 cap_iab_get_vector.3 \
 	cap_iab_set_vector.3 cap_iab_fill.3 \

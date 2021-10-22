@@ -124,9 +124,11 @@ the launcher. Calling this function with an IAB value of NULL will
 configure the launcher to not set an IAB value (the default).  See
 \fBcap_iab\fP(3) for details on the IAB set. Note, the launcher is
 associated directly with the supplied \fIiab\fP value, and does not
-make a copy of it. Set with NULL to regain control over the memory
-associated with that IAB value, otherwise the IAB value will be
-\fBcap_free\fI()\fP'd when the launcher is.
+make a copy of it. This iab value is locked to the laucher and cannot
+be modified while associated with the launcher. Set with NULL to
+regain control over the memory associated with that IAB value,
+otherwise the IAB value will be \fBcap_free\fI()\fP'd when the
+launcher is.
 .sp
 .BR cap_launcher_set_chroot ()
 This function causes the launched program executable to be invoked

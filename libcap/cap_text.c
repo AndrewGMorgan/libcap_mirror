@@ -520,6 +520,7 @@ char *cap_iab_to_text(cap_iab_t iab)
     int first = 1;
 
     if (good_cap_iab_t(iab)) {
+	_cap_mu_lock(&iab->mutex);
 	for (c = 0; c < cmb; c++) {
 	    int keep = 0;
 	    int o = c >> 5;
@@ -553,6 +554,7 @@ char *cap_iab_to_text(cap_iab_t iab)
 		first = 0;
 	    }
 	}
+	_cap_mu_unlock(&iab->mutex);
     }
     *p = '\0';
     return _libcap_strdup(buf);

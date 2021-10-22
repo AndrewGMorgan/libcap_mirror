@@ -129,8 +129,7 @@ cap_t cap_dup(cap_t cap_d)
 {
     cap_t result;
 
-    __u32 *magic_p = -2 + (__u32 *) cap_d;
-    if (*magic_p != CAP_T_MAGIC) {
+    if (!good_cap_t(cap_d)) {
 	_cap_debug("bad argument");
 	errno = EINVAL;
 	return NULL;
@@ -160,6 +159,35 @@ cap_iab_t cap_iab_init(void)
     base->magic = CAP_IAB_MAGIC;
     base->size = sizeof(struct _cap_alloc_s);
     return &base->u.iab;
+}
+
+/*
+ * This function duplicates an internal iab tuple with calloc()'d
+ * memory. It is the responsibility of the user to call cap_free() to
+ * liberate it.
+ */
+cap_iab_t cap_iab_dup(cap_iab_t iab)
+{
+    cap_iab_t result;
+
+    if (!good_cap_iab_t(iab)) {
+	_cap_debug("bad argument");
+	errno = EINVAL;
+	return NULL;
+    }
+
+    result = cap_iab_init();
+    if (result == NULL) {
+	_cap_debug("out of memory");
+	return NULL;
+    }
+
+    _cap_mu_lock(&iab->mutex);
+    memcpy(result, iab, sizeof(*iab));
+    _cap_mu_unlock(&iab->mutex);
+    _cap_mu_unlock(&result->mutex);
+
+    return result;
 }
 
 /*
@@ -236,8 +264,11 @@ int cap_free(void *data_p)
     case CAP_IAB_MAGIC:
 	break;
     case CAP_LAUNCH_MAGIC:
-	if (cap_free(data->u.launcher.iab) != 0) {
-	    return -1;
+	if (data->u.launcher.iab != NULL) {
+	    _cap_mu_unlock(&data->u.launcher.iab->mutex);
+	    if (cap_free(data->u.launcher.iab) != 0) {
+		return -1;
+	    }
 	}
 	data->u.launcher.iab = NULL;
 	if (cap_free(data->u.launcher.chroot) != 0) {

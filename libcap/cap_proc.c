@@ -745,6 +745,7 @@ cap_iab_t cap_iab_get_proc(void)
 
 /*
  * _cap_iab_set_proc sets the iab collection using the requested syscaller.
+ * The iab value is locked by the caller.
  */
 static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 {
@@ -818,7 +819,15 @@ defer:
  */
 int cap_iab_set_proc(cap_iab_t iab)
 {
-    return _cap_iab_set_proc(&multithread, iab);
+    int retval;
+    if (!good_cap_iab_t(iab)) {
+	errno = EINVAL;
+	return -1;
+    }
+    _cap_mu_lock(&iab->mutex);
+    retval = _cap_iab_set_proc(&multithread, iab);
+    _cap_mu_unlock(&iab->mutex);
+    return retval;
 }
 
 /*
@@ -871,13 +880,22 @@ void cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
 }
 
 /*
- * cap_launcher_set_iab primes the launcher to attempt to change the iab bits of
- * the launched child.
+ * cap_launcher_set_iab primes the launcher to attempt to change the
+ * IAB values of the launched child. The launcher locks iab while it
+ * is owned by the launcher: this prevents the user from
+ * asynchronously changing its value while it is associated with the
+ * launcher.
  */
 cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
 {
     cap_iab_t old = attr->iab;
     attr->iab = iab;
+    if (old != NULL) {
+	_cap_mu_unlock(&old->mutex);
+    }
+    if (iab != NULL) {
+	_cap_mu_lock(&iab->mutex);
+    }
     return old;
 }
 

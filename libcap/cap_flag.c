@@ -217,20 +217,25 @@ cap_flag_value_t cap_iab_get_vector(cap_iab_t iab, cap_iab_vector_t vec,
 
     unsigned o = (bit >> 5);
     __u32 mask = 1u << (bit & 31);
+    cap_flag_value_t ret;
 
+    _cap_mu_lock(&iab->mutex);
     switch (vec) {
     case CAP_IAB_INH:
-	return !!(iab->i[o] & mask);
+	ret = !!(iab->i[o] & mask);
 	break;
     case CAP_IAB_AMB:
-	return !!(iab->a[o] & mask);
+	ret = !!(iab->a[o] & mask);
 	break;
     case CAP_IAB_BOUND:
-	return !!(iab->nb[o] & mask);
+	ret = !!(iab->nb[o] & mask);
 	break;
     default:
-	return 0;
+	ret = 0;
     }
+    _cap_mu_unlock(&iab->mutex);
+
+    return ret;
 }
 
 /*
@@ -250,6 +255,7 @@ int cap_iab_set_vector(cap_iab_t iab, cap_iab_vector_t vec, cap_value_t bit,
     __u32 on = 1u << (bit & 31);
     __u32 mask = ~on;
 
+    _cap_mu_lock(&iab->mutex);
     switch (vec) {
     case CAP_IAB_INH:
 	iab->i[o] = (iab->i[o] & mask) | (raised ? on : 0);
@@ -264,9 +270,10 @@ int cap_iab_set_vector(cap_iab_t iab, cap_iab_vector_t vec, cap_value_t bit,
 	break;
     default:
 	errno = EINVAL;
-	return -1;
+	_cap_mu_unlock_return(&iab->mutex, -1);
     }
 
+    _cap_mu_unlock(&iab->mutex);
     return 0;
 }
 
@@ -306,6 +313,7 @@ int cap_iab_fill(cap_iab_t iab, cap_iab_vector_t vec,
 	return -1;
     }
 
+    _cap_mu_lock(&iab->mutex);
     for (i = 0; !ret && i < _LIBCAP_CAPABILITY_U32S; i++) {
 	switch (vec) {
 	case CAP_IAB_INH:
@@ -325,6 +333,7 @@ int cap_iab_fill(cap_iab_t iab, cap_iab_vector_t vec,
 	    break;
 	}
     }
+    _cap_mu_unlock(&iab->mutex);
 
     cap_free(cap_d);
     return ret;
@@ -341,11 +350,20 @@ int cap_iab_compare(cap_iab_t a, cap_iab_t b)
 	errno = EINVAL;
 	return -1;
     }
+    b = cap_iab_dup(b);
+    if (b == NULL) {
+	return -1;
+    }
+
+    _cap_mu_lock(&a->mutex);
     for (j=0, result=0; j<_LIBCAP_CAPABILITY_U32S; j++) {
 	result |=
 	    (a->i[j] == b->i[j] ? 0 : (1 << CAP_IAB_INH)) |
 	    (a->a[j] == b->a[j] ? 0 : (1 << CAP_IAB_AMB)) |
 	    (a->nb[j] == b->nb[j] ? 0 : (1 << CAP_IAB_BOUND));
     }
+    _cap_mu_unlock(&a->mutex);
+    cap_free(b);
+
     return result;
 }

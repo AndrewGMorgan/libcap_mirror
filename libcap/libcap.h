@@ -253,6 +253,7 @@ extern int capsetp(pid_t pid, cap_t cap_d);
  * applied.
  */
 struct cap_iab_s {
+    __u8 mutex;
     __u32 i[_LIBCAP_CAPABILITY_U32S];
     __u32 a[_LIBCAP_CAPABILITY_U32S];
     __u32 nb[_LIBCAP_CAPABILITY_U32S];

@@ -127,6 +127,7 @@ typedef unsigned cap_mode_t;
 extern cap_t      cap_dup(cap_t);
 extern int        cap_free(void *);
 extern cap_t      cap_init(void);
+extern cap_iab_t  cap_iab_dup(cap_iab_t);
 extern cap_iab_t  cap_iab_init(void);
 
 /* libcap/cap_flag.c */
