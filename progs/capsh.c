@@ -439,27 +439,68 @@ static void describe(cap_value_t cap) {
     }
 }
 
-int main(int argc, char *argv[], char *envp[])
+__attribute__ ((noreturn))
+static void do_launch(char *args[], char *envp[])
 {
+    cap_launch_t lau;
     pid_t child;
-    unsigned i;
-    int strict = 0;
-    const char *shell = SHELL;
+    int ret, result;
 
-    child = 0;
-
-    char *temp_name = cap_to_name(cap_max_bits() - 1);
-    if (temp_name == NULL) {
-	perror("obtaining highest capability name");
+    lau = cap_new_launcher(args[0], (void *) args, (void *) envp);
+    if (lau == NULL) {
+	perror("failed to create launcher");
 	exit(1);
     }
-    if (temp_name[0] != 'c') {
-	printf("WARNING: libcap needs an update (cap=%d should have a name).\n",
-	       cap_max_bits() - 1);
+    child = cap_launch(lau, NULL);
+    if (child <= 0) {
+	perror("child failed to start");
+	exit(1);
     }
-    cap_free(temp_name);
+    cap_free(lau);
+    ret = waitpid(child, &result, 0);
+    if (ret != child) {
+	fprintf(stderr, "failed to wait for PID=%d, result=%x: ",
+		child, result);
+	perror("");
+	exit(1);
+    }
+    if (WIFEXITED(result)) {
+	exit(WEXITSTATUS(result));
+    }
+    if (WIFSIGNALED(result)) {
+	fprintf(stderr, "child PID=%d terminated by signo=%d\n",
+		child, WTERMSIG(result));
+	exit(1);
+    }
+    fprintf(stderr, "child PID=%d generated result=%0x\n", child, result);
+    exit(1);
+}
+
+int main(int argc, char *argv[], char *envp[])
+{
+    pid_t child = 0;
+    unsigned i;
+    int strict = 0, quiet_start = 0;
+    const char *shell = SHELL;
 
     for (i=1; i<argc; ++i) {
+	if (!strcmp("--quiet", argv[i])) {
+	    quiet_start = 1;
+	    continue;
+	}
+	if (i == 1) {
+	    char *temp_name = cap_to_name(cap_max_bits() - 1);
+	    if (temp_name == NULL) {
+		perror("obtaining highest capability name");
+		exit(1);
+	    }
+	    if (temp_name[0] != 'c') {
+		printf("WARNING: libcap needs an update"
+		       " (cap=%d should have a name).\n",
+		       cap_max_bits() - 1);
+	    }
+	    cap_free(temp_name);
+	}
 	if (!strncmp("--drop=", argv[i], 7)) {
 	    arg_drop(strict, argv[i]+7);
 	} else if (!strncmp("--dropped=", argv[i], 10)) {
@@ -880,13 +921,22 @@ int main(int argc, char *argv[], char *envp[])
 	    }
 	} else if (!strcmp("--print", argv[i])) {
 	    arg_print();
-	} else if ((!strcmp("--", argv[i])) || (!strcmp("==", argv[i]))) {
+	} else if ((!strcmp("--", argv[i])) || (!strcmp("==", argv[i]))
+		   || (!strcmp("-+", argv[i])) ||  (!strcmp("=+", argv[i]))) {
+	    int launch = argv[i][1] == '+';
 	    if (argv[i][0] == '=') {
+		if (quiet_start) {
+		    argv[i--] = strdup("--quiet");
+		}
 	        argv[i] = find_self(argv[0]);
 	    } else {
 	        argv[i] = strdup(shell);
 	    }
 	    argv[argc] = NULL;
+	    /* Two ways to chain load - use cap_launch() or execve() */
+	    if (launch) {
+		do_launch(argv+i, envp);
+	    }
 	    execve(argv[i], argv+i, envp);
 	    fprintf(stderr, "execve '%s' failed!\n", argv[i]);
 	    free(argv[i]);
@@ -997,7 +1047,7 @@ int main(int argc, char *argv[], char *envp[])
 	    }
 	} else if (!strcmp("--license", argv[i])) {
 	    printf(
-		"%s see LICENSE file for details.\n"
+		"%s see License file for details.\n"
 		"Copyright (c) 2008-11,16,19-21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
@@ -1090,6 +1140,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --no-new-privs set sticky process privilege limiter\n"
 		   "  --noamb        reset (drop) all ambient capabilities\n"
 		   "  --print        display capability relevant state\n"
+		   "  --quiet        if first argument skip max cap check\n"
 		   "  --secbits=<n>  write a new value for securebits\n"
 		   "  --shell=/xx/yy use /xx/yy instead of " SHELL " for --\n"
 		   "  --strict       toggle --caps, --drop and --inh fixups\n"
@@ -1098,7 +1149,9 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --uid=<n>      set uid to <n> (hint: id <username>)\n"
                    "  --user=<name>  set uid,gid and groups to that of user\n"
 		   "  ==             re-exec(capsh) with args as for --\n"
+		   "  =+             cap_launch capsh with args as for -+\n"
 		   "  --             remaining arguments are for " SHELL "\n"
+		   "  -+             cap_launch " SHELL " with remaining args\n"
 		   "                 (without -- [%s] will simply exit(0))\n",
 		   argv[0], argv[0]);
 	    if (strcmp("--help", argv[1]) && strcmp("-h", argv[1])) {

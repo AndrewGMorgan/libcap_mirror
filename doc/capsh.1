@@ -1,4 +1,4 @@
-.TH CAPSH 1 "2021-08-29" "libcap" "User Commands"
+.TH CAPSH 1 "2021-10-22" "libcap" "User Commands"
 .SH NAME
 capsh \- capability shell wrapper
 .SH SYNOPSIS
@@ -31,7 +31,12 @@ with trailing arguments. Note, you can use
 .B \-c 'command to execute'
 for specific commands.
 .TP
-.B ==
+.BI \-\+ " [args]"
+Uses \fBcap_launch\fP(3) to fork a child to execute the shell. When
+the child exits, \fBcapsh\fP exits with the status of the child or 1
+in the case that the child was terminated by a signal.
+.TP
+.BI == " [args]"
 Execute
 .B capsh
 again with the remaining arguments. Useful for testing
@@ -45,6 +50,12 @@ occurs after a
 argument the PATH located binary may not be resolve to the same binary
 as that running initially. This behavior is an intended feature as it
 can complete the chroot transition.
+.TP
+.BI =\+ " [args]"
+Uses \fBcap_launch\fP(3) to fork a child to re-execute
+\fBcapsh\fP. When this child exits, \fBcapsh\fP exits with the status
+of the child or 1 in the case that the child was terminated by a
+signal.
 .TP
 .BI \-\-caps= cap-set
 Set the prevailing process capabilities to those specified by
@@ -317,6 +328,12 @@ Removes the specified ambient capability from the running process.
 .TP
 .B \-\-noamb
 Drops all ambient capabilities from the running process.
+.TP
+.B \-\-quiet
+This argument is ignored unless it is the first one. If present, it
+suppresses the capsh runtime check to confirm the running libcap is
+recent enough that it can name all of the kernel supported capability
+values.
 .SH "EXIT STATUS"
 Following successful execution,
 .B capsh
