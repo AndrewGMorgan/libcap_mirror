@@ -40,6 +40,35 @@
 
 #define MAX_GROUPS       100   /* max number of supplementary groups for user */
 
+/* parse a non-negative integer with some error handling */
+static unsigned long nonneg_uint(const char *text, const char *prefix, int *ok)
+{
+    char *remains;
+    unsigned long value;
+    ssize_t len = strlen(text);
+
+    if (len == 0 || *text == '-') {
+	goto fail;
+    }
+    value = strtoul(text, &remains, 0);
+    if (*remains) {
+	goto fail;
+    }
+    if (ok != NULL) {
+	*ok = 1;
+    }
+    return value;
+
+fail:
+    if (ok == NULL) {
+	fprintf(stderr, "%s: want non-negative integer, got \"%s\"\n",
+		prefix, text);
+	exit(1);
+    }
+    *ok = 0;
+    return 0;
+}
+
 static char *binary(unsigned long value)
 {
     static char string[8*sizeof(unsigned long) + 1];
@@ -667,7 +696,7 @@ int main(int argc, char *argv[], char *envp[])
 	    unsigned value;
 	    int set;
 
-	    value = strtoul(argv[i]+7, NULL, 0);
+	    value = nonneg_uint(argv[i]+7, "invalid --keep value", NULL);
 	    set = prctl(PR_SET_KEEPCAPS, value);
 	    if (set < 0) {
 		fprintf(stderr, "prctl(PR_SET_KEEPCAPS, %u) failed: %s\n",
@@ -724,7 +753,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strncmp("--secbits=", argv[i], 10)) {
 	    unsigned value;
 	    int status;
-	    value = strtoul(argv[i]+10, NULL, 0);
+	    value = nonneg_uint(argv[i]+10, "invalid --secbits value", NULL);
 	    status = cap_set_secbits(value);
 	    if (status < 0) {
 		fprintf(stderr, "failed to set securebits to 0%o/0x%x\n",
@@ -737,8 +766,9 @@ int main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "already forked\n");
 		exit(1);
 	    }
-	    value = strtoul(argv[i]+10, NULL, 0);
+	    value = nonneg_uint(argv[i]+10, "invalid --forkfor value", NULL);
 	    if (value == 0) {
+		fprintf(stderr, "require non-zero --forkfor value\n");
 		goto usage;
 	    }
 	    child = fork();
@@ -753,7 +783,8 @@ int main(int argc, char *argv[], char *envp[])
 	    pid_t result;
 	    unsigned value;
 
-	    value = strtoul(argv[i]+9, NULL, 0);
+	    value = nonneg_uint(argv[i]+9, "invalid --killit signo value",
+				NULL);
 	    if (!child) {
 		fprintf(stderr, "no forked process to kill\n");
 		exit(1);
@@ -779,7 +810,7 @@ int main(int argc, char *argv[], char *envp[])
 	    unsigned value;
 	    int status;
 
-	    value = strtoul(argv[i]+6, NULL, 0);
+	    value = nonneg_uint(argv[i]+6, "invalid --uid value", NULL);
 	    status = setuid(value);
 	    if (status < 0) {
 		fprintf(stderr, "Failed to set uid=%u: %s\n",
@@ -790,7 +821,7 @@ int main(int argc, char *argv[], char *envp[])
 	    unsigned value;
 	    int status;
 
-	    value = strtoul(argv[i]+10, NULL, 0);
+	    value = nonneg_uint(argv[i]+10, "invalid --cap-uid value", NULL);
 	    status = cap_setuid(value);
 	    if (status < 0) {
 		fprintf(stderr, "Failed to cap_setuid(%u): %s\n",
@@ -801,7 +832,7 @@ int main(int argc, char *argv[], char *envp[])
 	    unsigned value;
 	    int status;
 
-	    value = strtoul(argv[i]+6, NULL, 0);
+	    value = nonneg_uint(argv[i]+6, "invalid --gid value", NULL);
 	    status = setgid(value);
 	    if (status < 0) {
 		fprintf(stderr, "Failed to set gid=%u: %s\n",
@@ -1009,7 +1040,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strncmp("--is-uid=", argv[i], 9)) {
 	    unsigned value;
 	    uid_t uid;
-	    value = strtoul(argv[i]+9, NULL, 0);
+	    value = nonneg_uint(argv[i]+9, "invalid --is-uid value", NULL);
 	    uid = getuid();
 	    if (uid != value) {
 		fprintf(stderr, "uid: got=%d, want=%d\n", uid, value);
@@ -1018,7 +1049,7 @@ int main(int argc, char *argv[], char *envp[])
 	} else if (!strncmp("--is-gid=", argv[i], 9)) {
 	    unsigned value;
 	    gid_t gid;
-	    value = strtoul(argv[i]+9, NULL, 0);
+	    value = nonneg_uint(argv[i]+9, "invalid --is-gid value", NULL);
 	    gid = getgid();
 	    if (gid != value) {
 		fprintf(stderr, "gid: got=%d, want=%d\n", gid, value);
