@@ -47,16 +47,20 @@ static char *where_am_i(void)
  */
 static int try_bind80(const char *hostname)
 {
-    struct addrinfo conf, *detail = NULL;
+    struct addrinfo *conf, *detail = NULL;
     int err, ret = -1, one = 1;
 
-    memset(&conf, 0, sizeof(conf));
-    conf.ai_family = PF_UNSPEC;
-    conf.ai_socktype = SOCK_STREAM;
-    conf.ai_protocol = 0;
-    conf.ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
+    conf = calloc(1, sizeof(*conf));
+    if (conf == NULL) {
+      return -1;
+    }
 
-    err = getaddrinfo(hostname, "80", &conf, &detail);
+    conf->ai_family = PF_UNSPEC;
+    conf->ai_socktype = SOCK_STREAM;
+    conf->ai_protocol = 0;
+    conf->ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
+
+    err = getaddrinfo(hostname, "80", conf, &detail);
     if (err != 0) {
 	goto done;
     }
@@ -78,10 +82,11 @@ static int try_bind80(const char *hostname)
 	goto done;
     }
 
-done:
+ done:
     if (detail != NULL) {
 	freeaddrinfo(detail);
     }
+    free(conf);
 
     return ret;
 }
@@ -116,21 +121,31 @@ static int set_fd3(void *detail)
  */
 int bind80(const char *hostname)
 {
+    cap_launch_t helper;
+    pid_t child;
     char const *args[3];
     char *path;
     int fd, ignored;
     int sp[2];
-    struct iovec iov[1];
     char junk[1];
     const int rec_buf_len = CMSG_SPACE(sizeof(int));
     char *rec_buf[CMSG_SPACE(sizeof(int))];
-    struct msghdr msg;
-    cap_launch_t helper;
-    pid_t child;
+    struct iovec *iov;
+    struct msghdr *msg;
 
     fd = try_bind80(hostname);
     if (fd >= 0) {
 	return fd;
+    }
+
+    iov = calloc(1, sizeof(struct iovec));
+    if (iov == NULL) {
+      return -1;
+    }
+    msg = calloc(1, sizeof(struct msghdr));
+    if (msg == NULL) {
+      free(iov);
+      return -1;
     }
 
     /*
@@ -141,7 +156,7 @@ int bind80(const char *hostname)
     path = where_am_i();
     if (path == NULL) {
 	perror("unable to find self");
-	return -1;
+	goto drop_alloc;
     }
 
     args[0] = "bind80-helper";
@@ -168,26 +183,30 @@ int bind80(const char *hostname)
     iov[0].iov_base = junk;
     iov[0].iov_len = 1;
 
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = 1;
-    msg.msg_control = rec_buf;
-    msg.msg_controllen = rec_buf_len;
+    msg->msg_name = NULL;
+    msg->msg_namelen = 0;
+    msg->msg_iov = iov;
+    msg->msg_iovlen = 1;
+    msg->msg_control = rec_buf;
+    msg->msg_controllen = rec_buf_len;
 
-    if (recvmsg(sp[0], &msg, 0) != -1) {
-	fd = * (int *) CMSG_DATA(CMSG_FIRSTHDR(&msg));
+    if (recvmsg(sp[0], msg, 0) != -1) {
+	fd = * (int *) CMSG_DATA(CMSG_FIRSTHDR(msg));
     }
     waitpid(child, &ignored, 0);
 
-drop_sp:
+ drop_sp:
     close(sp[0]);
 
-drop_helper:
+ drop_helper:
     cap_free(helper);
 
-drop_path:
+ drop_path:
     free(path);
+
+ drop_alloc:
+    free(msg);
+    free(iov);
 
     return fd;
 }
