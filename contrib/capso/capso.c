@@ -138,6 +138,11 @@ int bind80(const char *hostname)
 	return fd;
     }
 
+#ifdef CAPSO_DEBUG
+    printf("application bind80(%s) attempt failed\n", hostname);
+    sleep(30);
+#endif
+
     iov = calloc(1, sizeof(struct iovec));
     if (iov == NULL) {
       return -1;
@@ -226,6 +231,11 @@ SO_MAIN(int argc, char **argv)
     char data[CMSG_SPACE(sizeof(fd))];
     char junk[1];
 
+#ifdef CAPSO_DEBUG
+    printf("invoking %s standalone\n", argv[0]);
+    sleep(30);
+#endif
+
     if (argv != NULL) {
 	cmd = argv[0];
     }
@@ -279,6 +289,11 @@ SO_MAIN(int argc, char **argv)
     if (sendmsg(3, &msg, 0) < 0) {
 	perror("failed to write fd");
     }
+
+#ifdef CAPSO_DEBUG
+    printf("exiting standalone %s\n", argv[0]);
+    sleep(30);
+#endif
 
     exit(0);
 }

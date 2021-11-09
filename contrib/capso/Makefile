@@ -2,7 +2,7 @@ topdir=$(shell pwd)/../..
 include ../../Make.Rules
 
 # Always build sources this way:
-CFLAGS += -fPIC
+CFLAGS += -fPIC $(CAPSO_DEBUG)
 
 all: bind
 
