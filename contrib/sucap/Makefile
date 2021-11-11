@@ -1,4 +1,4 @@
-topdir=$(shell pwd)/..
+topdir=$(shell pwd)/../..
 include ../../Make.Rules
 
 all: su
