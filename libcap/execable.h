@@ -74,20 +74,26 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
  * Note, to avoid any runtime confusion, SO_MAIN is a void static
  * function.
  */
+#if defined(__i386__)
+#define __SO_FORCE_ARG_ALIGNMENT  __attribute__((force_align_arg_pointer))
+#else
+#define __SO_FORCE_ARG_ALIGNMENT
+#endif /* def __i386 */
 
-#define SO_MAIN						        \
-static void __execable_main(int, char**);                       \
-extern void __so_start(void);		                	\
-void __so_start(void)                                           \
-{                                                               \
-    int argc;                                                   \
-    char **argv;                                                \
-    __execable_parse_args(&argc, &argv);                        \
+#define SO_MAIN							\
+static void __execable_main(int, char**);			\
+extern void __so_start(void);					\
+__SO_FORCE_ARG_ALIGNMENT					\
+void __so_start(void)						\
+{								\
+    int argc;							\
+    char **argv;						\
+    __execable_parse_args(&argc, &argv);			\
     __execable_main(argc, argv);				\
-    if (argc != 0) {                                            \
-	free(argv[0]);                                          \
-	free(argv);                                             \
-    }                                                           \
-    exit(0);                                                    \
-}                                                               \
+    if (argc != 0) {						\
+	free(argv[0]);						\
+	free(argv);						\
+    }								\
+    exit(0);							\
+}								\
 static void __execable_main
