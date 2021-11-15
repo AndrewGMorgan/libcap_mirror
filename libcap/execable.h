@@ -71,15 +71,19 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 }
 
 /*
- * Note, to avoid any runtime confusion, SO_MAIN is a void static
- * function.
+ * Linux x86 ABI requires the stack be 16 byte aligned. Keep things
+ * simple and just force it.
  */
-#if defined(__i386__)
+#if defined(__i386__) || defined(__x86_64__)
 #define __SO_FORCE_ARG_ALIGNMENT  __attribute__((force_align_arg_pointer))
 #else
 #define __SO_FORCE_ARG_ALIGNMENT
-#endif /* def __i386 */
+#endif /* def some x86 */
 
+/*
+ * Note, to avoid any runtime confusion, SO_MAIN is a void static
+ * function.
+ */
 #define SO_MAIN							\
 static void __execable_main(int, char**);			\
 extern void __so_start(void);					\
