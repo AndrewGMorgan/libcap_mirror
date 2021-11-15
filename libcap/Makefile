@@ -107,8 +107,8 @@ ifeq ($(SHARED),yes)
 loader.txt: empty
 	$(OBJCOPY) --dump-section .interp=$@ $< /dev/null
 
-cap_magic.o: execable.h execable.c loader.txt
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c execable.c -o $@
+cap_magic.o: execable.h execable.c loader.txt libcap.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -include ./libcap.h -c execable.c -o $@
 
 $(CAPLIBNAME) $(MAJCAPLIBNAME) $(MINCAPLIBNAME): $(CAPOBJS) $(CAPMAGICOBJ)
 	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $(MINCAPLIBNAME) $^ $(MAGIC)

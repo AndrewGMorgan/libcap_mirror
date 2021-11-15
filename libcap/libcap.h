@@ -202,6 +202,9 @@ struct _cap_struct {
 #endif /* DEBUG */
 
 extern char *_libcap_strdup(const char *text);
+extern void _libcap_initialize(void);
+
+#define EXECABLE_INITIALIZE _libcap_initialize()
 
 /*
  * These are semi-public prototypes, they will only be defined in

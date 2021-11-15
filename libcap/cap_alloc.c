@@ -8,17 +8,25 @@
 #include "libcap.h"
 
 /*
+ * Make start up atomic.
+ */
+static __u8 __libcap_mutex;
+
+/*
  * These get set via the pre-main() executed constructor function below it.
  */
 static cap_value_t _cap_max_bits;
 
-__attribute__((constructor (300))) static void _initialize_libcap(void)
+__attribute__((constructor (300))) void _libcap_initialize()
 {
+    _cap_mu_lock(&__libcap_mutex);
     if (_cap_max_bits) {
+	_cap_mu_unlock(&__libcap_mutex);
 	return;
     }
     cap_set_syscall(NULL, NULL);
     _binary_search(_cap_max_bits, cap_get_bound, 0, __CAP_MAXBITS, __CAP_BITS);
+    _cap_mu_unlock(&__libcap_mutex);
 }
 
 cap_value_t cap_max_bits(void)

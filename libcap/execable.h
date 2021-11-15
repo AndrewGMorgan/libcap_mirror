@@ -81,6 +81,13 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 #endif /* def some x86 */
 
 /*
+ * Permit the compiler to override this one.
+ */
+#ifndef EXECABLE_INITIALIZE
+#define EXECABLE_INITIALIZE do { } while(0)
+#endif /* ndef EXECABLE_INITIALIZE */
+
+/*
  * Note, to avoid any runtime confusion, SO_MAIN is a void static
  * function.
  */
@@ -93,6 +100,7 @@ void __so_start(void)						\
     int argc;							\
     char **argv;						\
     __execable_parse_args(&argc, &argv);			\
+    EXECABLE_INITIALIZE;                                        \
     __execable_main(argc, argv);				\
     if (argc != 0) {						\
 	free(argv[0]);						\
