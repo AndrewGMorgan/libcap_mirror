@@ -259,7 +259,7 @@ func (sc *syscaller) iabSetProc(iab *IAB) (err error) {
 // SetProc attempts to change the Inheritable, Ambient and Bounding
 // capability vectors of the current process using the content,
 // iab. The Bounding vector strongly affects the potential for setting
-// other bits, so this function carefully performs the the combined
+// other bits, so this function carefully performs the combined
 // operation in the most flexible manner.
 func (iab *IAB) SetProc() error {
 	if err := iab.good(); err != nil {

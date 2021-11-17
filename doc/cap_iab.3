@@ -1,4 +1,4 @@
-.TH CAP_IAB 3 "2021-09-01" "" "Linux Programmer's Manual"
+.TH CAP_IAB 3 "2021-11-17" "" "Linux Programmer's Manual"
 .SH NAME
 .nf
 #include <sys/capability.h>
@@ -45,7 +45,7 @@ set of rules when the executed file has no configured
 There are some constraints enforced by the kernel with respect to the
 three components of an IAB tuple and the Permitted process capability
 flag. They are: the Inh vector is entirely equal to the process
-Inheritable flag at all times; the the Amb vector contains no more
+Inheritable flag at all times; the Amb vector contains no more
 capability values than the intersection of the Inh vector and the
 Permitted flag for the process; and the Bound (or \fIblocked\fP)
 vector is the twos-complement of the process bounding vector.

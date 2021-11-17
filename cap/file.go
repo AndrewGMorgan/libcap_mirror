@@ -50,7 +50,7 @@ type vfsCaps3 struct {
 	RootID uint32
 }
 
-// ErrBadSize indicates the the loaded file capability has
+// ErrBadSize indicates the loaded file capability has
 // an invalid number of bytes in it.
 var ErrBadSize = errors.New("filecap bad size")
 
