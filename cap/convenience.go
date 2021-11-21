@@ -75,6 +75,7 @@ const (
 	ModeNoPriv
 	ModePure1EInit
 	ModePure1E
+	ModeHybrid
 )
 
 // GetMode assesses the current process state and summarizes it as
@@ -82,6 +83,9 @@ const (
 // declared ModeUncertain.
 func GetMode() Mode {
 	b := GetSecbits()
+	if b == 0 {
+		return ModeHybrid
+	}
 	if b&securedBasicBits != securedBasicBits {
 		return ModeUncertain
 	}
@@ -139,6 +143,10 @@ func (sc *syscaller) setMode(m Mode) error {
 	}
 	if err := sc.setProc(w); err != nil {
 		return err
+	}
+
+	if m == ModeHybrid {
+		return sc.setSecbits(0)
 	}
 
 	if m == ModeNoPriv || m == ModePure1EInit {
@@ -199,6 +207,8 @@ func (m Mode) String() string {
 		return "PURE1E_INIT"
 	case ModePure1E:
 		return "PURE1E"
+	case ModeHybrid:
+		return "HYBRID"
 	default:
 		return "UNKNOWN"
 	}

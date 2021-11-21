@@ -122,6 +122,7 @@ typedef unsigned cap_mode_t;
 #define CAP_MODE_NOPRIV       ((cap_mode_t) 1)
 #define CAP_MODE_PURE1E_INIT  ((cap_mode_t) 2)
 #define CAP_MODE_PURE1E       ((cap_mode_t) 3)
+#define CAP_MODE_HYBRID       ((cap_mode_t) 4)
 
 /* libcap/cap_alloc.c */
 extern cap_t      cap_dup(cap_t);

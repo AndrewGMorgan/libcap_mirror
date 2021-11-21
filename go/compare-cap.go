@@ -158,8 +158,8 @@ func tryProcCaps() {
 		log.Fatalf("wrong of groups: got=%v want=[100 l01]", gs)
 	}
 
-	if mode := cap.GetMode(); mode != cap.ModeUncertain {
-		log.Fatalf("initial mode should be 0 (UNCERTAIN), got: %d (%v)", mode, mode)
+	if mode := cap.GetMode(); mode != cap.ModeHybrid {
+		log.Fatalf("initial mode should be 4 (HYBRID), got: %d (%v)", mode, mode)
 	}
 
 	// To distinguish PURE1E and PURE1E_INIT we need an inheritable capability set.

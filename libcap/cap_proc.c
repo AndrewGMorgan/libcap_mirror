@@ -488,7 +488,9 @@ static int _cap_set_mode(struct syscaller_s *sc, cap_mode_t flavor)
 	    /* for good measure */
 	    _cap_set_no_new_privs(sc);
 	    break;
-
+	case CAP_MODE_HYBRID:
+	    ret = _cap_set_secbits(sc, 0);
+	    break;
 	default:
 	    errno = EINVAL;
 	    ret = -1;
@@ -524,6 +526,9 @@ cap_mode_t cap_get_mode(void)
 {
     unsigned secbits = cap_get_secbits();
 
+    if (secbits == 0) {
+	return CAP_MODE_HYBRID;
+    }
     if ((secbits & CAP_SECURED_BITS_BASIC) != CAP_SECURED_BITS_BASIC) {
 	return CAP_MODE_UNCERTAIN;
     }

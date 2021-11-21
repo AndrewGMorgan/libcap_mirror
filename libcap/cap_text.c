@@ -503,6 +503,8 @@ const char *cap_mode_name(cap_mode_t flavor) {
 	return "PURE1E";
     case CAP_MODE_UNCERTAIN:
 	return "UNCERTAIN";
+    case CAP_MODE_HYBRID:
+	return "HYBRID";
     default:
 	return "UNKNOWN";
     }
