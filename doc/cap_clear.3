@@ -139,11 +139,14 @@ is set to
 .BR EINVAL ,
 indicating that one of the arguments is invalid.
 .SH "CONFORMING TO"
-These functions are as per the withdrawn POSIX.1e draft specification.
-.BR cap_clear_flag ()
-and
+These functions are mostly as per specified in the withdrawn POSIX.1e
+draft specification.  The following are Linux extensions:
+.BR cap_fill (),
+.BR cap_fill_flag (),
+.BR cap_clear_flag (),
 .BR cap_compare ()
-are Linux extensions.
+and
+.BR cap_max_bits ().
 .SH "SEE ALSO"
 .BR libcap (3),
 .BR cap_copy_ext (3),
