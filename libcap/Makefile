@@ -135,6 +135,9 @@ cap_test: cap_test.c $(INCLS) $(CAPOBJS)
 
 libcapsotest: $(CAPLIBNAME)
 	./$(CAPLIBNAME)
+	./$(CAPLIBNAME) --usage
+	./$(CAPLIBNAME) --help
+	./$(CAPLIBNAME) --summary
 
 libpsxsotest: $(PSXLIBNAME)
 	./$(PSXLIBNAME)
