@@ -21,6 +21,7 @@ cap_t cap_get_fd(int fd);
 cap_t cap_get_file(const char *path_p);
 int cap_get_flag(cap_t cap_p, cap_value_t cap ,
                  cap_flag_t flag, cap_flag_value_t *value_p);
+cap_value_t cap_max_bits();
 
 #include <sys/types.h>
 

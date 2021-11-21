@@ -15,6 +15,7 @@ int cap_fill_flag(cap_t cap_p, cap_flag_t to,
                   const cap_t ref, cap_flag_t from);
 int cap_fill(cap_t cap_p, cap_flag_t to, cap_flag_t from);
 int cap_compare(cap_t cap_a, cap_t cap_b);
+cap_value_t cap_max_bits();
 .fi
 .sp
 Link with \fI\-lcap\fP.
@@ -108,6 +109,14 @@ evaluates to non-zero if the returned
 differs in its
 .I flag
 components.
+.PP
+.BR cap_max_bits ()
+returns the number of capability values known to the running
+kernel. This may differ from libcap's list known at compilation
+time. Unnamed, at compilation time, capabilites can be referred to
+numerically and libcap will handle them appropriately. Note, the
+running kernel wins and it gets to define what "all" capabilities
+means.
 .SH "RETURN VALUE"
 .BR cap_clear (),
 .BR cap_clear_flag (),
@@ -117,7 +126,12 @@ and
 .BR cap_compare ()
 return zero on success, and \-1 on failure. Other return values for
 .BR cap_compare ()
-are described above.
+are described above. The function
+.BR cap_max_bits ()
+returns a numeric value of type
+.B cap_value_t
+that is one larger than the largest actual value known to the running
+kernel.
 .PP
 On failure,
 .I errno
