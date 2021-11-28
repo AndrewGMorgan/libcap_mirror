@@ -124,7 +124,7 @@ static int test_short_bits(void)
     }
     if (strlen(tmp) > __CAP_NAME_SIZE) {
 	printf("cap_to_text buffer size reservation needs fixing (%ld > %d)\n",
-	       strlen(tmp), __CAP_NAME_SIZE);
+	       (long int)strlen(tmp), __CAP_NAME_SIZE);
 	result = -1;
     }
     free(tmp);
