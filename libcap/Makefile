@@ -52,13 +52,13 @@ ifeq ($(PTHREADS),yes)
 	$(MAKE) $(PSXTITLE).pc
 endif
 
-ifeq ($(BUILD_GPERF),yes)
+ifeq ($(USE_GPERF),yes)
 USE_GPERF_OUTPUT = $(GPERF_OUTPUT)
 INCLUDE_GPERF_OUTPUT = -DINCLUDE_GPERF_OUTPUT='"$(GPERF_OUTPUT)"'
 endif
 
 $(LIBTITLE).pc: $(LIBTITLE).pc.in
-	sed -e 's,@prefix@,$(prefix),' \
+	$(BUILD_SED) -e 's,@prefix@,$(prefix),' \
 		-e 's,@exec_prefix@,$(exec_prefix),' \
 		-e 's,@libdir@,$(LIBDIR),' \
 		-e 's,@includedir@,$(inc_prefix)/include,' \
@@ -67,7 +67,7 @@ $(LIBTITLE).pc: $(LIBTITLE).pc.in
 		$< >$@
 
 $(PSXTITLE).pc: $(PSXTITLE).pc.in
-	sed -e 's,@prefix@,$(prefix),' \
+	$(BUILD_SED) -e 's,@prefix@,$(prefix),' \
 		-e 's,@exec_prefix@,$(exec_prefix),' \
 		-e 's,@libdir@,$(LIBDIR),' \
 		-e 's,@includedir@,$(inc_prefix)/include,' \
@@ -81,18 +81,22 @@ _makenames: _makenames.c cap_names.list.h
 cap_names.h: _makenames
 	./_makenames > cap_names.h
 
-$(GPERF_OUTPUT): cap_names.list.h
-	perl -e 'print "struct __cap_token_s { const char *name; int index; };\n%{\nconst struct __cap_token_s *__cap_lookup_name(const char *, size_t);\n%}\n%%\n"; while ($$l = <>) { $$l =~ s/[\{\"]//g; $$l =~ s/\}.*// ; print $$l; }' < $< | gperf --ignore-case --language=ANSI-C --readonly --null-strings --global-table --hash-function-name=__cap_hash_name --lookup-function-name="__cap_lookup_name" -c -t -m20 $(INDENT) > $@
-	sed -e 's/unsigned int len/size_t len/' -i $@
+$(GPERF_OUTPUT): cap_names.list.h cap_names.header Makefile
+	(cat cap_names.header ; $(BUILD_SED) -e 's/[\{\}"]//g' -e 's/,$$//' cap_names.list.h) | gperf --ignore-case --language=ANSI-C --readonly --null-strings --global-table --hash-function-name=__cap_hash_name --lookup-function-name="__cap_lookup_name" -c -t -m20 $(INDENT) > $@
+	$(BUILD_SED) -e 's/unsigned int len/size_t len/' -i $@
 
 # Intention is that libcap keeps up with torvalds' tree, as reflected
 # by this maintained version of the kernel header. libcap dynamically
 # trims the meaning of "all" capabilities down to that of the running
-# kernel as of 2.30.
+# kernel as of 2.30. That is, all production kernels should be equal
+# to or behind libcap.
+#
+# Note "./libcap.so --summary" should explain how the built libcap.so
+# compares to the running kernel.
 UAPI_HEADER := $(topdir)/libcap/include/uapi/linux/capability.h
 cap_names.list.h: Makefile $(UAPI_HEADER)
 	@echo "=> making $@ from $(UAPI_HEADER)"
-	perl -e 'while ($$l=<>) { if ($$l =~ /^\#define[ \t](CAP[_A-Z]+)[ \t]+([0-9]+)\s+$$/) { $$tok=$$1; $$val=$$2; $$tok =~ tr/A-Z/a-z/; print "{\"$$tok\",$$val},\n"; } }' $(UAPI_HEADER) | fgrep -v 0x > $@
+	$(BUILD_EGREP) '^#define\s+CAP_([^\s]+)\s+[0-9]+\s*$$' include/uapi/linux/capability.h | $(BUILD_SED) -e 's/^#define\s\+/{"/' -e 's/\s*$$/},/' -e 's/\s\+/",/' -e 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/' > $@
 
 $(STACAPLIBNAME): $(CAPOBJS)
 	$(AR) rcs $@ $^

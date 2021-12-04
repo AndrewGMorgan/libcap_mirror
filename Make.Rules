@@ -92,7 +92,19 @@ BUILD_COPTS ?= $(COPTS)
 BUILD_CFLAGS ?= $(BUILD_COPTS)
 BUILD_CPPFLAGS += -Dlinux $(WARNINGS) $(DEBUG) $(DEFINES) $(LIBCAP_INCLUDES)
 BUILD_LDFLAGS ?= $(LDFLAGS)
-BUILD_GPERF := $(shell which gperf >/dev/null 2>/dev/null && echo yes)
+BUILD_SED ?= sed
+BUILD_GREP ?= grep
+BUILD_EGREP ?= $(BUILD_GREP) -E
+BUILD_FGREP ?= $(BUILD_GREP) -F
+
+# Plan to eventually redefine BUILD_GPERF to be the actual gperf tool
+# alias as per above. Typical distributions are upto a year behind
+# HEAD so we'll not do that before 2023-01-01.
+ifdef BUILD_GPERF
+$(error BUILD_GPERF is now reserved, please use USE_GPERF=yes or no instead)
+endif
+
+USE_GPERF ?= $(shell which gperf >/dev/null 2>/dev/null && echo yes)
 
 LIBCAPLIB := -L$(topdir)/libcap -lcap
 PSXLINKFLAGS :=  -lpthread -Wl,-wrap,pthread_create

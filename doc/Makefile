@@ -44,7 +44,7 @@ html:
 	mkdir -p html
 	for man in $(MANS) ; \
 	do \
-		egrep '^\.so man' $$man > /dev/null || \
+		$(BUILD_EGREP) '^\.so man' $$man > /dev/null || \
 		groff -man -Thtml $$man > html/$$man.html ; \
 	done
 

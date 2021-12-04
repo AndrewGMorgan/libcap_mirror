@@ -35,7 +35,7 @@ clean-here:
 distclean: clean
 	$(DISTCLEAN)
 	@echo "CONFIRM Go package cap has right version dependency on cap/psx:"
-	for x in $$(find . -name go.mod); do grep -F -v "module" $$x | fgrep "kernel.org/pub/linux/libs/security/libcap" > /dev/null || continue ; grep -F "v$(GOMAJOR).$(VERSION).$(MINOR)" $$x  > /dev/null && continue ; echo "$$x is not updated. Try running: ./gomods.sh v$(GOMAJOR).$(VERSION).$(MINOR)" ; exit 1 ; done
+	for x in $$(find . -name go.mod); do $(BUILD_FGREP) -v "module" $$x | $(BUILD_FGREP) "kernel.org/pub/linux/libs/security/libcap" > /dev/null || continue ; $(BUILD_FGREP) "v$(GOMAJOR).$(VERSION).$(MINOR)" $$x  > /dev/null && continue ; echo "$$x is not updated. Try running: ./gomods.sh v$(GOMAJOR).$(VERSION).$(MINOR)" ; exit 1 ; done
 	@echo "ALL go.mod files updated"
 	@echo "Now validate that everything is checked in to a clean tree.."
 	test -z "$$(git status --ignored -s)"
