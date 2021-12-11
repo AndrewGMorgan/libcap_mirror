@@ -257,6 +257,12 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 		return
 	}
 
+	// Provide a way to serialize the caller on the thread
+	// completing. This should be done by the one locked tid that
+	// does the ForkExec(). All the other threads have a different
+	// security context.
+	defer close(result)
+
 	// By never releasing the LockOSThread here, we guarantee that
 	// the runtime will terminate the current OS thread once this
 	// function returns.
@@ -265,10 +271,6 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 	// Name the launcher thread - transient, but helps to debug if
 	// the callbackFn or something else hangs up.
 	singlesc.prctlrcall(prSetName, uintptr(unsafe.Pointer(&lName[0])), 0)
-
-	// Provide a way to serialize the caller on the thread
-	// completing.
-	defer close(result)
 
 	var pa *syscall.ProcAttr
 	var err error
@@ -394,6 +396,7 @@ func (attr *Launcher) Launch(data interface{}) (int, error) {
 	for {
 		select {
 		case v, ok := <-result:
+			<-result // blocks until the launch() goroutine exits
 			if !ok {
 				return -1, ErrLaunchFailed
 			}

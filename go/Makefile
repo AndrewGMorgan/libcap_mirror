@@ -94,6 +94,14 @@ endif
 b210613: b210613.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
+b215283: b215283.go CAPGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+
+ifeq ($(CGO_REQUIRED),0)
+b215283-cgo: b215283.go CAPGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+endif
+
 test: setid gowns captree $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/psx
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/cap
@@ -110,7 +118,7 @@ endif
 # Note, the user namespace doesn't require sudo, but I wanted to avoid
 # requiring that the hosting kernel supports user namespaces for the
 # regular test case.
-sudotest: test ../progs/tcapsh-static b210613
+sudotest: test ../progs/tcapsh-static b210613 b215283
 	../progs/tcapsh-static --has-b=cap_sys_admin || exit 0 && ./gowns --ns -- -c "echo gowns runs with user namespace"
 	./try-launching
 ifeq ($(CGO_REQUIRED),0)
@@ -121,6 +129,12 @@ ifeq ($(CGO_REQUIRED),0)
 	$(SUDO) ./try-launching-cgo
 endif
 	$(SUDO) ../progs/tcapsh-static --cap-uid=$$(id -u) --caps="cap_setpcap=ep" --iab="^cap_setpcap" -- -c ./b210613
+	$(SUDO) ./b215283
+ifeq ($(CGO_REQUIRED),0)
+	$(MAKE) b215283-cgo
+	$(SUDO) ./b215283-cgo
+endif
+
 
 # As of libcap-2.55 We stopped installing the cap and psx packages as
 # part of the install.  Most distribution's packagers skip the Go
@@ -142,5 +156,5 @@ clean:
 	rm -f web setid gowns captree
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
-	rm -f b210613 psx-signals psx-signals-cgo
+	rm -f b210613 b215283 b215283-cgo psx-signals psx-signals-cgo
 	rm -fr vendor CAPGOPACKAGE PSXGOPACKAGE go.sum
