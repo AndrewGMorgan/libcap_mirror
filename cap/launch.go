@@ -181,6 +181,10 @@ func (attr *Launcher) SetChroot(root string) {
 
 // lResult is used to get the result from the doomed launcher thread.
 type lResult struct {
+	// tgid holds the thread group id, which is an alias for the
+	// shared process id of the parent program.
+	tgid int
+
 	// tid holds the tid of the locked launching thread which dies
 	// as the launch completes.
 	tid int
@@ -232,13 +236,14 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 		defer close(quit)
 	}
 
-	pid := syscall.Getpid()
+	tgid := syscall.Getpid()
+
 	// This code waits until we are not scheduled on the parent
 	// thread.  We will exit this thread once the child has
 	// launched.
 	runtime.LockOSThread()
 	tid := syscall.Gettid()
-	if tid == pid {
+	if tid == tgid {
 		// Force the go runtime to find a new thread to run
 		// on.  (It is really awkward to have a process'
 		// PID=TID thread in effectively a zombie state. The
@@ -291,12 +296,12 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 		}
 	}
 
+	var pid int
 	if attr.callbackFn != nil {
 		if err = attr.callbackFn(pa, data); err != nil {
 			goto abort
 		}
 		if attr.path == "" {
-			pid = 0
 			goto abort
 		}
 	}
@@ -343,10 +348,22 @@ abort:
 		pid = -1
 	}
 	result <- lResult{
-		tid: tid,
-		pid: pid,
-		err: err,
+		tgid: tgid,
+		tid:  tid,
+		pid:  pid,
+		err:  err,
 	}
+}
+
+// pollForThreadExit waits for a thread to terminate.
+func (v lResult) pollForThreadExit() {
+	if v.tid == -1 {
+		return
+	}
+	for syscall.Tgkill(v.tgid, v.tid, 0) == nil {
+		runtime.Gosched()
+	}
+	scwSetState(launchActive, launchIdle, v.tid)
 }
 
 // Launch performs a callback function and/or new program launch with
@@ -393,19 +410,11 @@ func (attr *Launcher) Launch(data interface{}) (int, error) {
 
 	result := make(chan lResult)
 	go launch(result, attr, data, nil)
-	for {
-		select {
-		case v, ok := <-result:
-			<-result // blocks until the launch() goroutine exits
-			if !ok {
-				return -1, ErrLaunchFailed
-			}
-			if v.tid != -1 {
-				defer scwSetState(launchActive, launchIdle, v.tid)
-			}
-			return v.pid, v.err
-		default:
-			runtime.Gosched()
-		}
+	v, ok := <-result
+	if !ok {
+		return -1, ErrLaunchFailed
 	}
+	<-result // blocks until the launch() goroutine exits
+	v.pollForThreadExit()
+	return v.pid, v.err
 }
