@@ -67,6 +67,27 @@ void psx_load_syscalls(long int (**syscall_fn)(long int,
 						long int, long int, long int,
 						long int, long int, long int));
 
+/*
+ * psx_sensitivity_t holds the level of paranoia for non-POSIX syscall
+ * behavior. The default is PSX_IGNORE: which is best effort - no
+ * enforcement; PSX_WARNING will dump to stderr a warning when a
+ * syscall's results differ; PSX_ERROR will dump info as per
+ * PSX_WARNING and generate a SIGSYS. The current mode can be set with
+ * psx_set_sensitivity().
+ */
+typedef enum {
+    PSX_IGNORE = 0,
+    PSX_WARNING = 1,
+    PSX_ERROR = 2,
+} psx_sensitivity_t;
+
+/*
+ * psx_set_sensitivity sets the current sensitivity of the PSX
+ * mechanism.  The function returns 0 on success and -1 if the
+ * requested level is invalid.
+ */
+int psx_set_sensitivity(psx_sensitivity_t level);
+
 #ifdef __cplusplus
 }
 #endif

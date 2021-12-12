@@ -1,12 +1,13 @@
-.TH LIBPSX 3 "2021-03-06" "" "Linux Programmer's Manual"
+.TH LIBPSX 3 "2021-12-12" "" "Linux Programmer's Manual"
 .SH NAME
-psx_syscall3, psx_syscall6 \- POSIX semantics for system calls
+psx_syscall3, psx_syscall6, psx_set_sensitivity \- POSIX semantics for system calls
 .SH SYNOPSIS
 .nf
 #include <sys/psx_syscall.h>
 
 long int psx_syscall3(long int syscall_nr, long int arg1, long int arg2, long int arg3);
 long int psx_syscall6(long int syscall_nr, long int arg1, long int arg2, long int arg3, long int arg4, long int arg5, long int arg6);
+int psx_set_sensitivity(psx_sensitivity_t sensitivity);
 .fi
 .sp
 Link with one of these:
@@ -62,6 +63,17 @@ larger. You are encouraged to use the more explicit
 and
 .BR psx_syscall6 ()
 functions as needed.
+.PP
+.BR psx_set_sensitivity ()
+changes the behavior of the mirrored system calls:
+.B PSX_IGNORE
+ensures that differences are ignored (the default behavior);
+.B PSX_WARNING
+prints a stderr notification about how the results differ; and
+.B PSX_ERROR
+prints the error details and generates a
+.B SIGSYS
+signal.
 .SH RETURN VALUE
 The return value for system call functions is generally the value
 returned by the kernel, or \-1 in the case of an error. In such cases

@@ -14,7 +14,7 @@ IMPORTDIR=kernel.org/pub/linux/libs/security/libcap
 PKGDIR=pkg/$(GOOSARCH)/$(IMPORTDIR)
 
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
-TESTS=compare-cap try-launching psx-signals
+TESTS=compare-cap try-launching psx-signals mismatch
 
 all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree
 
@@ -102,14 +102,24 @@ b215283-cgo: b215283.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
+mismatch: mismatch.go PSXGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+
+ifeq ($(CGO_REQUIRED),0)
+mismatch-cgo: mismatch.go CAPGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+endif
+
 test: setid gowns captree $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/psx
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals
+	./mismatch || exit 0 ; exit 1
 ifeq ($(CGO_REQUIRED),0)
-	$(MAKE) psx-signals-cgo
+	$(MAKE) psx-signals-cgo mismatch-cgo
 	./psx-signals-cgo
+	./mismatch-cgo || exit 0 ; exit 1
 endif
 	./setid --caps=false
 	./gowns -- -c "echo gowns runs"
@@ -157,4 +167,5 @@ clean:
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
 	rm -f b210613 b215283 b215283-cgo psx-signals psx-signals-cgo
+	rm -f mismatch mismatch-cgo
 	rm -fr vendor CAPGOPACKAGE PSXGOPACKAGE go.sum

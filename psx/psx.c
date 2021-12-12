@@ -56,6 +56,8 @@ typedef struct registered_thread_s {
     pthread_mutex_t mu;
     int pending;
     int gone;
+    long int retval;
+    pid_t tid;
 } registered_thread_t;
 
 static pthread_once_t psx_tracker_initialized = PTHREAD_ONCE_INIT;
@@ -81,6 +83,7 @@ static struct psx_tracker_s {
     psx_tracker_state_t state;
     int initialized;
     int psx_sig;
+    psx_sensitivity_t sensitivity;
 
     struct {
 	long syscall_nr;
@@ -136,19 +139,20 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 	return;
     }
 
+    long int retval;
     if (!psx_tracker.cmd.six) {
-	(void) syscall(psx_tracker.cmd.syscall_nr,
-		       psx_tracker.cmd.arg1,
-		       psx_tracker.cmd.arg2,
-		       psx_tracker.cmd.arg3);
+	retval = syscall(psx_tracker.cmd.syscall_nr,
+			 psx_tracker.cmd.arg1,
+			 psx_tracker.cmd.arg2,
+			 psx_tracker.cmd.arg3);
     } else {
-	(void) syscall(psx_tracker.cmd.syscall_nr,
-		       psx_tracker.cmd.arg1,
-		       psx_tracker.cmd.arg2,
-		       psx_tracker.cmd.arg3,
-		       psx_tracker.cmd.arg4,
-		       psx_tracker.cmd.arg5,
-		       psx_tracker.cmd.arg6);
+	retval = syscall(psx_tracker.cmd.syscall_nr,
+			 psx_tracker.cmd.arg1,
+			 psx_tracker.cmd.arg2,
+			 psx_tracker.cmd.arg3,
+			 psx_tracker.cmd.arg4,
+			 psx_tracker.cmd.arg5,
+			 psx_tracker.cmd.arg6);
     }
 
     /*
@@ -160,6 +164,8 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
     if (ref) {
 	pthread_mutex_lock(&ref->mu);
 	ref->pending = 0;
+	ref->retval = retval;
+	ref->tid = syscall(SYS_gettid);
 	pthread_mutex_unlock(&ref->mu);
     } /*
        * else thread must be dying and its psx_action_key has already
@@ -607,6 +613,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
     }
     psx_unlock();
 
+    int mismatch = 0;
     for (;;) {
 	int waiting = 0;
 	psx_lock();
@@ -619,8 +626,12 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	    pthread_mutex_lock(&ref->mu);
 	    int pending = ref->pending;
 	    int gone = ref->gone;
-	    if (pending && !gone) {
-		gone = (pthread_kill(ref->thread, 0) != 0);
+	    if (!gone) {
+		if (pending) {
+		    gone = (pthread_kill(ref->thread, 0) != 0);
+		} else {
+		    mismatch |= (ref->retval != ret);
+		}
 	    }
 	    pthread_mutex_unlock(&ref->mu);
 	    if (!gone) {
@@ -639,10 +650,67 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	sched_yield();
     }
 
-    errno = restore_errno;
     psx_tracker.cmd.active = 0;
+    if (mismatch) {
+	psx_lock();
+	switch (psx_tracker.sensitivity) {
+	case PSX_IGNORE:
+	    break;
+	default:
+	    fprintf(stderr, "psx_syscall result differs.\n");
+	    if (psx_tracker.cmd.six) {
+		fprintf(stderr, "trap:%ld a123=[%ld,%ld,%ld]\n",
+			psx_tracker.cmd.syscall_nr,
+			psx_tracker.cmd.arg1,
+			psx_tracker.cmd.arg2,
+			psx_tracker.cmd.arg3);
+	    } else {
+		fprintf(stderr, "trap:%ld a123456=[%ld,%ld,%ld,%ld,%ld,%ld]\n",
+			psx_tracker.cmd.syscall_nr,
+			psx_tracker.cmd.arg1,
+			psx_tracker.cmd.arg2,
+			psx_tracker.cmd.arg3,
+			psx_tracker.cmd.arg4,
+			psx_tracker.cmd.arg5,
+			psx_tracker.cmd.arg6);
+	    }
+	    fprintf(stderr, "results:");
+	    for (ref = psx_tracker.root; ref; ref = next) {
+		next = ref->next;
+		if (ref->thread == self) {
+		    continue;
+		}
+		if (ret != ref->retval) {
+		    fprintf(stderr, " %d={%ld}", ref->tid, ref->retval);
+		}
+	    }
+	    fprintf(stderr, " wanted={%ld}\n", ret);
+	    if (psx_tracker.sensitivity == PSX_WARNING) {
+		break;
+	    }
+	    pthread_kill(self, SIGSYS);
+	}
+	psx_unlock();
+    }
+    errno = restore_errno;
     psx_new_state(_PSX_SYSCALL, _PSX_IDLE);
 
 defer:
     return ret;
+}
+
+/*
+ * Change the PSX sensitivity level. If the threads appear to have
+ * diverged in behavior, this can cause the library to notify the
+ * user.
+ */
+int psx_set_sensitivity(psx_sensitivity_t level) {
+    if (level < PSX_IGNORE || level > PSX_ERROR) {
+	errno = EINVAL;
+	return -1;
+    }
+    psx_lock();
+    psx_tracker.sensitivity = level;
+    psx_unlock();
+    return 0;
 }

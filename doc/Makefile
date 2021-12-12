@@ -26,7 +26,8 @@ MAN3S = cap_init.3 cap_free.3 cap_dup.3 \
 	cap_iab_get_proc.3 cap_iab_get_pid.3 cap_iab_set_proc.3 \
 	cap_iab_to_text.3 cap_iab_from_text.3 cap_iab_get_vector.3 \
 	cap_iab_set_vector.3 cap_iab_fill.3 \
-	psx_syscall.3 psx_syscall3.3 psx_syscall6.3 libpsx.3
+	psx_syscall.3 psx_syscall3.3 psx_syscall6.3 psx_set_sensitivity.3 \
+	libpsx.3
 MAN8S = getcap.8 setcap.8 getpcaps.8 captree.8
 
 MANS = $(MAN1S) $(MAN3S) $(MAN8S)

@@ -4,6 +4,7 @@ package psx // import "kernel.org/pub/linux/libs/security/libcap/psx"
 
 import (
 	"runtime"
+	"sync"
 	"syscall"
 )
 
@@ -32,6 +33,15 @@ func setErrno(v int) int {
 	return int(C.__errno_too(C.long(v)))
 }
 
+var makeFatal sync.Once
+
+// forceFatal configures the psx_syscall mechanism to PSX_ERROR.
+func forceFatal() {
+	makeFatal.Do(func() {
+		C.psx_set_sensitivity(C.PSX_ERROR)
+	})
+}
+
 //go:uintptrescapes
 
 // Syscall3 performs a 3 argument syscall. Syscall3 differs from
@@ -45,6 +55,7 @@ func setErrno(v int) int {
 // If CGO_ENABLED=0 it redirects to the go1.16+
 // syscall.AllThreadsSyscall() function.
 func Syscall3(syscallnr, arg1, arg2, arg3 uintptr) (uintptr, uintptr, syscall.Errno) {
+	forceFatal()
 	// We lock to the OSThread here because we may need errno to
 	// be the one for this thread.
 	runtime.LockOSThread()
@@ -65,6 +76,7 @@ func Syscall3(syscallnr, arg1, arg2, arg3 uintptr) (uintptr, uintptr, syscall.Er
 // arguments, its behavior is identical to that of Syscall3() - see
 // above for the full documentation.
 func Syscall6(syscallnr, arg1, arg2, arg3, arg4, arg5, arg6 uintptr) (uintptr, uintptr, syscall.Errno) {
+	forceFatal()
 	// We lock to the OSThread here because we may need errno to
 	// be the one for this thread.
 	runtime.LockOSThread()
