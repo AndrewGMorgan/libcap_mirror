@@ -236,6 +236,7 @@ func launch(result chan<- lResult, attr *Launcher, data interface{}, quit chan<-
 		defer close(quit)
 	}
 
+	// Thread group ID is the process ID.
 	tgid := syscall.Getpid()
 
 	// This code waits until we are not scheduled on the parent
@@ -355,7 +356,9 @@ abort:
 	}
 }
 
-// pollForThreadExit waits for a thread to terminate.
+// pollForThreadExit waits for a thread to terminate. Only after the
+// thread has safely exited is it safe to resume POSIX semantics
+// security state mirroring for the rest of the process threads.
 func (v lResult) pollForThreadExit() {
 	if v.tid == -1 {
 		return
@@ -369,7 +372,7 @@ func (v lResult) pollForThreadExit() {
 // Launch performs a callback function and/or new program launch with
 // a disposable security state. The data object, when not nil, can be
 // used to communicate with the callback. It can also be used to
-// return details from the callback functions execution.
+// return details from the callback function's execution.
 //
 // If the attr was created with NewLauncher(), this present function
 // will return the pid of the launched process, or -1 and a non-nil
@@ -381,15 +384,15 @@ func (v lResult) pollForThreadExit() {
 // callback return value.
 //
 // Note, while the disposable security state thread makes some
-// oprerations seem more isolated - they are *not securely
+// operations seem more isolated - they are *not securely
 // isolated*. Launching is inherently violating the POSIX semantics
 // maintained by the rest of the "libcap/cap" package, so think of
 // launching as a convenience wrapper around fork()ing.
 //
 // Advanced user note: if the caller of this function thinks they know
 // what they are doing by using runtime.LockOSThread() before invoking
-// this function, they should understand that the OS Thread invoking
-// (*Launcher).Launch() is *not guaranteed* to be the one used for the
+// this function, they should understand that the OS thread invoking
+// (*Launcher).Launch() is *not* guaranteed to be the one used for the
 // disposable security state to perform the launch. If said caller
 // needs to run something on the disposable security state thread,
 // they should do it via the launch callback function mechanism. (The
