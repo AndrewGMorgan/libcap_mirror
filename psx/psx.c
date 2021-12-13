@@ -659,12 +659,6 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	default:
 	    fprintf(stderr, "psx_syscall result differs.\n");
 	    if (psx_tracker.cmd.six) {
-		fprintf(stderr, "trap:%ld a123=[%ld,%ld,%ld]\n",
-			psx_tracker.cmd.syscall_nr,
-			psx_tracker.cmd.arg1,
-			psx_tracker.cmd.arg2,
-			psx_tracker.cmd.arg3);
-	    } else {
 		fprintf(stderr, "trap:%ld a123456=[%ld,%ld,%ld,%ld,%ld,%ld]\n",
 			psx_tracker.cmd.syscall_nr,
 			psx_tracker.cmd.arg1,
@@ -673,6 +667,12 @@ long int __psx_syscall(long int syscall_nr, ...) {
 			psx_tracker.cmd.arg4,
 			psx_tracker.cmd.arg5,
 			psx_tracker.cmd.arg6);
+	    } else {
+		fprintf(stderr, "trap:%ld a123=[%ld,%ld,%ld]\n",
+			psx_tracker.cmd.syscall_nr,
+			psx_tracker.cmd.arg1,
+			psx_tracker.cmd.arg2,
+			psx_tracker.cmd.arg3);
 	    }
 	    fprintf(stderr, "results:");
 	    for (ref = psx_tracker.root; ref; ref = next) {
