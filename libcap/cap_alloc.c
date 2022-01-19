@@ -19,14 +19,15 @@ static cap_value_t _cap_max_bits;
 
 __attribute__((constructor (300))) void _libcap_initialize()
 {
+    int errno_saved = errno;
     _cap_mu_lock(&__libcap_mutex);
-    if (_cap_max_bits) {
-	_cap_mu_unlock(&__libcap_mutex);
-	return;
+    if (!_cap_max_bits) {
+	cap_set_syscall(NULL, NULL);
+	_binary_search(_cap_max_bits, cap_get_bound, 0, __CAP_MAXBITS,
+		       __CAP_BITS);
     }
-    cap_set_syscall(NULL, NULL);
-    _binary_search(_cap_max_bits, cap_get_bound, 0, __CAP_MAXBITS, __CAP_BITS);
     _cap_mu_unlock(&__libcap_mutex);
+    errno = errno_saved;
 }
 
 cap_value_t cap_max_bits(void)

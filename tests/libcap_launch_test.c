@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -118,6 +119,11 @@ int main(int argc, char **argv) {
 	    .pass_on = NO_MORE
 	},
     };
+
+    if (errno != 0) {
+	perror("unexpected initial value for errno");
+	exit(1);
+    }
 
     cap_t orig = cap_get_proc();
     if (orig == NULL) {
