@@ -83,6 +83,18 @@ ifeq ($(CGO_REQUIRED),0)
 	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@-cgo $<
 endif
 
+# This is a test case developed from the deadlock investigation,
+# https://github.com/golang/go/issues/50113 . Note the psx-fd.go code
+# works when compiled CGO_ENABLED=1, but deadlocks when compiled
+# CGO_ENABLED=0. At the time of writing, this is true for go1.16+.
+psx-fd: psx-fd.go PSXGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+
+ifeq ($(CGO_REQUIRED),0)
+psx-fd-cgo: psx-fd.go PSXGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+endif
+
 psx-signals: psx-signals.go PSXGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
@@ -110,16 +122,18 @@ mismatch-cgo: mismatch.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
-test: setid gowns captree $(TESTS)
+test: setid gowns captree psx-fd $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/psx
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals
 	./mismatch || exit 0 ; exit 1
+	timeout 5 ./psx-fd || echo "this is a known Go bug"
 ifeq ($(CGO_REQUIRED),0)
-	$(MAKE) psx-signals-cgo mismatch-cgo
+	$(MAKE) psx-signals-cgo mismatch-cgo psx-fd-cgo
 	./psx-signals-cgo
 	./mismatch-cgo || exit 0 ; exit 1
+	./psx-fd-cgo
 endif
 	./setid --caps=false
 	./gowns -- -c "echo gowns runs"
@@ -167,5 +181,5 @@ clean:
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
 	rm -f b210613 b215283 b215283-cgo psx-signals psx-signals-cgo
-	rm -f mismatch mismatch-cgo
+	rm -f mismatch mismatch-cgo psx-fd psx-fd-cgo
 	rm -fr vendor CAPGOPACKAGE PSXGOPACKAGE go.sum
