@@ -18,8 +18,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <linux/limits.h>
-
 #include "libcap.h"
 
 /*

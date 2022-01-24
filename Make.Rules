@@ -148,7 +148,7 @@ ifeq ($(CGO_REQUIRED),1)
 # vestige of legacy workarounds then.
 CGO_LDFLAGS_ALLOW := CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
 endif
-CGO_CFLAGS := -I$(topdir)/libcap/include
+CGO_CFLAGS := $(LIBCAP_INCLUDES)
 CGO_LDFLAGS := -L$(topdir)/libcap
 GO_BUILD_FLAGS :=
 endif

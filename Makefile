@@ -52,7 +52,7 @@ distcheck:
 	$(MAKE) DYNAMIC=no COPTS="-D_FORTIFY_SOURCE=2 -O1 -g" clean test
 	$(MAKE) DYNAMIC=yes clean all test sudotest
 	$(MAKE) DYNAMIC=no COPTS="-O2 -std=c89" clean all test sudotest
-	$(MAKE) PAM_CAP=no CC=/usr/local/musl/bin/musl-gcc clean all test sudotest
+	$(MAKE) PAM_CAP=no CC=musl-gcc clean all test sudotest
 	$(MAKE) CC=clang clean all test sudotest
 	$(MAKE) clean all test sudotest
 	$(MAKE) distclean

@@ -12,7 +12,6 @@
 #include <byteswap.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <linux/xattr.h>
 
 /*
  * We hardcode the prototypes for the Linux system calls here since

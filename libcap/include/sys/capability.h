@@ -2,7 +2,7 @@
  * <sys/capability.h>
  *
  * Copyright (C) 1997   Aleph One
- * Copyright (C) 1997,8, 2008,19,20 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (C) 1997,8, 2008,19-22 Andrew G. Morgan <morgan@kernel.org>
  *
  * defunct POSIX.1e Standard: 25.2 Capabilities           <sys/capability.h>
  */
@@ -21,7 +21,6 @@ extern "C" {
 
 #include <sys/types.h>
 #include <stdint.h>
-#include <linux/types.h>
 
 #ifndef __user
 #define __user
