@@ -29,6 +29,26 @@
 
 #include "psx_syscall.h"
 
+#ifdef _PSX_DEBUG_MEMORY
+
+static void *_psx_calloc(const char *file, const int line,
+			 size_t nmemb, size_t size) {
+    void *ptr = calloc(nmemb, size);
+    fprintf(stderr, "psx:%d:%s:%d: calloc(%ld, %ld) -> %p\n", gettid(),
+	    file, line, (long int)nmemb, (long int)size, ptr);
+    return ptr;
+}
+
+static void _psx_free(const char *file, const int line, void *ptr) {
+    fprintf(stderr, "psx:%d:%s:%d: free(%p)\n", gettid(), file, line, ptr);
+    return free(ptr);
+}
+
+#define calloc(a, b)  _psx_calloc(__FILE__, __LINE__, a, b)
+#define free(a)       _psx_free(__FILE__, __LINE__, a)
+
+#endif /* def _PSX_DEBUG_MEMORY */
+
 /*
  * psx_load_syscalls() can be weakly defined in dependent libraries to
  * provide a mechanism for a library to optionally leverage this psx
@@ -177,6 +197,7 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
  * Some forward declarations for the initialization
  * psx_syscall_start() routine.
  */
+static void _psx_cleanup(void);
 static void _psx_prepare_fork(void);
 static void _psx_fork_completed(void);
 static void _psx_forked_child(void);
@@ -240,6 +261,7 @@ static void psx_syscall_start(void) {
 
     psx_confirm_sigaction();
     psx_do_registration(); /* register the main thread. */
+    atexit(_psx_cleanup);
 
     psx_tracker.initialized = 1;
 }
@@ -420,7 +442,7 @@ static void _psx_exiting(void *node) {
     pthread_sigmask(SIG_SETMASK, &orig_sigbits, NULL);
 
     /*
-     * Allow the rest of the psx system carry on as per normal.
+     * Allow the rest of the psx system to carry on as per normal.
      */
     psx_new_state(_PSX_EXITING, _PSX_IDLE);
 }
@@ -697,6 +719,26 @@ long int __psx_syscall(long int syscall_nr, ...) {
 
 defer:
     return ret;
+}
+
+/*
+ * _psx_cleanup its called when the program exits. It is used to free
+ * any memory used by the thread tracker.
+ */
+static void _psx_cleanup(void) {
+    registered_thread_t *ref, *next;
+
+    /*
+     * We enter the exiting state. Unlike exiting a single thread we
+     * never leave this state since this cleanup is only done at
+     * program exit.
+     */
+    psx_new_state(_PSX_IDLE, _PSX_EXITING);
+
+    for (ref = psx_tracker.root; ref; ref = next) {
+	next = ref->next;
+	psx_do_unregister(ref);
+    }
 }
 
 /*
