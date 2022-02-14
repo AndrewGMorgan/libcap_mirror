@@ -55,7 +55,7 @@ CAPGOPACKAGE: vendor/$(IMPORTDIR)/cap ../cap/*.go good-names.go $(PSXGOPACKAGE)
 # Compiles something with this package to compare it to libcap. This
 # tests more when run under sudotest (see ../progs/quicktest.sh for that).
 compare-cap: compare-cap.go CAPGOPACKAGE
-	CC="$(CC)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 web: ../goapps/web/web.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
@@ -75,7 +75,7 @@ captree: ../goapps/captree/captree.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 ok: ok.go
-	CC="$(CC)" CGO_ENABLED=0 $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="0" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 try-launching: try-launching.go CAPGOPACKAGE ok
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
