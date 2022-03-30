@@ -135,7 +135,13 @@ static int _libcap_wprctl3(struct syscaller_s *sc,
 			   long int pr_cmd, long int arg1, long int arg2)
 {
     if (_libcap_overrode_syscalls) {
-	return sc->three(SYS_prctl, pr_cmd, arg1, arg2);
+	int result;
+	result = sc->three(SYS_prctl, pr_cmd, arg1, arg2);
+	if (result >= 0) {
+	    return result;
+	}
+	errno = -result;
+	return -1;
     }
     return prctl(pr_cmd, arg1, arg2, 0, 0, 0);
 }
@@ -145,7 +151,13 @@ static int _libcap_wprctl6(struct syscaller_s *sc,
 			   long int arg3, long int arg4, long int arg5)
 {
     if (_libcap_overrode_syscalls) {
-	return sc->six(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
+	int result;
+	result = sc->six(SYS_prctl, pr_cmd, arg1, arg2, arg3, arg4, arg5);
+	if (result >= 0) {
+	    return result;
+	}
+	errno = -result;
+	return -1;
     }
     return prctl(pr_cmd, arg1, arg2, arg3, arg4, arg5);
 }
@@ -271,26 +283,12 @@ int capsetp(pid_t pid, cap_t cap_d)
 
 int cap_get_bound(cap_value_t cap)
 {
-    int result;
-
-    result = prctl(PR_CAPBSET_READ, pr_arg(cap), pr_arg(0));
-    if (result < 0) {
-	errno = -result;
-	return -1;
-    }
-    return result;
+    return prctl(PR_CAPBSET_READ, pr_arg(cap), pr_arg(0));
 }
 
 static int _cap_drop_bound(struct syscaller_s *sc, cap_value_t cap)
 {
-    int result;
-
-    result = _libcap_wprctl3(sc, PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
-    if (result < 0) {
-	errno = -result;
-	return -1;
-    }
-    return result;
+    return _libcap_wprctl3(sc, PR_CAPBSET_DROP, pr_arg(cap), pr_arg(0));
 }
 
 /* drop a capability from the bounding set */
@@ -316,7 +314,7 @@ int cap_get_ambient(cap_value_t cap)
 static int _cap_set_ambient(struct syscaller_s *sc,
 			    cap_value_t cap, cap_flag_value_t set)
 {
-    int result, val;
+    int val;
     switch (set) {
     case CAP_SET:
 	val = PR_CAP_AMBIENT_RAISE;
@@ -328,13 +326,8 @@ static int _cap_set_ambient(struct syscaller_s *sc,
 	errno = EINVAL;
 	return -1;
     }
-    result = _libcap_wprctl6(sc, PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
-			     pr_arg(0), pr_arg(0), pr_arg(0));
-    if (result < 0) {
-	errno = -result;
-	return -1;
-    }
-    return result;
+    return _libcap_wprctl6(sc, PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
+			   pr_arg(0), pr_arg(0), pr_arg(0));
 }
 
 /*

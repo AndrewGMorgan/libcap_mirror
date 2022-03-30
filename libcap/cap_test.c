@@ -254,6 +254,21 @@ drop_c:
     return retval;
 }
 
+static int test_prctl(void)
+{
+    int ret, retval=0;
+    errno = 0;
+    ret = cap_get_bound((cap_value_t) -1);
+    if (ret != -1) {
+	printf("cap_get_bound(-1) did not return error: %d\n", ret);
+	retval = -1;
+    } else if (errno != EINVAL) {
+	perror("cap_get_bound(-1) errno != EINVAL");
+	retval = -1;
+    }
+    return retval;
+}
+
 int main(int argc, char **argv) {
     int result = 0;
 
@@ -269,6 +284,9 @@ int main(int argc, char **argv) {
     printf("test_alloc: being called\n");
     fflush(stdout);
     result = test_alloc() | result;
+    printf("test_prctl: being called\n");
+    fflush(stdout);
+    result = test_prctl() | result;
     printf("tested\n");
     fflush(stdout);
 
