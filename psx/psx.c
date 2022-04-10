@@ -287,7 +287,9 @@ static void psx_unlock(void)
 }
 
 /*
- * under lock perform a state transition.
+ * under lock perform a state transition. Changing state is generally
+ * done via this function. However, there is a single exception in
+ * _psx_cleanup().
  */
 static void psx_new_state(psx_tracker_state_t was, psx_tracker_state_t is)
 {
@@ -351,7 +353,7 @@ static void _psx_forked_child(void) {
      *
      * We do this because the glibc man page for fork() suggests that
      * only a subset of things will work post fork(). Specifically,
-     * only a "async-signal-safe functions (see signal- safety(7))
+     * only a "async-signal-safe functions (see signal-safety(7))
      * until such time as it calls execve(2)" can be relied upon. That
      * man page suggests that you can't expect mutexes to work: "not
      * async-signal-safe because it uses pthread_mutex_lock(3)
@@ -733,7 +735,12 @@ static void _psx_cleanup(void) {
      * never leave this state since this cleanup is only done at
      * program exit.
      */
-    psx_new_state(_PSX_IDLE, _PSX_EXITING);
+    psx_lock();
+    while (psx_tracker.state != _PSX_IDLE && psx_tracker.state != _PSX_INFORK) {
+	pthread_cond_wait(&psx_tracker.cond, &psx_tracker.state_mu);
+    }
+    psx_tracker.state = _PSX_EXITING;
+    psx_unlock();
 
     for (ref = psx_tracker.root; ref; ref = next) {
 	next = ref->next;
