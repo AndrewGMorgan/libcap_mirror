@@ -1,15 +1,15 @@
 .\"                                      Hey, EMACS: -*- nroff -*-
-.TH CAPTREE 8 "2021-09-02"
+.TH CAPTREE 8 "2022-04-11"
 .\" Please adjust this date whenever revising the manpage.
 .SH NAME
-captree \- display process tree capabilities
+captree \- display tree of process capabilities
 .SH SYNOPSIS
-.BR captree " [optional args] "
-.IR [pid|glob-name ... ]
+.BR captree " [OPTIONS] "
+.RI [( pid | glob-name ") ...]"
 .SH DESCRIPTION
 .B captree
 displays the capabilities on the mentioned processes indicated by
-.IR pid or glob-name
+.IR pid " or " glob-name
 value(s) given on the command line. If no
 .I pid
 etc values are supplied,
@@ -34,7 +34,8 @@ Optional arguments (which must precede the list of pid|glob-name
 values):
 .TP
 .B \-\-help
-Displays usage information and exits.
+Displays usage information and exits. Note, modern Go runtimes exit
+with status 0 in this case, but older runtimes exit with status 2.
 .TP
 .BR \-\-verbose
 Displays capability sets and IAB tuples even when they are empty, or
@@ -51,7 +52,11 @@ Colo[u]rs the targeted PIDs, if stdout is a TTY, in red. This option
 defaults to true when running via a TTY. The \fB--color\fI=false\fR
 argument will suppress this color. Piping the output into some other
 program will also suppress the use of colo[u]r.
-
+.SH EXIT STATUS
+If the supplied target cannot be found the exit status is 1. Should an
+unrecognized option be provided, the exit status is 2. Otherwise,
+.B captree
+exits with status 0.
 .SH REPORTING BUGS
 Please report bugs via:
 .TP

@@ -340,6 +340,7 @@ func findPIDs(list []string, pids map[string]*task, glob string) <-chan string {
 			return
 		}
 		fmt.Printf("no process matched %q\n", glob)
+		os.Exit(1)
 	}()
 	return finds
 }
@@ -356,6 +357,10 @@ func setDepth(pids map[string]*task, pid string) int {
 }
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [options] [pid|glob] ...\nOptions:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	// Honor the command line request if possible.
