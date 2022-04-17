@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 	    {
 		char *result = cap_to_text(cap_d, NULL);
 		fprintf(stderr, "caps set to: [%s]\n", result);
-		cap_free(result)
+		cap_free(result);
 	    }
 #endif
 	}
