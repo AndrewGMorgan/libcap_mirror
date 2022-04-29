@@ -1,4 +1,4 @@
-.TH CAP_GET_PROC 3 "2021-03-06" "" "Linux Programmer's Manual"
+.TH CAP_GET_PROC 3 "2022-04-28" "" "Linux Programmer's Manual"
 .SH NAME
 cap_get_proc, cap_set_proc, capgetp, cap_get_bound, cap_drop_bound, \
 cap_get_ambient, cap_set_ambient, cap_reset_ambient, \
@@ -65,22 +65,40 @@ the function will fail, and the capability state of the process will remain
 unchanged.
 .PP
 .BR cap_get_pid ()
-returns
+returns a
 .IR cap_t ,
 see 
 .BR cap_init (3),
-with the process capabilities of the process indicated by
+with the process capabilities of the process known to the caller as
 .IR pid .
-(If
+If
 .I pid
-is 0, then the calling process's capabilities are returned.)
+is 0, then the calling process's capabilities are returned.
 This information can also be obtained from the
 .I /proc/<pid>/status
-file. Note, when the caller is operating within a
+file. (The entries in that file can be translated with the
+.BI "capsh \-\-decode=" XXX
+command line.) When the caller is operating within a
 .RB ( CLONE_NEWPID )
 namespace, the numerical
 .I pid
-argument is interpreted in the range of that namespace.
+argument is interpreted in the range of that namespace. As such, the
+caller's idea of the target
+.I pid
+may differ from that of the target process when they are operating in
+different pid namespaces. See
+.BR pid_namespaces (7)
+for details.
+Further, the returned
+.I cap_t
+value holds the capabilities that the target
+.I pid
+thinks it has. If the target is operating in a
+.RB ( CLONE_NEWUSER )
+namespace, the system wide privilege of those user namespace
+capabilities my be substantially reduced. See
+.BR user_namespaces (7)
+for details.
 .PP
 .BR cap_get_bound ()
 with a
@@ -124,16 +142,13 @@ raised ambient bits will only be retained as long as this remains true.
 .PP
 .BR cap_reset_ambient ()
 resets all of the ambient capabilities for the calling process to
-their lowered value. To complete successfully, the prevailing
-.I effective
-capability set must have a raised
-.BR CAP_SETPCAP .
-Note, the ambient set is intended to operate in a legacy environment
-where the application has limited awareness of capabilities in
-general. Executing a file with associated filesystem capabilities, the
-kernel will implicitly reset the ambient set of the process. Also,
-changes to the inheritable set by the program code without explicitly
-fixing up the ambient set can also drop ambient bits.
+their lowered value. Note, the ambient set is intended to operate in a
+legacy environment where the application has limited awareness of
+capabilities in general. Executing a file, with associated filesystem
+capabilities, the kernel will implicitly reset the ambient set of the
+process. Further, changes to the inheritable set by the program code
+without explicitly fixing up the ambient set can also drop ambient
+bits.
 .PP
 .BR cap_get_secbits ()
 returns the securebits of the calling process. These bits affect the
@@ -382,7 +397,7 @@ Note, the above sequence can be performed by the
 .B capsh
 tool as follows:
 .sp
-.B sudo /sbin/capsh \-\-user=nobody \-\-mode=NOPRIV \-\-print
+.B sudo capsh \-\-user=nobody \-\-mode=NOPRIV \-\-print
 .sp
 where
 .B \-\-print
@@ -397,5 +412,7 @@ displays the resulting privilege state.
 .BR cap_get_file (3),
 .BR cap_init (3),
 .BR namespaces (7),
+.BR pid_namespaces (7),
+.BR user_namespaces (7),
 .BR psx_syscall (3),
 .BR capabilities (7).
