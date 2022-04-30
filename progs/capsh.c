@@ -509,7 +509,7 @@ int main(int argc, char *argv[], char *envp[])
 {
     pid_t child = 0;
     unsigned i;
-    int strict = 0, quiet_start = 0;
+    int strict = 0, quiet_start = 0, dont_set_env = 0;
     const char *shell = SHELL;
 
     for (i=1; i<argc; ++i) {
@@ -558,6 +558,8 @@ int main(int argc, char *argv[], char *envp[])
 		perror("failed to reset ambient set");
 		exit(1);
 	    }
+	} else if (!strcmp("--noenv", argv[i])) {
+	    dont_set_env = 1;
 	} else if (!strncmp("--inh=", argv[i], 6)) {
 	    cap_t all, raised_for_setpcap;
 	    char *text;
@@ -912,6 +914,20 @@ int main(int argc, char *argv[], char *envp[])
 			pwd->pw_uid, user, strerror(errno));
 		exit(1);
 	    }
+	    if (!dont_set_env) {
+		/*
+		 * not setting this confuses bash at start up, but use
+		 * --noenv to preserve the HOME etc values instead.
+		 */
+		if (setenv("HOME", pwd->pw_dir, 1) != 0) {
+		    perror("unable to set HOME");
+		    exit(1);
+		}
+		if (setenv("USER", user, 1) != 0) {
+		    perror("unable to set USER");
+		    exit(1);
+		}
+	    }
 	} else if (!strncmp("--decode=", argv[i], 9)) {
 	    unsigned long long value;
 	    unsigned cap;
@@ -1170,6 +1186,7 @@ int main(int argc, char *argv[], char *envp[])
 		   "  --modes        list libcap named modes\n"
 		   "  --no-new-privs set sticky process privilege limiter\n"
 		   "  --noamb        reset (drop) all ambient capabilities\n"
+		   "  --noenv        no fixup of env vars (for --user)\n"
 		   "  --print        display capability relevant state\n"
 		   "  --quiet        if first argument skip max cap check\n"
 		   "  --secbits=<n>  write a new value for securebits\n"

@@ -329,6 +329,12 @@ Removes the specified ambient capability from the running process.
 .B \-\-noamb
 Drops all ambient capabilities from the running process.
 .TP
+.B \-\-noenv
+Suppresses overriding of the HOME and USER environment variables when
+a subsequent
+.B \-\-user
+argument is processed.
+.TP
 .B \-\-quiet
 This argument is ignored unless it is the first one. If present, it
 suppresses the capsh runtime check to confirm the running libcap is
