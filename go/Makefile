@@ -86,7 +86,10 @@ endif
 # This is a test case developed from the deadlock investigation,
 # https://github.com/golang/go/issues/50113 . Note the psx-fd.go code
 # works when compiled CGO_ENABLED=1, but deadlocks when compiled
-# CGO_ENABLED=0. At the time of writing, this is true for go1.16+.
+# CGO_ENABLED=0. This is true for go1.16 and go1.17. The go1.18
+# release fixed this by rewriting the AllThreadsSyscall support, but
+# the large change was not backported. (See noted bug for a much
+# smaller patch for this issue on those older releases.)
 psx-fd: psx-fd.go PSXGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
