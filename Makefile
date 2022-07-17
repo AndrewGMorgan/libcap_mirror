@@ -50,7 +50,7 @@ release: distclean
 ktest: all
 	$(MAKE) -C kdebug test
 
-distcheck:
+distcheck: distclean
 	./distcheck.sh
 	$(MAKE) DYNAMIC=no COPTS="-D_FORTIFY_SOURCE=2 -O1 -g" clean test
 	$(MAKE) DYNAMIC=yes clean all test sudotest
