@@ -24,8 +24,10 @@ $(DEPS):
 ../progs/tcapsh-static:
 	$(MAKE) -C ../progs tcapsh-static
 
-vendor/$(IMPORTDIR) vendor/modules.txt:
+vendor/$(IMPORTDIR):
 	mkdir -p "vendor/$(IMPORTDIR)"
+
+vendor/modules.txt: vendor/$(IMPORTDIR)
 	echo "# $(IMPORTDIR)/psx v$(GOMAJOR).$(VERSION).$(MINOR)" > vendor/modules.txt
 	echo "$(IMPORTDIR)/psx" >> vendor/modules.txt
 	echo "# $(IMPORTDIR)/cap v$(GOMAJOR).$(VERSION).$(MINOR)" >> vendor/modules.txt
