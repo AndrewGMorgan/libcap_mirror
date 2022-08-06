@@ -149,20 +149,26 @@ static void checkfds(void)
 
     if (fstat(1, &st) == -1) {
         fd = open("/dev/null", O_WRONLY);
-        if (fd == -1) exit(1);
+        if (fd == -1) goto badfds;
         if (fd != 1) {
-            if (dup2(fd, 1) == -1) exit(1);
-            if (close(fd) == -1) exit(1);
+            if (dup2(fd, 1) == -1) goto badfds;
+            if (close(fd) == -1) goto badfds;
         }
     }
     if (fstat(2, &st) == -1) {
         fd = open("/dev/null", O_WRONLY);
-        if (fd == -1) exit(1);
+        if (fd == -1) goto badfds;
         if (fd != 2) {
-            if (dup2(fd, 2) == -1) exit(1);
-            if (close(fd) == -1) exit(1);
+            if (dup2(fd, 2) == -1) goto badfds;
+            if (close(fd) == -1) goto badfds;
         }
     }
+
+    return;
+
+badfds:
+    perror("bad filedes");
+    exit(1);
 }
 
 /*
@@ -1210,6 +1216,11 @@ static int set_credentials(cap_t all, int login,
     }
 
     uid = pw->pw_uid;
+    if (uid == 0) {
+	D(("user is superuser: %s", user));
+	*retval = PAM_CRED_ERR;
+	return 1;
+    }
     *uid_p = uid;
 
     shell = x_strdup(pw->pw_shell);
@@ -1226,11 +1237,18 @@ static int set_credentials(cap_t all, int login,
 	    *retval = PAM_CRED_ERR;
 	    return 1;
 	}
-	if (pam_misc_setenv(pamh, "HOME", pw->pw_dir, 0) != PAM_SUCCESS) {
-	    D(("failed to set HOME"));
-	    *retval = PAM_CRED_ERR;
-	    return 1;
-	}
+    }
+
+    /* bash requires these be set to the target user values */
+    if (pam_misc_setenv(pamh, "HOME", pw->pw_dir, 0) != PAM_SUCCESS) {
+	D(("failed to set HOME"));
+	*retval = PAM_CRED_ERR;
+	return 1;
+    }
+    if (pam_misc_setenv(pamh, "USER", user, 0) != PAM_SUCCESS) {
+	D(("failed to set USER"));
+	*retval = PAM_CRED_ERR;
+	return 1;
     }
 
     current = cap_get_proc();
@@ -1613,5 +1631,8 @@ auth_exit:
     }
 
 su_exit:
+    if (status != 0) {
+	perror(PAM_APP_NAME " failed");
+    }
     exit(status);                 /* transparent exit */
 }
