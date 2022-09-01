@@ -39,7 +39,9 @@ int main(int argc, char **argv)
     }
 
     for ( ++argv; --argc > 0; ++argv ) {
+	long lpid;
 	int pid;
+	char *endarg;
 	cap_t cap_d;
 
 	if (!strcmp(argv[0], "--help") || !strcmp(argv[0], "--usage") ||
@@ -62,7 +64,22 @@ int main(int argc, char **argv)
 	    continue;
 	}
 
-	pid = atoi(argv[0]);
+	errno = 0;
+	lpid = strtol(argv[0], &endarg, 10);
+	if (*endarg != '\0') {
+	    errno = EINVAL;
+	}
+	if (errno == 0) {
+	    if (lpid < 0 || pid != (pid_t) pid)
+		errno = EOVERFLOW;
+	}
+	if (errno != 0) {
+	    fprintf(stderr, "Cannot parse pid %s (%s)\n",
+		    argv[0], strerror(errno));
+	    retval = 1;
+	    continue;
+	}
+	pid = lpid;
 
 	cap_d = cap_get_pid(pid);
 	if (cap_d == NULL) {
