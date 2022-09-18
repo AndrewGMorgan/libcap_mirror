@@ -16,7 +16,7 @@ PKGDIR=pkg/$(GOOSARCH)/$(IMPORTDIR)
 DEPS=../libcap/libcap.a ../libcap/libpsx.a
 TESTS=compare-cap try-launching psx-signals mismatch
 
-all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree
+all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree captrace
 
 $(DEPS):
 	$(MAKE) -C ../libcap all
@@ -74,6 +74,9 @@ gowns: ../goapps/gowns/gowns.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 captree: ../goapps/captree/captree.go CAPGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+
+captrace: ../goapps/captrace/captrace.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 ok: ok.go vendor/modules.txt
@@ -182,7 +185,7 @@ install: all
 
 clean:
 	rm -f *.o *.so *~ mknames ok good-names.go
-	rm -f web setid gowns captree
+	rm -f web setid gowns captree captrace
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
 	rm -f b210613 b215283 b215283-cgo psx-signals psx-signals-cgo
