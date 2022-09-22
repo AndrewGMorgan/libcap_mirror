@@ -1,7 +1,7 @@
 .\"
 .\" written by Andrew Main <zefram@dcs.warwick.ac.uk>
 .\"
-.TH CAP_FROM_TEXT 3 "2021-03-06" "" "Linux Programmer's Manual"
+.TH CAP_FROM_TEXT 3 "2022-09-22" "" "Linux Programmer's Manual"
 .SH NAME
 cap_from_text, cap_to_text, cap_to_name, cap_from_name \- capability
 state textual representation translation
@@ -10,7 +10,7 @@ state textual representation translation
 #include <sys/capability.h>
 
 cap_t cap_from_text(const char* buf_p );
-char *cap_to_text(cap_t caps, ssize_t * length_p);
+char *cap_to_text(cap_t caps, ssize_t * len_p);
 int cap_from_name(const char* name , cap_value_t* cap_p);
 char *cap_to_name(cap_value_t cap);
 .fi
@@ -46,7 +46,7 @@ is both set and cleared within a single clause.
 .PP
 .BR cap_to_text ()
 converts the capability state in working storage identified by
-.I cap_p
+.I caps
 into a nul-terminated human-readable string.  This function allocates
 any memory necessary to contain the string, and returns a pointer to
 the string.  If the pointer
@@ -56,7 +56,7 @@ the function shall also return the full length of the string (not including
 the nul terminator) in the location pointed to by
 .IR len_p .
 The capability state in working storage, identified by
-.IR cap_p ,
+.IR caps ,
 is completely represented in the character string.
 When the capability state in working storage is no longer required,
 the caller should free any releasable memory by calling
