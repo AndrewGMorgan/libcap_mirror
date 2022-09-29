@@ -18,7 +18,7 @@ FAKEROOT=$(DESTDIR)
 # administrative operations that could be needed to recover a system.
 
 ifndef lib
-lib=$(shell ldd /usr/bin/ld|egrep "ld-linux|ld.so"|cut -d/ -f2)
+lib=$(shell ldd /usr/bin/ld|grep -E "ld-linux|ld.so"|cut -d/ -f2)
 endif
 
 ifndef sbin

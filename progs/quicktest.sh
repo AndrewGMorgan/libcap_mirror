@@ -256,7 +256,7 @@ rm -f nsprivileged
 cp ./tcapsh-static ./nsprivileged && /bin/chmod -s ./nsprivileged
 ./setcap -n 1 all=ep ./nsprivileged
 if [ $? -eq 0 ]; then
-    ./getcap -n ./nsprivileged | fgrep "[rootid=1]"
+    ./getcap -n ./nsprivileged | grep -F "[rootid=1]"
     if [ $? -ne 0 ]; then
 	echo "FAILED setting ns rootid on file"
 	exit 1

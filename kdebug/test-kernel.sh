@@ -62,7 +62,7 @@ if [ -f "$HERE/interactive" ]; then
     echo "file /root/interactive $HERE/interactive 0755 0 0" >> fs.conf
 fi
 
-COMMANDS="awk cat chmod cp dmesg fgrep id less ln ls mkdir mount pwd rm rmdir sh sort umount uniq vi"
+COMMANDS="awk cat chmod cp dmesg grep id less ln ls mkdir mount pwd rm rmdir sh sort umount uniq vi"
 for f in $COMMANDS; do
     echo slink /bin/$f /sbin/busybox 0755 0 0 >> fs.conf
 done
