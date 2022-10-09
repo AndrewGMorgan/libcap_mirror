@@ -26,6 +26,73 @@
 
 #include "capso.h"
 
+extern char **environ;
+
+/*
+ * fake_exploit is some dedicated code to simulate a shell escape type
+ * exploit. This is obviously not something serious to include in code
+ * that has actually been audited for security, but we use it to
+ * demonstrate an aspect of file capabilities vs. setuid root for
+ * granting privilege.
+ */
+static void fake_exploit(void) {
+#ifdef ALLOW_EXPLOIT
+    const char *exploit = getenv("TRIGGER_EXPLOIT");
+    if (exploit == NULL) {
+	return;
+    }
+
+    switch (*exploit) {
+    case '^':
+    case '%':
+	exploit++;
+	cap_value_t caps = CAP_NET_BIND_SERVICE;
+	cap_t c = cap_get_proc();
+	cap_set_flag(c, CAP_INHERITABLE, 1, &caps, CAP_SET);
+	if (cap_set_proc(c)) {
+	    perror("Failed to raise inheritable capability");
+	    exit(1);
+	}
+	if (*(exploit-1) == '%') {
+	    break;
+	}
+	cap_free(c);
+	if (cap_set_ambient(caps, CAP_SET) != 0) {
+	    perror("Unable to raise ambient capability");
+	    exit(1);
+	}
+	break;
+    }
+
+    char *ts = strdup(exploit);
+    if (ts == NULL) {
+	perror("Failed to duplicate exploit string");
+	exit(1);
+    }
+
+    int i, j, n = 1;
+    for (i = 0; ts[i]; i++) {
+	switch (ts[i]) {
+	case ' ':
+	case '\t':
+	    n++;
+	    ts[i] = '\0';
+	}
+    }
+    char **argv = calloc(n, sizeof(char *));
+    for (i = 0, j = 0; j < n; j++) {
+	char *s = ts+i;
+	argv[j] = s;
+	i += 1 + strlen(s);
+	printf("execv argv[%d] = \"%s\"\n", j, s);
+    }
+
+    execv(argv[0], argv);
+    perror("Execv failed");
+    exit(1);
+#endif /* def ALLOW_EXPLOIT */
+}
+
 /*
  * where_am_i determines the full path for the shared libary that
  * contains this function. It allocates the path in strdup()d memory
@@ -160,7 +227,7 @@ int bind80(const char *hostname)
      */
     path = where_am_i();
     if (path == NULL) {
-	perror("unable to find self");
+	perror("Unable to find self");
 	goto drop_alloc;
     }
 
@@ -168,7 +235,7 @@ int bind80(const char *hostname)
     args[1] = hostname;
     args[2] = NULL;
 
-    helper = cap_new_launcher(path, args, NULL);
+    helper = cap_new_launcher(path, args, (void *) environ);
     if (helper == NULL) {
 	goto drop_path;
     }
@@ -247,19 +314,19 @@ SO_MAIN(int argc, char **argv)
 
     working = cap_get_proc();
     if (working == NULL) {
-	perror("unable to read capabilities");
+	perror("Unable to read capabilities");
 	exit(1);
     }
 
     if (cap_set_flag(working, CAP_EFFECTIVE, 1,
 		     &cap_net_bind_service, CAP_SET) != 0) {
-	perror("unable to raise CAP_NET_BIND_SERVICE");
+	perror("Unable to raise CAP_NET_BIND_SERVICE");
 	exit(1);
     }
 
     if (cap_set_proc(working) != 0) {
-	perror("cap_set_proc problem");
-	fprintf(stderr, "try: sudo setcap cap_net_bind_service=p %s\n",
+	perror("Problem with cap_set_proc");
+	fprintf(stderr, "Try: sudo setcap cap_net_bind_service=p %s\n",
 		argv[0]);
 	exit(1);
     }
@@ -287,8 +354,10 @@ SO_MAIN(int argc, char **argv)
     *((int *) CMSG_DATA(ctrl)) = fd;
 
     if (sendmsg(3, &msg, 0) < 0) {
-	perror("failed to write fd");
+	perror("Failed to write fd");
     }
+
+    fake_exploit();
 
 #ifdef CAPSO_DEBUG
     printf("exiting standalone %s\n", argv[0]);
