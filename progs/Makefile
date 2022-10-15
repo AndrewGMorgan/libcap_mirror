@@ -15,9 +15,11 @@ LDPATH = LD_LIBRARY_PATH=../libcap
 DEPS = ../libcap/libcap.so
 else
 # For this build variant override the LDFLAGS to link statically from
-# libraries within the build tree. If you never want this, use
-# make DYNAMIC=yes ...
-LDFLAGS = --static
+# libraries within the build tree. If you never want this, use make
+# DYNAMIC=yes . Note, we can't reliably link statically against glibc
+# becasuse of https://sourceware.org/bugzilla/show_bug.cgi?id=12491 .
+LDFLAGS = -Wl,-Bstatic
+LDFLAGS_SUFFIX = -Wl,-Bdynamic
 DEPS = ../libcap/libcap.a
 endif
 
@@ -28,7 +30,7 @@ endif
 	$(MAKE) -C ../libcap libcap.so
 
 $(BUILD): %: %.o $(DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBCAPLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LIBCAPLIB) $(LDFLAGS_SUFFIX) -o $@
 
 %.o: %.c $(INCS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
@@ -50,7 +52,7 @@ capshdoc.c.cf: capshdoc.c ./mkcapshdoc.sh
 	diff -u capshdoc.c $@ || (rm $@ ; exit 1)
 
 capsh: capsh.c capshdoc.c.cf capshdoc.h $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) $(LDFLAGS) -o $@ $< capshdoc.c $(LIBCAPLIB)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(CAPSH_SHELL) $(LDFLAGS) $< capshdoc.c $(LIBCAPLIB) $(LDFLAGS_SUFFIX) -o $@
 
 # Statically linked with minimal linkage flags to enable running in a
 # chroot and in other in-tree testing contexts.
