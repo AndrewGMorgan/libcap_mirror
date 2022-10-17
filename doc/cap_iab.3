@@ -1,38 +1,28 @@
-.TH CAP_IAB 3 "2021-11-17" "" "Linux Programmer's Manual"
+.TH CAP_IAB 3 "2022-10-16" "" "Linux Programmer's Manual"
 .SH NAME
 cap_iab_init, cap_iab_dup, cap_iab_get_proc, cap_iab_get_pid, \
 cap_iab_set_proc, cap_iab_to_text, cap_iab_from_text, \
 cap_iab_get_vector, cap_iab_compare, cap_iab_set_vector, \
-cap_iab_fill \- inheritable IAB tuple support functions
+cap_iab_fill, cap_proc_root \- inheritable IAB tuple support functions
 .SH SYNOPSIS
 .nf
 #include <sys/capability.h>
 
 cap_iab_t cap_iab_init(void);
-
 cap_iab_t cap_iab_dup(cap_iab_t iab);
-
 cap_iab_t cap_iab_get_proc(void);
-
 cap_iab_t cap_iab_get_pid(pid_t pid);
-
 int cap_iab_set_proc(cap_iab_t iab);
-
 char *cap_iab_to_text(cap_iab_t iab);
-
 cap_iab_t cap_iab_from_text(const char *text);
-
 cap_flag_value_t cap_iab_get_vector(cap_iab_t iab, cap_iab_vector_t vec,
     cap_value_t val);
-
 int cap_iab_compare(cap_iab_t a, cap_iab_t b);
-
 int cap_iab_set_vector(cap_iab_t iab, cap_iab_vector_t vec, cap_value_t val,
     cap_flag_value_t enable);
-
 int cap_iab_fill(cap_iab_t iab, cap_iab_vector_t vec,
     cap_t set, cap_flag_t flag);
-
+char *cap_proc_root(const char *root);
 .fi
 .sp
 Link with \fI\-lcap\fP.
@@ -93,6 +83,11 @@ cap_iab_t should be freed with
 returns a copy of the IAB value for the specified process.  The returned
 cap_iab_t should be freed with
 .BR cap_free (3).
+This function defaults to searching
+.BR /proc/ <PID> /status
+for the IAB information, but that location can be overridden using the
+.BR cap_proc_root ()
+function.
 .sp
 .BR cap_iab_set_proc ()
 can be used to set the IAB value carried by the current process. Such
@@ -142,6 +137,19 @@ of the IAB tuple. Copying into Amb in this way may implicitly raise Inh
 values in the IAB tuple. Similarly copying into the Inh vector may
 implicitly lower Amb values that are not present in the resulting Inh
 vector.
+.sp
+.BR cap_proc_root ()
+can be used to determine the current location queried by
+.BR cap_iab_get_pid ().
+Returned values should be released with
+.BR cap_free (3).
+If the argument to
+.BR cap_proc_root ()
+is not \fBNULL\fP, a copy of it will become the replacement for
+.BR /proc .
+Note, this function is \fInot\fP thread safe with respect to
+concurrent calls to
+.BR cap_iab_get_pid ().
 .SH "ERRORS"
 The functions returning \fIcap_iab_t\fP values or allocated memory in
 the form of a string return NULL on error.
