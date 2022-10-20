@@ -26,7 +26,7 @@ SO_MAIN(int argc, char **argv)
     printf(
 	"%s (version " LIBCAP_VERSION ") is a PAM module to specify\n"
 	"inheritable (IAB) capabilities via the libpam authentication\n"
-	"abstraction. See the libcap License file for licensing information.\n"
+	"abstraction. See the pam_cap License file for licensing information.\n"
 	"\n"
 	"Release notes and feature documentation for libcap and pam_cap.so\n"
 	"can be found at:\n"
