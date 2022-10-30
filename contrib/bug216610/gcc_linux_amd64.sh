@@ -45,9 +45,11 @@ for arg in "$@"; do
 	final+=("${arg}")
     fi
 done
-echo final: "${final[@]}"
-echo args: "${args[@]}"
-echo ses: "${ses[@]}"
+
+#echo final: "${final[@]}"
+#echo args: "${args[@]}"
+#echo ses: "${ses[@]}"
+
 "gcc" "${final[@]}"
 if [[ $? -ne 0 ]]; then
     echo "failed to compile"

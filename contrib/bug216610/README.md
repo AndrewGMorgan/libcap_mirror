@@ -22,7 +22,7 @@ learned about it from a brief reference in the [Go Programming
 Language
 Wiki](https://zchee.github.io/golang-wiki/GcToolchainTricks/).
 
-This preset directory evolved from my attempt to understand and
+This present directory evolved from my attempt to understand and
 hopefully resolve what was going on as reported in that bug into an
 example of this _trick_. I was unable to resolve the problem as
 reported because of the aformentioned `panic` in the Go
@@ -94,7 +94,8 @@ cross-sectional `%rip` based data addressing that various optimization
 modes of gcc like to use. Specifically, if a `R_X86_64_PC32`
 relocation entry made in a `.text` section is intended to map into a
 `.rodata.cst8` section in a generated `.syso` file, the Go linker
-seems to replace this reference with a `0` offset to `(%rip)`. What
+seems to [replace this reference with a `0` offset to
+`(%rip)`](https://github.com/golang/go/issues/24321#issuecomment-1296084103). What
 our wrapper script does is rewrite the generated assembly to store
 these data references to the `.text` section. The Go linker has no
 problem with this _same section_ relative addressing.
