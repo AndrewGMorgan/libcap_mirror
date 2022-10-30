@@ -5,15 +5,15 @@ GOTARGET=$(shell eval $$(go env) ; echo $${GOHOSTOS}_$${GOARCH})
 
 all: go/fib
 
-go/fib: go/main.go go/vendor/fibber/fib.syso go/vendor/fibber/fib.go go/vendor/fibber/fibs_linux_amd64.s go/vendor/kernel.org/pub/linux/libs/security/libcap/psx
+go/fib: go/main.go go/vendor/fibber/fib.go go/vendor/fibber/fibs_$(GOTARGET).s go/vendor/fibber/fib_$(GOTARGET).syso go/vendor/kernel.org/pub/linux/libs/security/libcap/psx
 	cd go && CGO_ENABLED=0 go build -o fib main.go
 
 go/vendor/kernel.org/pub/linux/libs/security/libcap/psx:
 	mkdir -p go/vendor/kernel.org/pub/linux/libs/security/libcap/
 	ln -s $(topdir)/psx $@
 
-go/vendor/fibber/fib.syso: c/fib.c
-	gcc -c -o go/vendor/fibber/fib_$(GOTARGET).syso c/fib.c
+go/vendor/fibber/fib_$(GOTARGET).syso: c/fib.c ./gcc_$(GOTARGET).sh
+	./gcc_$(GOTARGET).sh -O3 c/fib.c -c -o go/vendor/fibber/fib_$(GOTARGET).syso
 
 clean:
 	rm -f *~
