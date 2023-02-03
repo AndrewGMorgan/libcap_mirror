@@ -363,7 +363,7 @@ static int _cap_reset_ambient(struct syscaller_s *sc)
  * case where the set is empty already but the ambient cap API is
  * locked.
  */
-int cap_reset_ambient()
+int cap_reset_ambient(void)
 {
     return _cap_reset_ambient(&multithread);
 }

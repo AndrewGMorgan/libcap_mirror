@@ -17,7 +17,7 @@ static __u8 __libcap_mutex;
  */
 static cap_value_t _cap_max_bits;
 
-__attribute__((constructor (300))) void _libcap_initialize()
+__attribute__((constructor (300))) void _libcap_initialize(void)
 {
     int errno_saved = errno;
     _cap_mu_lock(&__libcap_mutex);
