@@ -448,7 +448,7 @@ func main() {
 	}
 
 	var noted []string
-	for pid, _ := range wanted {
+	for pid := range wanted {
 		noted = append(noted, pid)
 	}
 	sort.Slice(noted, func(i, j int) bool {
