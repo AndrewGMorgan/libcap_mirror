@@ -63,12 +63,12 @@ func TestShared(t *testing.T) {
 				if !ok {
 					break
 				}
-				got, _, e := Syscall3(syscall.SYS_PRCTL, prGetKeepCaps, val, 0)
+				got, _, e := Syscall3(syscall.SYS_PRCTL, prGetKeepCaps, 0, 0)
 				if e != 0 {
-					t.Fatalf("[%d] psx:prctl(SET_KEEPCAPS, %d) failed: %v", tid, val, syscall.Errno(e))
+					t.Fatalf("[%d] psx:prctl(GET_KEEPCAPS) ?= %d failed: %v", tid, val, syscall.Errno(e))
 				}
 				if got != val {
-					t.Errorf("bad keepcaps value [%d]: got=%d, want=%d", tid, got, val)
+					t.Errorf("[%d] bad keepcaps value: got=%d, want=%d", tid, got, val)
 				}
 				if _, ok := <-ch; !ok {
 					break
