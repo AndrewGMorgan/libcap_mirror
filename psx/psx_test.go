@@ -2,6 +2,7 @@ package psx
 
 import (
 	"runtime"
+	"sync"
 	"syscall"
 	"testing"
 )
@@ -41,9 +42,65 @@ func killAThread(c <-chan struct{}) {
 	<-c
 }
 
+// Test state is mirrored as expected.
+func TestShared(t *testing.T) {
+	const prGetKeepCaps = 7
+	const prSetKeepCaps = 8
+
+	var wg sync.WaitGroup
+
+	newTracker := func() chan<- uintptr {
+		ch := make(chan uintptr)
+		go func() {
+			runtime.LockOSThread()
+			defer wg.Done()
+			tid := syscall.Gettid()
+			for {
+				if _, ok := <-ch; !ok {
+					break
+				}
+				val, ok := <-ch
+				if !ok {
+					break
+				}
+				got, _, e := Syscall3(syscall.SYS_PRCTL, prGetKeepCaps, val, 0)
+				if e != 0 {
+					t.Fatalf("[%d] psx:prctl(SET_KEEPCAPS, %d) failed: %v", tid, val, syscall.Errno(e))
+				}
+				if got != val {
+					t.Errorf("bad keepcaps value [%d]: got=%d, want=%d", tid, got, val)
+				}
+				if _, ok := <-ch; !ok {
+					break
+				}
+			}
+		}()
+		return ch
+	}
+
+	var tracked []chan<- uintptr
+	for i := 0; i <= 10; i++ {
+		val := uintptr(i & 1)
+		if _, _, e := Syscall3(syscall.SYS_PRCTL, prSetKeepCaps, val, 0); e != 0 {
+			t.Fatalf("[%d] psx:prctl(SET_KEEPCAPS, %d) failed: %v", i, i&1, syscall.Errno(e))
+		}
+		wg.Add(1)
+		tracked = append(tracked, newTracker())
+		for _, ch := range tracked {
+			ch <- 2   // start serialization.
+			ch <- val // definitely written after change.
+			ch <- 3   // end serialization.
+		}
+	}
+	for _, ch := range tracked {
+		close(ch)
+	}
+	wg.Wait()
+}
+
 // Test to confirm no regression against:
 //
-//   https://github.com/golang/go/issues/42494
+//	https://github.com/golang/go/issues/42494
 func TestThreadChurn(t *testing.T) {
 	const prSetKeepCaps = 8
 
