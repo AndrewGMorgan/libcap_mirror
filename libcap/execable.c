@@ -18,6 +18,7 @@ static void summary(void)
     printf("\nCurrent mode: %s\n", cap_mode_name(mode));
     printf("Number of cap values known to: this libcap=%d, running kernel=%d\n",
 	   CAP_LAST_CAP+1, bits);
+
     if (bits > CAP_LAST_CAP+1) {
 	printf("=> Consider upgrading libcap to name:");
 	for (c = CAP_LAST_CAP+1; c < bits; c++) {
@@ -30,6 +31,8 @@ static void summary(void)
 	    printf(" %s", name);
 	    cap_free(name);
 	}
+    } else {
+	return;
     }
     printf("\n");
 }

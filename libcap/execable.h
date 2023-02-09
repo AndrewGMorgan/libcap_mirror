@@ -93,7 +93,8 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
  */
 #define SO_MAIN							\
 static void __execable_main(int, char**);			\
-extern void __so_start(void);					\
+__attribute__((visibility ("hidden")))                          \
+void __so_start(void);					        \
 __SO_FORCE_ARG_ALIGNMENT					\
 void __so_start(void)						\
 {								\

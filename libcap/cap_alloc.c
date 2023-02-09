@@ -17,6 +17,7 @@ static __u8 __libcap_mutex;
  */
 static cap_value_t _cap_max_bits;
 
+__attribute__((visibility ("hidden")))
 __attribute__((constructor (300))) void _libcap_initialize(void)
 {
     int errno_saved = errno;
@@ -95,7 +96,7 @@ cap_t cap_init(void)
  * This is an internal library function to duplicate a string and
  * tag the result as something cap_free can handle.
  */
-char *_libcap_strdup(const char *old)
+__attribute__((visibility ("hidden"))) char *_libcap_strdup(const char *old)
 {
     struct _cap_alloc_s *header;
     char *raw_data;
