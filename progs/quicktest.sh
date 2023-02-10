@@ -283,6 +283,7 @@ if [ -f ../go/compare-cap ]; then
 	grep "skipping file cap tests"
     if [ $? -eq 0 ]; then
 	echo "FAILED not engaging file cap tests"
+	exit 1
     fi
     echo "PASSED"
 else
