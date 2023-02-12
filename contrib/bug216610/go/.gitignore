@@ -1,3 +1,5 @@
 fib
 *.syso
-vendor/kernel.org
+main
+go.sum
+linkage.go

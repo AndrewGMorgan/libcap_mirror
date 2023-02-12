@@ -3,10 +3,11 @@
 package main
 
 import (
-	"fibber"
 	"fmt"
 	"log"
 	"syscall"
+
+	"fib/fibber"
 
 	"kernel.org/pub/linux/libs/security/libcap/psx"
 )
@@ -20,7 +21,7 @@ func main() {
 	fmt.Println(pid)
 	s := fibber.NewState()
 	fmt.Print("fib: ", s.A, ", ", s.B)
-	for i:=0; i<8; i++ {
+	for i := 0; i < 8; i++ {
 		s.Next()
 		fmt.Print(", ", s.B)
 	}
