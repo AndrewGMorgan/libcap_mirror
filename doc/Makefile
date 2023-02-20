@@ -13,6 +13,7 @@ MAN3S = cap_init.3 cap_free.3 cap_dup.3 \
 	cap_get_file.3 cap_get_fd.3 cap_set_file.3 cap_set_fd.3 \
 	cap_set_nsowner.3 cap_get_nsowner.3 \
 	cap_copy_ext.3 cap_size.3 cap_copy_int.3 cap_mode.3 \
+	cap_copy_int_check.3 cap_set_syscall.3 \
 	cap_from_text.3 cap_to_text.3 cap_from_name.3 cap_to_name.3 \
 	capsetp.3 capgetp.3 libcap.3 \
 	cap_get_bound.3 cap_drop_bound.3 \
@@ -29,6 +30,7 @@ MAN3S = cap_init.3 cap_free.3 cap_dup.3 \
 	cap_iab_set_vector.3 cap_iab_fill.3 cap_proc_root.3 \
 	cap_prctl.3 cap_prctlw.3 \
 	psx_syscall.3 psx_syscall3.3 psx_syscall6.3 psx_set_sensitivity.3 \
+	psx_load_syscalls.3 __psx_syscall.3 \
 	libpsx.3
 MAN8S = getcap.8 setcap.8 getpcaps.8 captree.8
 
