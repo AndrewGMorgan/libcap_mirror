@@ -42,6 +42,10 @@ const (
 	// where file owner ID should otherwise need be equal to
 	// the UID, except where cap.FSETID is applicable. It
 	// doesn't override MAC and DAC restrictions.
+	//
+	// This capability permits the deletion of a file owned
+	// by another UID in a directory protected by the sticky
+	// (t) bit.
 	FOWNER
 
 	// FSETID allows a process to set the S_ISUID and S_ISUID bits of

@@ -30,6 +30,10 @@ static const char *explanation3[] = {  /* cap_fowner = 3 */
     "where file owner ID should otherwise need be equal to",
     "the UID, except where CAP_FSETID is applicable. It",
     "doesn't override MAC and DAC restrictions.",
+    "",
+    "This capability permits the deletion of a file owned",
+    "by another UID in a directory protected by the sticky",
+    "(t) bit.",
     NULL
 };
 static const char *explanation4[] = {  /* cap_fsetid = 4 */

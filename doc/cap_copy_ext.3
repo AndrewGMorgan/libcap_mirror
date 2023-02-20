@@ -9,6 +9,7 @@ external representation translation
 ssize_t cap_size(cap_t cap_p);
 ssize_t cap_copy_ext(void *ext_p, cap_t cap_p, ssize_t size);
 cap_t cap_copy_int(const void * ext_p);
+cap_t cap_copy_int_check(const void *cap_ext, ssize_t length);
 .fi
 .sp
 Link with \fI\-lcap\fP.
@@ -56,9 +57,9 @@ state.  The function initializes the capability state and then copies
 the capability state from the record pointed to by
 .I ext_p
 into the capability state, converting, if necessary, the data from a
-contiguous, persistent format to an undefined, internal format.  Once
-copied into internal format, the object can be manipulated by the capability
-state manipulation functions (see
+contiguous, persistent format to an opaque, internal format.  Once
+copied into internal format, the object can be manipulated by the
+capability state manipulation functions (see
 .BR cap_clear (3)).
 Note that the record pointed to by
 .I ext_p
@@ -71,6 +72,12 @@ longer required, by calling
 with the
 .I cap_t
 as an argument.
+.PP
+.BR cap_copy_int_check ()
+performs the same operation as
+.BR cap_copy_int ()
+but additionally checks that the provided external data's size is not
+larger than the noted length.
 .SH "RETURN VALUE"
 .BR cap_size ()
 returns the length required to hold a capability data record on success,
@@ -82,8 +89,10 @@ returns the number of bytes placed in the user managed space pointed to by
 on success, and \-1 on failure.
 .PP
 .BR cap_copy_int ()
-returns a pointer to the newly created capability state in working storage
-on success, and NULL on failure.
+and
+.BR cap_copy_int_check ()
+return a pointer to the newly created capability state in working
+storage on success, and NULL on failure.
 .PP
 On failure,
 .BR errno
