@@ -13,6 +13,8 @@
 // package - go versions prior to 1.15 need some environment variable
 // workarounds):
 //
+//   go mod init web
+//   go mod tidy
 //   go build web.go
 //   sudo setcap cap_setpcap,cap_net_bind_service=p web
 //   ./web --port=80
