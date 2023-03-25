@@ -485,7 +485,6 @@ static void *_psx_start_fn(void *data) {
  * __wrap_pthread_create is the wrapped destination of all regular
  * pthread_create calls.
  */
-__attribute__((visibility ("hidden")))
 int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 			  void *(*start_routine) (void *), void *arg) {
     psx_starter_t *starter = calloc(1, sizeof(psx_starter_t));
