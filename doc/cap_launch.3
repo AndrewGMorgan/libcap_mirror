@@ -8,8 +8,8 @@ cap_launch, cap_launcher_setuid, cap_launcher_setgroups \
 .nf
 #include <sys/capability.h>
 
-cap_launch_t cap_new_launcher(const char *arg0, const char * const *argv,
-    const char * const *envp);
+cap_launch_t cap_new_launcher(const char *arg0, const char *const *argv,
+    const char *const *envp);
 
 cap_launch_t cap_func_launcher(int (callback_fn)(void *detail));
 
@@ -82,9 +82,9 @@ outside the main process of the calling application. An example of
 this would be to allocate detail as follows:
 .nf
 
-   const *char[] args = { "echo", "hello", NULL };
+   const char *args[] = { "echo", "hello", NULL };
    cap_launch_t cmd = cap_new_launcher("/usr/bin/echo", args, NULL);
-   int *detail = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, 
+   int *detail = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE,
                       MAP_SHARED | MAP_ANONYMOUS, -1, 0);
    cap_launcher_callback(cmd, &answer_detail_fn);
    *detail = 41;

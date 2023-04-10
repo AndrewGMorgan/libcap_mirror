@@ -9,9 +9,9 @@ state textual representation translation
 .nf
 #include <sys/capability.h>
 
-cap_t cap_from_text(const char* buf_p );
-char *cap_to_text(cap_t caps, ssize_t * len_p);
-int cap_from_name(const char* name , cap_value_t* cap_p);
+cap_t cap_from_text(const char *buf_p);
+char *cap_to_text(cap_t caps, ssize_t *len_p);
+int cap_from_name(const char *name, cap_value_t *cap_p);
 char *cap_to_name(cap_value_t cap);
 .fi
 .sp
