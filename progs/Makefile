@@ -14,6 +14,10 @@ ifeq ($(DYNAMIC),yes)
 LDPATH = LD_LIBRARY_PATH=../libcap
 DEPS = ../libcap/libcap.so
 else
+ifeq ($(LIBCSTATIC),yes)
+LDFLAGS = --static
+DEPS = ../libcap/libcap.a
+else
 # For this build variant override the LDFLAGS to link statically from
 # libraries within the build tree. If you never want this, use make
 # DYNAMIC=yes . Note, we can't reliably link statically against glibc
@@ -21,6 +25,7 @@ else
 LDFLAGS = -Wl,-Bstatic
 LDFLAGS_SUFFIX = -Wl,-Bdynamic
 DEPS = ../libcap/libcap.a
+endif
 endif
 
 ../libcap/libcap.a:
