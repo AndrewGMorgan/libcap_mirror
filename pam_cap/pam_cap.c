@@ -290,7 +290,12 @@ static int set_capabilities(struct pam_cap_s *cs)
 
     if (cs->defer) {
 	D(("configured to delay applying IAB"));
-	pam_set_data(cs->pamh, "pam_cap_iab", iab, iab_apply);
+	int ret = pam_set_data(cs->pamh, "pam_cap_iab", iab, iab_apply);
+	if (ret != PAM_SUCCESS) {
+	    D(("unable to cache capabilities for delayed setting: %d", ret));
+	    /* since ok=0, the module will return PAM_IGNORE */
+	    cap_free(iab);
+	}
 	iab = NULL;
     } else if (!cap_iab_set_proc(iab)) {
 	D(("able to set the IAB [%s] value", conf_caps));
