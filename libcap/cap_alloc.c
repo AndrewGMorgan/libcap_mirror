@@ -106,14 +106,16 @@ __attribute__((visibility ("hidden"))) char *_libcap_strdup(const char *old)
 	errno = EINVAL;
 	return NULL;
     }
-    len = strlen(old) + 1 + 2*sizeof(__u32);
-    if (len < sizeof(struct _cap_alloc_s)) {
-	len = sizeof(struct _cap_alloc_s);
-    }
-    if ((len & 0xffffffff) != len) {
+
+    len = strlen(old);
+    if ((len & 0x3fffffff) != len) {
 	_cap_debug("len is too long for libcap to manage");
 	errno = EINVAL;
 	return NULL;
+    }
+    len += 1 + 2*sizeof(__u32);
+    if (len < sizeof(struct _cap_alloc_s)) {
+	len = sizeof(struct _cap_alloc_s);
     }
 
     raw_data = calloc(1, len);
