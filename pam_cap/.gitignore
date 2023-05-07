@@ -4,3 +4,4 @@ test_pam_cap
 lazylink.so
 pam_cap_linkopts
 LIBCAP
+incapable.conf

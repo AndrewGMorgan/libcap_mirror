@@ -237,8 +237,19 @@ int main(int argc, char *argv[]) {
 	printf("failed to parse arguments\n");
 	exit(1);
     }
-    if (read_capabilities_for_user("morgan", "/dev/null") != NULL) {
+    if (read_capabilities_for_user("alpha", "/dev/null") != NULL) {
 	printf("/dev/null should return no capabilities\n");
+	exit(1);
+    }
+    if (read_capabilities_for_user("unknown", "capability.conf") != NULL) {
+	printf("capability.conf should return no capabilities for unknown\n");
+	exit(1);
+    }
+    char *iab_text = read_capabilities_for_user("alpha", "./incapable.conf");
+    if (iab_text != NULL) {
+	printf("./incapable.conf should grant no capabilities: got=%s\n",
+	       iab_text);
+	free(iab_text);
 	exit(1);
     }
 

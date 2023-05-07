@@ -70,13 +70,16 @@ test_pam_cap: test_pam_cap.c pam_cap.c ../libcap/libcap.a
 testlink: test.o pam_cap.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ -lpam -ldl $(LIBCAPLIB)
 
-test: testlink test_pam_cap pam_cap.so
+incapable.conf:
+	echo "^cap_setuid  alpha" > $@ && chmod o+w $@
+
+test: testlink test_pam_cap pam_cap.so incapable.conf
 	./test_pam_cap
 	LD_LIBRARY_PATH=../libcap ./pam_cap.so
 	LD_LIBRARY_PATH=../libcap ./pam_cap.so --help
 	@echo "module can be run as an executable!"
 
-sudotest: test_pam_cap
+sudotest: test_pam_cap incapable.conf
 	$(SUDO) ./test_pam_cap root 0x0 0x0 0x0 config=./capability.conf
 	$(SUDO) ./test_pam_cap root 0x0 0x0 0x0 config=./sudotest.conf
 	$(SUDO) ./test_pam_cap alpha 0x0 0x0 0x0 config=./capability.conf
@@ -87,4 +90,4 @@ sudotest: test_pam_cap
 
 clean:
 	rm -f *.o *.so testlink lazylink.so test_pam_cap pam_cap_linkopts *~
-	rm -f LIBCAP
+	rm -f LIBCAP incapable.conf
