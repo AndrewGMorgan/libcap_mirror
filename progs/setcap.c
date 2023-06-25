@@ -4,6 +4,7 @@
  * This sets/verifies the capabilities of a given file.
  */
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -168,6 +169,17 @@ int main(int argc, char **argv)
 		text = *argv;
 	    }
 
+	    int non_space = 0;
+	    for (int j = 0; text[j]; j++) {
+		if (!isspace(text[j])) {
+		    non_space = 1;
+		    break;
+		}
+	    }
+	    if (!non_space) {
+		fprintf(stderr, "empty space is an invalid capability, did you mean -r?\n");
+		exit(1);
+	    }
 	    cap_d = cap_from_text(text);
 	    if (cap_d == NULL) {
 		perror("fatal error");
