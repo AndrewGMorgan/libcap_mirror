@@ -24,6 +24,7 @@ static void usage(int status)
 	    " [ Note: capsh --suggest=\"something...\" might help you pick. ]"
 	    "\n"
 	    " -h          this message and exit status 0\n"
+	    " -f          force setting even when the capability is invalid\n"
 	    " -q          quietly\n"
 	    " -v          validate supplied capability matches file\n"
 	    " -n <rootid> write a user namespace (!= 0) limited capability\n"
@@ -99,7 +100,7 @@ int main(int argc, char **argv)
 {
     int tried_to_cap_setfcap = 0;
     char buffer[MAXCAP+1];
-    int retval, quiet = 0, verify = 0;
+    int retval, quiet = 0, verify = 0, forced = 0;
     cap_t mycaps;
     cap_value_t capflag;
     uid_t rootid = 0, f_rootid;
@@ -131,6 +132,10 @@ int main(int argc, char **argv)
 		"Copyright (c) 1997,2007-8,2020-21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
+	}
+	if (!strcmp(*argv, "-f")) {
+	    forced = 1;
+	    continue;
 	}
 	if (!strcmp(*argv, "-h")) {
 	    usage(0);
@@ -245,12 +250,11 @@ int main(int argc, char **argv)
 		}
 		tried_to_cap_setfcap = 1;
 	    }
-	    retval = cap_set_file(*++argv, cap_d);
-	    if (retval != 0) {
-		int explained = 0;
-		int oerrno = errno;
-		int somebits = 0;
 #ifdef linux
+	    {
+		// Linux's file capabilities have a compressed representation.
+		int explained = 0;
+		int somebits = 0;
 		cap_value_t cap;
 		cap_flag_value_t per_state;
 
@@ -269,12 +273,18 @@ int main(int argc, char **argv)
 		    }
 		}
 		if (somebits && explained) {
-		    fprintf(stderr, "NOTE: Under Linux, effective file capabilities must either be empty, or\n"
-			    "      exactly match the union of selected permitted and inheritable bits.\n");
+		    fprintf(stderr, "Error: under Linux, effective file capabilities must either be empty, or\n"
+			    "       exactly match the union of selected permitted and inheritable bits.\n");
+		    if (!forced) {
+			exit(1);
+		    }
 		}
+	    }
 #endif /* def linux */
-
-		switch (oerrno) {
+	    errno = 0;
+	    retval = cap_set_file(*++argv, cap_d);
+	    if (retval != 0) {
+		switch (errno) {
 		case EINVAL:
 		    fprintf(stderr,
 			    "Invalid file '%s' for capability operation\n",
@@ -285,13 +295,16 @@ int main(int argc, char **argv)
 			fprintf(stderr,
 				"File '%s' has no capablity to remove\n",
 				argv[0]);
+			if (forced) {
+			    break;
+			}
 			exit(1);
 		    }
 		    /* FALLTHROUGH */
 		default:
 		    fprintf(stderr,
 			    "Failed to set capabilities on file '%s': %s\n",
-			    argv[0], strerror(oerrno));
+			    argv[0], strerror(errno));
 		    exit(1);
 		}
 	    }

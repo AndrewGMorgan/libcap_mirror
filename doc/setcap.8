@@ -44,6 +44,14 @@ ambient+inheritable sets would otherwise bestow capabilities on
 executed binaries.
 .PP
 The
+.BR '\-f' ,
+is used to force completion even when it is in some way considered
+an invalid operation. This can affect
+.B '\-r'
+and setting file capabilities the kernel will not be able to make
+sense of.
+.PP
+The
 .B \-q
 flag is used to make the program less verbose in its output.
 .SH "EXIT CODE"

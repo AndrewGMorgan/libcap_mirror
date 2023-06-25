@@ -22,6 +22,30 @@ enables recursive search.
 .TP 4
 .B \-v
 display all searched entries, even if the have no file-capabilities.
+.PP
+NOTE: an
+.I empty
+value of
+.B '='
+is
+.B not
+equivalent to an omitted (or removed) capability on a
+file. This is most significant with respect to the Ambient capability
+vector, since a process with Ambient capabilities will lose them when
+executing a file having
+.B '='
+capabilities, but will retain the Ambient inheritance of privilege
+when executing a file with an omitted file capability. This special
+.I empty
+setting can be used to prevent a binary from executing with
+privilege. For some time, the kernel honored this suppression for root
+executing the file, but the kernel developers decided after a number
+of years that this behavior was unexpected for the superuser and
+reverted it just for that user identity. Suppression of root
+privilege, for a process tree, is possible, using the
+.BR capsh (1)
+.B \-\-mode
+option.
 .TP 4
 .IR filename
 One file per line.
