@@ -169,8 +169,8 @@ int main(int argc, char **argv)
 		text = *argv;
 	    }
 
-	    int non_space = 0;
-	    for (int j = 0; text[j]; j++) {
+	    int non_space = 0, j;
+	    for (j = 0; text[j]; j++) {
 		if (!isspace(text[j])) {
 		    non_space = 1;
 		    break;
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
 	    }
 #ifdef linux
 	    {
-		// Linux's file capabilities have a compressed representation.
+		/* Linux's file capabilities have a compressed representation. */
 		int explained = 0;
 		int somebits = 0;
 		cap_value_t cap;
