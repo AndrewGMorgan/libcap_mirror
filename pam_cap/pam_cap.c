@@ -199,7 +199,7 @@ defer:
     int i;
     for (i = 0; i < groups_n; i++) {
 	char *g = groups[i];
-	_pam_overwrite(g);
+	memset(g, 0, strlen(g));
 	_pam_drop(g);
     }
     if (groups != NULL) {
@@ -440,7 +440,7 @@ int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 	   small race associated with a redundant read of the
 	   config. */
 
-	_pam_overwrite(conf_caps);
+	memset(conf_caps, 0, strlen(conf_caps));
 	_pam_drop(conf_caps);
 
 	return PAM_SUCCESS;
