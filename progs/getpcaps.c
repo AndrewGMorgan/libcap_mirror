@@ -14,7 +14,7 @@
 static void usage(int code)
 {
     fprintf(stderr,
-"usage: getcaps [opts] <pid> [<pid> ...]\n\n"
+"usage: getpcaps [opts] <pid> [<pid> ...]\n\n"
 "  This program displays the capabilities on the queried process(es).\n"
 	    "  The capabilities are displayed in the cap_from_text(3) format.\n"
 	    "\n"
