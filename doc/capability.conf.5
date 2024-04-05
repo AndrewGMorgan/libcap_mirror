@@ -16,7 +16,7 @@ Where \fB<IAB>\fR refers to the text format for an inheritable IAB capability tu
 .P
 The reserved word \fBall\fR does \fInot\fR grant \fIall the inheritable capabilities\fR, but acts as a simple \fIpass\-through\fR for any prevailing IAB tuple capabilities\. The reserved word \fBnone\fR refers to an empty \fIInheritable\fR capability set (and by extension an empty \fIAmbient\fR vector)\.
 .P
-Here \fB<WHO>\fR refers to the space separated PAM username values that will be granted the specified \fIIAB\fR tuple\. A name prefixed with the character \fB@\fR refers to the locally defined \fB/etc/group\fR \fIetc\fR users listed under that group name\.
+Here \fB<WHO>\fR refers to the space separated PAM username values that will be granted the specified \fIIAB\fR tuple\. A name prefixed with the character \fB@\fR refers to the locally defined \fB/etc/group\fR \fIetc\fR users listed under that group name\. An asterisk "\fB*\fR" can be used to denote all users\.
 .P
 The parsing of the file chooses the first line that applies to the authenticating user, and attempts to apply that and only that\.
 .P
