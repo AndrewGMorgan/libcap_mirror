@@ -94,14 +94,14 @@ pass_capsh --keep=0 --keep=1 --keep=0 --keep=1 --print
 # from setuid root to capable luser (as per wireshark/dumpcap 0.99.7)
 # This test is subtle. It is testing that a change to self, dropping
 # euid=0 back to that of the luser keeps capabilities.
-pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_bind_service=ip\" --print --uid=1 --print --caps=\"cap_net_raw,cap_net_bind_service=pie\" --print"
+pass_capsh --uid=1 --current -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_bind_service=ip\" --current --uid=1 --current --caps=\"cap_net_raw,cap_net_bind_service=pie\" --current"
 
 # this test is a change of user to a new user, note we need to raise
 # the cap_setuid capability (libcap has a function for that) in this case.
-pass_capsh --uid=1 -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_bind_service=ip cap_setuid=p\" --print --cap-uid=2 --print --caps=\"cap_net_raw,cap_net_bind_service=pie\" --print"
+pass_capsh --uid=1 --current -- -c "./tcapsh --caps=\"cap_net_raw,cap_net_bind_service=ip cap_setuid=p\" --current --cap-uid=2 --current --caps=\"cap_net_raw,cap_net_bind_service=pie\" --current"
 
 # This fails, on 2.6.24, but shouldn't
-pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_bind_service=ip\" --uid=1 --forkfor=10 --caps= --print --killit=9 --print"
+pass_capsh --uid=1 -- -c "./tcapsh --keep=1 --caps=\"cap_net_raw,cap_net_bind_service=ip\" --uid=1 --forkfor=10 --caps= --current --killit=9 --current"
 
 # only continue with these if --secbits is supported
 ./capsh --secbits=0x2f > /dev/null 2>&1
@@ -224,7 +224,7 @@ EOF
     # the file can never acquire privilege by the ambient method.
     ./setcap = ./privileged
     fail_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- \
-	       -c "./privileged --print --uid=1"
+	       -c "./privileged --current --uid=1"
 
     pass_capsh --keep=1 --uid=$nouid --strict \
 	       --caps="cap_setuid=p cap_setpcap=ep" \
@@ -240,7 +240,7 @@ EOF
     # finally remove the capability from the privileged binary and try again.
     ./setcap -r ./privileged
     pass_capsh --keep=1 --uid=$nouid --inh=cap_setuid --addamb=cap_setuid -- \
-	       -c "./privileged --print --uid=1"
+	       -c "./privileged --current --uid=1"
 
     # validate IAB setting with an ambient capability
     pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_setuid'
