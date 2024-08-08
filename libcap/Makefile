@@ -109,7 +109,7 @@ $(STAPSXLIBNAME): $(PSXOBJS) include/sys/psx_syscall.h
 ifeq ($(SHARED),yes)
 
 empty: empty.c
-	$(CC) -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@
 
 loader.txt: empty
 	$(OBJCOPY) --dump-section .interp=$@ $< /dev/null
