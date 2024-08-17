@@ -745,7 +745,7 @@ cap_iab_t cap_iab_get_proc(void)
  */
 static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 {
-    int ret, i, raising = 0;
+    int ret, i, raising = 0, check_bound = 0;
     cap_value_t c;
     cap_t working, temp = cap_get_proc();
 
@@ -757,9 +757,25 @@ static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 	__u32 newI = iab->i[i];
 	__u32 oldIP = temp->u[i].flat[CAP_INHERITABLE] |
 	    temp->u[i].flat[CAP_PERMITTED];
-	raising |= (newI & ~oldIP) | iab->a[i] | iab->nb[i];
+	raising |= newI & ~oldIP;
+	if (iab->nb[i]) {
+	    check_bound = 1;
+	}
 	temp->u[i].flat[CAP_INHERITABLE] = newI;
+    }
 
+    if (check_bound) {
+	check_bound = 0;
+	for (c = cap_max_bits(); c-- != 0; ) {
+	    unsigned offset = c >> 5;
+	    __u32 mask = 1U << (c & 31);
+	    if ((iab->nb[offset] & mask) && cap_get_bound(c)) {
+		// Requesting a change of bounding set.
+		raising = 1;
+		check_bound = 1;
+		break;
+	    }
+	}
     }
 
     working = cap_dup(temp);
@@ -790,7 +806,7 @@ static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 		goto done;
 	    }
 	}
-	if (iab->nb[offset] & mask) {
+	if (check_bound && (iab->nb[offset] & mask)) {
 	    /* drop the bounding bit */
 	    ret = _cap_drop_bound(sc, c);
 	    if (ret) {

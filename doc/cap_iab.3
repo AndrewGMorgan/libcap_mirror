@@ -91,9 +91,10 @@ function.
 .sp
 .BR cap_iab_set_proc ()
 can be used to set the IAB value carried by the current process. Such
-a setting will fail if the process is insufficiently capable. The
-process requires CAP_SETPCAP raised in the E flag and a superset of P
-and I values over those in the A vectors.
+a setting will fail if the process is insufficiently capable. To raise
+I bits not present in the P flag, or newly apply B masking, requires
+CAP_SETPCAP is raised in the E flag, and a superset of P and I values
+over those raised in the A vector.
 .sp
 .BR cap_iab_to_text ()
 will convert an IAB tuple to a canonical text representation. The

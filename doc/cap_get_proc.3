@@ -130,15 +130,12 @@ uses this function to determine if ambient capabilities are supported
 by the kernel.
 .PP
 .BR cap_set_ambient ()
-sets the specified ambient capability to a specific value. To complete
-successfully, the prevailing
-.I effective
-capability set must have a raised
-.BR CAP_SETPCAP .
-Further, to raise a specific ambient capability the
+sets the specified ambient capability to a specific value. To raise a
+specific ambient capability the
 .IR inheritable " and " permitted
-sets of the calling process must contain the specified capability, and
-raised ambient bits will only be retained as long as this remains true.
+flags of the calling process must contain the specified capability
+value. Raised ambient bits will only be retained as long as this
+remains true of the inheritable and permitted flags.
 .PP
 .BR cap_reset_ambient ()
 resets all of the ambient capabilities for the calling process to
