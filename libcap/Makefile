@@ -21,6 +21,10 @@ PSXMAGICOBJ=psx_magic.o
 # Always build libcap sources this way:
 CFLAGS += -fPIC
 
+# https://bugzilla.kernel.org/show_bug.cgi?id=219168
+OVERRIDE_BSYMBOLIC_FUNCTIONS := -Wl,-Bsymbolic-functions
+LDFLAGS := $(filter-out $(OVERRIDE_BSYMBOLIC_FUNCTIONS),$(LDFLAGS))
+
 # The linker magic needed to build a dynamic library as independently
 # executable
 MAGIC=-Wl,-e,__so_start
