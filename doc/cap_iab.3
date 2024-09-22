@@ -39,11 +39,16 @@ set of rules when the executed file has no configured
 .PP
 There are some constraints enforced by the kernel with respect to the
 three components of an IAB tuple and the Permitted process capability
-flag. They are: the Inh vector is entirely equal to the process
-Inheritable flag at all times; the Amb vector contains no more
-capability values than the intersection of the Inh vector and the
-Permitted flag for the process; and the Bound (or \fIblocked\fP)
-vector is the twos-complement of the process bounding vector.
+flag. They are: the Inh vector
+.RB ( CAP_IAB_INH )
+is entirely equal to the process Inheritable flag at all times; the
+Amb vector
+.RB ( CAP_IAB_AMB )
+contains no more capability values than the intersection of
+the Inh vector and the Permitted flag for the process; and the Bound
+(or \fIblocked\fP) vector
+.RB ( CAP_IAB_BOUND )
+is the twos-complement of the process bounding vector.
 .PP
 In some environments, it is considered desirable to \fInaively\fP
 inherit capabilities. That is pass capabilities, independent of the
@@ -93,8 +98,10 @@ function.
 can be used to set the IAB value carried by the current process. Such
 a setting will fail if the process is insufficiently capable. To raise
 I bits not present in the P flag, or newly apply B masking, requires
-CAP_SETPCAP is raised in the E flag, and a superset of P and I values
-over those raised in the A vector.
+.B CAP_SETPCAP
+is present in the Permitted flag (the function will temporarily raise
+it in the Effective flag if needed). In all cases, raised A values
+must be present in the intersection of Permitted and Inh values.
 .sp
 .BR cap_iab_to_text ()
 will convert an IAB tuple to a canonical text representation. The
@@ -133,8 +140,12 @@ components.
 can be used to set a specific vector value to the enable setting.
 .sp
 .BR cap_iab_fill ()
-can be used to wholesale copy a cap_t flag value into the vec vector
-of the IAB tuple. Copying into Amb in this way may implicitly raise Inh
+can be used to wholesale copy a
+.I cap_t
+flag value into the vec vector of the IAB tuple. Copying into Amb
+.RB ( CAP_IAB_AMB )
+in this way may implicitly raise Inh
+.RB ( CAP_IAB_INH )
 values in the IAB tuple. Similarly copying into the Inh vector may
 implicitly lower Amb values that are not present in the resulting Inh
 vector.

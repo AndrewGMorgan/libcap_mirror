@@ -740,8 +740,10 @@ cap_iab_t cap_iab_get_proc(void)
 }
 
 /*
- * _cap_iab_set_proc sets the iab collection using the requested syscaller.
- * The iab value is locked by the caller.
+ * _cap_iab_set_proc sets the iab collection using the requested
+ * syscaller.  The iab value is locked by the caller. Note, if needed,
+ * CAP_SETPCAP will be raised in the Effective flag of the process
+ * internally to the function for the duration of the function call.
  */
 static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 {
