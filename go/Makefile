@@ -125,6 +125,9 @@ endif
 mismatch: mismatch.go PSXGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
+iaber: iaber.go CAPGOPACKAGE PSXGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+
 ifeq ($(CGO_REQUIRED),0)
 mismatch-cgo: mismatch.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
@@ -150,7 +153,7 @@ endif
 # Note, the user namespace doesn't require sudo, but I wanted to avoid
 # requiring that the hosting kernel supports user namespaces for the
 # regular test case.
-sudotest: test ../progs/tcapsh-static b210613 b215283
+sudotest: test ../progs/tcapsh-static b210613 b215283 iaber
 	../progs/tcapsh-static --has-b=cap_sys_admin || exit 0 && ./gowns --ns -- -c "echo gowns runs with user namespace"
 	./try-launching
 ifeq ($(CGO_REQUIRED),0)
@@ -166,7 +169,10 @@ ifeq ($(CGO_REQUIRED),0)
 	$(MAKE) b215283-cgo
 	$(SUDO) ./b215283-cgo
 endif
-
+	@echo should pass:
+	$(SUDO) ./iaber '!^cap_setgid,^cap_setuid,^cap_setpcap' '!^cap_setuid,^cap_setgid'
+	@echo should fail:
+	$(SUDO) ./iaber '!^cap_setgid,^cap_setuid' '!^cap_setuid,^cap_setgid' || exit 0 ; exit 1
 
 # As of libcap-2.55 We stopped installing the cap and psx packages as
 # part of the install.  Most distribution's packagers skip the Go
@@ -185,7 +191,7 @@ install: all
 
 clean:
 	rm -f *.o *.so *~ mknames ok good-names.go
-	rm -f web setid gowns captree captrace
+	rm -f web setid gowns captree captrace iaber
 	rm -f compare-cap try-launching try-launching-cgo
 	rm -f $(topdir)/cap/*~ $(topdir)/psx/*~
 	rm -f b210613 b215283 b215283-cgo psx-signals psx-signals-cgo
