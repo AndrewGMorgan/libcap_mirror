@@ -772,7 +772,7 @@ static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
 	    unsigned offset = c >> 5;
 	    __u32 mask = 1U << (c & 31);
 	    if ((iab->nb[offset] & mask) && cap_get_bound(c)) {
-		// Requesting a change of bounding set.
+		/* Requesting a change of bounding set. */
 		raising = 1;
 		check_bound = 1;
 		break;
