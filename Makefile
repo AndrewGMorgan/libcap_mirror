@@ -40,6 +40,8 @@ distclean: clean
 	@echo "Confirm headers export current version"
 	$(BUILD_FGREP) "#define LIBCAP_MAJOR $(VERSION)" libcap/include/sys/capability.h
 	$(BUILD_FGREP) "#define LIBCAP_MINOR $(MINOR)" libcap/include/sys/capability.h
+	$(BUILD_FGREP) "#define LIBPSX_MAJOR $(VERSION)" psx/psx_syscall.h
+	$(BUILD_FGREP) "#define LIBPSX_MINOR $(MINOR)" psx/psx_syscall.h
 	@echo "Now validate that everything is checked in to a clean tree.."
 	test -z "$$(git status --ignored -s)"
 	@echo "All good!"

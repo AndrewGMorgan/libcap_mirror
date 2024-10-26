@@ -26,6 +26,12 @@ extern "C" {
 #include <pthread.h>
 
 /*
+ * Programmatic way to recognize feature set.
+ */
+#define LIBPSX_MAJOR 2
+#define LIBPSX_MINOR 71
+
+/*
  * psx_syscall performs the specified syscall on all psx registered
  * threads. The mechanism by which this occurs is much less efficient
  * than a standard system call on Linux, so it should only be used
