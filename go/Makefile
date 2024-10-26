@@ -80,7 +80,7 @@ captrace: ../goapps/captrace/captrace.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 ok: ok.go vendor/modules.txt
-	CC="$(CC)" CGO_ENABLED="0" $(GO) build $(GO_BUILD_FLAGS)  -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="0"  $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 try-launching: try-launching.go CAPGOPACKAGE ok
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
