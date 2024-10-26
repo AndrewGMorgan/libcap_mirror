@@ -38,6 +38,9 @@ endif
 ../libcap/libcap.a:
 	$(MAKE) -C ../libcap libcap.a
 
+../libcap/loader.txt:
+	$(MAKE) -C ../libcap loader.txt
+
 ifeq ($(PTHREADS),yes)
 ../libcap/libpsx.so:
 	$(MAKE) -C ../libcap libpsx.so
