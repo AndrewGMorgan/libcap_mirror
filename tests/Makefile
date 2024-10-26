@@ -13,8 +13,10 @@ all:
 install:
 	@echo nothing to install from tests
 
+FORCE_RPATH_LINKSO=-Wl,-rpath,../libcap
+
 ifeq ($(DYNAMIC),yes)
-LINKEXTRA=-Wl,-rpath,../libcap
+LINKEXTRA=$(FORCE_RPATH_LINKSO)
 DEPS=../libcap/libcap.so
 ifeq ($(PTHREADS),yes)
 DEPS += ../libcap/libpsx.so
@@ -50,6 +52,9 @@ endif
 test:
 ifeq ($(PTHREADS),yes)
 	$(MAKE) run_psx_test run_libcap_psx_test
+ifeq ($(SHARED),yes)
+	$(MAKE) run_b219174
+endif
 endif
 
 sudotest: test
@@ -115,7 +120,27 @@ noexploit: exploit.o $(DEPS)
 noop: noop.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ --static
 
+# validate that a shred library that, itself launches threads, is
+# covered by -lpsx.
+
+ifeq ($(PTHREADS),yes)
+ifeq ($(SHARED),yes)
+run_b219174: weaver.so b219174
+	./weaver.so
+	./b219174
+
+# This is *NOT* linked against libpsx.
+weaver.so: weaver.c weaver.h ../libcap/execable.h ../libcap/loader.txt
+	$(LD) -o $@ $(CFLAGS) -fPIC $(CPPFLAGS) weaver.c -DSHARED_LOADER=\"$(shell cat ../libcap/loader.txt)\" -Wl,-e,__so_start -lpthread
+
+# This only works when linked dynamically
+b219174: b219174.c $(DEPS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(FORCE_RPATH_LINKSO) $(LIBPSXLIB) -ldl
+
+endif
+endif
+
 clean:
 	rm -f psx_test libcap_psx_test libcap_launch_test uns_test *~
 	rm -f libcap_launch_test libcap_psx_launch_test core noop
-	rm -f exploit noexploit exploit.o
+	rm -f exploit noexploit exploit.o weaver.so b219174

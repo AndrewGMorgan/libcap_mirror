@@ -1,4 +1,5 @@
 patches/
 *.o
+*.so
 *~
 *.cf
