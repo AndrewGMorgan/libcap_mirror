@@ -75,13 +75,13 @@ morgangodoc:
 
 morganrelease: distcheck
 	@echo "sign the main library tag three times: legacy DSA key; newer RSA (kernel.org automation) key; official ed25519 key"
-	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s sig-libcap-$(VERSION).$(MINOR) -m "This is official tag for libcap-$(VERSION).$(MINOR)"
-	git tag -u AF7402BC38CC10E6885C1FCA421784ABD41A6DF2 -s libcap-$(VERSION).$(MINOR) -m "This is the legacy tag for libcap-$(VERSION).$(MINOR)"
-	git tag -u 38A644698C69787344E954CE29EE848AE2CCF3F4 -s libcap-korg-$(VERSION).$(MINOR) -m "This is kernel.org automation tag for libcap-$(VERSION).$(MINOR)"
+	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s sig-libcap-$(VERSION).$(MINOR) -m "official tag for libcap-$(VERSION).$(MINOR)"
+	git tag -u AF7402BC38CC10E6885C1FCA421784ABD41A6DF2 -s libcap-$(VERSION).$(MINOR) -m "legacy tag for libcap-$(VERSION).$(MINOR)"
+	git tag -u 38A644698C69787344E954CE29EE848AE2CCF3F4 -s libcap-korg-$(VERSION).$(MINOR) -m "kernel.org automation tag for libcap-$(VERSION).$(MINOR)"
 	@echo "The following are for the Go module tracking (the stylized tag names have semantic meaning)."
-	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the version tag for the 'libcap' Go base directory associated with libcap-$(VERSION).$(MINOR)."
-	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s psx/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the (stable) version tag for the 'psx' Go package associated with libcap-$(VERSION).$(MINOR)."
-	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s cap/v$(GOMAJOR).$(VERSION).$(MINOR) -m "This is the (stable) version tag for the 'cap' Go package associated with libcap-$(VERSION).$(MINOR)."
+	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s v$(GOMAJOR).$(VERSION).$(MINOR) -m "version tag for the 'libcap' Go base directory associated with libcap-$(VERSION).$(MINOR)"
+	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s psx/v$(GOMAJOR).$(VERSION).$(MINOR) -m "stable version tag for the 'psx' Go package associated with libcap-$(VERSION).$(MINOR)"
+	git tag -u 0D23D34C577B08C4082CFD76430C5CFF993116B1 -s cap/v$(GOMAJOR).$(VERSION).$(MINOR) -m "stable version tag for the 'cap' Go package associated with libcap-$(VERSION).$(MINOR)"
 	$(MAKE) release
 	@echo "sign the tar file using korg key - so it can be uploaded to kernel.org"
 	cd .. && gpg -sba -u 38A644698C69787344E954CE29EE848AE2CCF3F4 libcap-$(VERSION).$(MINOR).tar
