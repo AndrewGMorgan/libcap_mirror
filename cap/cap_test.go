@@ -290,7 +290,7 @@ func TestFuncLaunch(t *testing.T) {
 
 // Testable examples.
 
-func ExampleCap_Fill() {
+func ExampleSet_Fill() {
 	c, err := FromText("cap_setfcap=p")
 	if err != nil {
 		log.Fatalf("failed to parse: %v", err)
