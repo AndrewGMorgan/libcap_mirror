@@ -13,20 +13,20 @@
 #define _GNU_SOURCE
 #endif
 
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>  /* pthread_atfork() */
 #include <sched.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "psx_syscall.h"
 
@@ -116,7 +116,6 @@ static struct psx_tracker_s {
 
     psx_mutex_t state_mu;
     psx_tracker_state_t state;
-    struct dirent dir_entry;
     int initialized;
     int incomplete;
     int psx_sig;
@@ -398,15 +397,15 @@ static long int __psx_immediate_syscall(long int syscall_nr,
  * glibc diropen/readdir API uses malloc/free internally and
  * empirically employ some sort of private mutex. The fact that psx
  * interrupts threads in arbitrary places guarantees that occasionally
- * that the code in __psx_syscall() will interrupt functions in the
- * middle of performing these calls from other threads. Thus (and
- * observed with the libcap_psx_test) it's inevitable that this will
- * interrupt those functions while they hold some lock. The net effect
- * is that we will fall into a deadlock condition if __psx_syscall()
- * uses diropen/readdir. So, we have opted to use raw system calls to
- * read directories instead. The whole of the psx functionality is
- * really low level, and only aimed at supporting Linux with a
- * non-POSIX kernel threading model, so we're OK with that.
+ * the code in __psx_syscall() will interrupt functions in the middle
+ * of performing these calls from other threads. Thus (and observed
+ * with the libcap_psx_test) it's inevitable that this will interrupt
+ * those functions while they hold a private lock. The net effect is
+ * that we will fall into a deadlock condition if __psx_syscall() uses
+ * diropen/readdir. So, we have opted to use raw system calls to read
+ * directories instead. The whole of the psx functionality is really
+ * low level, and only aimed at supporting Linux with its non-POSIX
+ * LWP threading model, so we're OK with that.
  */
 
 #define BUF_SIZE 4096
@@ -452,25 +451,18 @@ long int __psx_syscall(long int syscall_nr, ...) {
     }
 
     psx_new_state(_PSX_IDLE, _PSX_SETUP);
-    while (psx_tracker.cmd.active != 0) {
-	psx_cond_wait();  /* wait for last syscall to fully complete. */
-    }
     psx_confirm_sigaction();
-    psx_unlock();
 
-    long int ret;
-
-    ret = __psx_immediate_syscall(syscall_nr, count, arg);
+    long int ret = __psx_immediate_syscall(syscall_nr, count, arg);
     if (ret == -1) {
 	psx_new_state(_PSX_SETUP, _PSX_IDLE);
 	goto defer;
     }
 
     int restore_errno = errno;
-
     psx_new_state(_PSX_SETUP, _PSX_SYSCALL);
-
     psx_tracker.cmd.active = 1;
+
     /*
      * cleaning up before we start helps a fork()ed child not inherit
      * confusion from its parent.
@@ -482,7 +474,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
     int some, incomplete, mismatch = 0, verified = 0;
     do {
 	incomplete = 0;  /* count threads to return from signal handler */
-	some = 0;        /* count threads still pending (minus self) */
+	some = 0;        /* count threads still pending */
 	sweep++;
 
 	int fd = open(psx_tracker.pid_path, O_RDONLY | O_DIRECTORY);
@@ -503,10 +495,15 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	    }
 
 	    size_t offset;
-	    struct psx_linux_dirent *dir;
-	    for (offset = 0; offset < nread; offset += dir->d_reclen) {
-		dir = (struct psx_linux_dirent *) (buf + offset);
-		long tid = atoi(dir->d_name);
+	    unsigned short reclen;
+	    for (offset = 0; offset < nread; offset += reclen) {
+		/* deal with potential unaligned reads */
+		memcpy(&reclen, buf + offset +
+		       offsetof(struct psx_linux_dirent, d_reclen),
+		       sizeof(reclen));
+		char *dir = (buf + offset +
+			     offsetof(struct psx_linux_dirent, d_name));
+		long tid = atoi(dir);
 		if (tid == 0 || tid == self) {
 		    continue;
 		}
