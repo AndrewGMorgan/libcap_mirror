@@ -640,6 +640,8 @@ int psx_set_sensitivity(psx_sensitivity_t level) {
     return 0;
 }
 
+#ifdef _LIBPSX_PTHREAD_LINKAGE
+
 /*
  * psx requires this function to be provided by the linkage wrapping.
  */
@@ -667,3 +669,5 @@ int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
                          void *(*start_routine) (void *), void *arg) {
     return __real_pthread_create(thread, attr, start_routine, arg);
 }
+
+#endif /* _LIBPSX_PTHREAD_LINKAGE def */

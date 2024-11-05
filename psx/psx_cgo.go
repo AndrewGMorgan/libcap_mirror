@@ -1,3 +1,4 @@
+//go:build linux && cgo
 // +build linux,cgo
 
 package psx // import "kernel.org/pub/linux/libs/security/libcap/psx"
@@ -8,8 +9,6 @@ import (
 	"syscall"
 )
 
-// #cgo LDFLAGS: -lpthread -Wl,-wrap,pthread_create
-//
 // #include <errno.h>
 // #include "psx_syscall.h"
 //
