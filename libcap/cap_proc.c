@@ -70,38 +70,7 @@ static struct syscaller_s singlethread = {
 /*
  * This gets reset to 0 if we are *not* linked with libpsx.
  */
-static int _libcap_overrode_syscalls = 1;
-
-/*
- * psx_load_syscalls() is weakly defined so we can have it overridden
- * by libpsx if that library is linked. Specifically, when libcap
- * calls psx_load_sycalls() it is prepared to override the default
- * values for the syscalls that libcap uses to change security state.
- * As can be seen here this present function is mostly a
- * no-op. However, if libpsx is linked, the one present in that
- * library (not being weak) will replace this one and the
- * _libcap_overrode_syscalls value isn't forced to zero.
- *
- * Note: we hardcode the prototype for the psx_load_syscalls()
- * function here so the compiler isn't worried. If we force the build
- * to include the header, we are close to requiring the optional
- * libpsx to be linked.
- */
-void psx_load_syscalls(long int (**syscall_fn)(long int,
-					      long int, long int, long int),
-		       long int (**syscall6_fn)(long int,
-						long int, long int, long int,
-						long int, long int, long int));
-
-__attribute__((weak))
-void psx_load_syscalls(long int (**syscall_fn)(long int,
-					       long int, long int, long int),
-		       long int (**syscall6_fn)(long int,
-						long int, long int, long int,
-						long int, long int, long int))
-{
-    _libcap_overrode_syscalls = 0;
-}
+__attribute__((visibility ("hidden"))) int _libcap_overrode_syscalls = 1;
 
 /*
  * cap_set_syscall overrides the state setting syscalls that libcap does.

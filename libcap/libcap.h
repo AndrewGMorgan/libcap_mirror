@@ -203,6 +203,18 @@ struct _cap_struct {
 
 extern char *_libcap_strdup(const char *text);
 extern void _libcap_initialize(void);
+extern int _libcap_overrode_syscalls;
+
+/*
+ * Note: we hardcode the prototype for the psx_load_syscalls()
+ * function here so the compiler isn't worried. If we force the build
+ * to include the psx_syscall.h header, we are close to requiring the
+ * optional libpsx to be linked.
+ */
+extern void psx_load_syscalls(
+    long int (**syscall_fn)(long int, long int, long int, long int),
+    long int (**syscall6_fn)(long int, long int, long int, long int,
+			     long int, long int, long int));
 
 #define EXECABLE_INITIALIZE _libcap_initialize()
 

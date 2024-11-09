@@ -13,7 +13,7 @@ PSXTITLE=libpsx
 PSXLIBNAME=$(PSXTITLE).so
 STAPSXLIBNAME=$(PSXTITLE).a
 
-CAPFILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file
+CAPFILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file cap_syscalls
 CAPMAGICOBJ=cap_magic.o
 PSXFILES=../psx/psx ../psx/wrap/psx_wrap
 PSXMAGICOBJ=psx_magic.o
