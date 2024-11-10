@@ -4,8 +4,8 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: libpsx
-Description: libpsx - linux posix syscall API for pthreads
+Description: libpsx - linux posix syscall API for threads
 Version: @VERSION@
-Libs: -L${libdir} -lpsx -lpthread -Wl,-wrap,pthread_create
+Libs: -L${libdir} -Wl,--no-as-needed -Wl,--whole-archive -lpsx -Wl,--no-whole-archive -Wl,--as-needed -lpthread
 Libs.private: @deps@
 Cflags: -I${includedir}

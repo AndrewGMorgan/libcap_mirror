@@ -1,4 +1,4 @@
-.TH LIBPSX 3 "2021-12-12" "" "Linux Programmer's Manual"
+.TH LIBPSX 3 "2024-11-09" "" "Linux Programmer's Manual"
 .SH NAME
 psx_syscall3, psx_syscall6, psx_set_sensitivity \- POSIX semantics for system calls
 .SH SYNOPSIS
@@ -18,11 +18,23 @@ void psx_load_syscalls(long int (**syscall_fn)(long int,
                                     long int, long int, long int));
 .fi
 .sp
-Link with one of these:
+Any code that uses one of the above functions can be linked as follows:
 .sp
-.I   ld ... \-lpsx \-lpthread \-\-wrap=pthread_create
+.I   ld ... \-lpsx \-lpthread
 .sp
-.I   gcc ... \-lpsx \-lpthread \-Wl,\-wrap,pthread_create
+.I   gcc ... \-lpsx \-lpthread
+.sp
+Note, special flags are needed to get
+.B -lcap
+to operated with process wide capabilities when linked with
+.BR -lpsx .
+Namely, use the
+.B pkg-config
+option file:
+.B gcc ... \-lcap $(pkg-config \-\-libs \-\-cflags libpsx)
+More details are available in the
+.BR cap_get_proc (3)
+man page.
 .SH DESCRIPTION
 The
 .B libpsx
@@ -50,14 +62,6 @@ handler stack. It goes to great length to be the first such handler
 but acts as a pass-through for other
 .B SIGSYS
 uses.
-.PP
-A linker trick of
-.I wrapping
-the
-.BR pthread_create ()
-call with a psx thread registration function is used to ensure
-.B libpsx
-can keep track of all pthreads.
 .PP
 An inefficient macrology trick supports the
 .BR psx_syscall ()
@@ -116,8 +120,14 @@ The needs of
 .BR libcap (3)
 for POSIX semantics of capability manipulation. You can read more
 about why this is needed here:
-.TP
+.sp
 https://sites.google.com/site/fullycapable/who-ordered-libpsx
+.sp
+Versions of
+.B libpsx
+prior to 2.72 only supported pthreads. Since libpsx-2.72 the library
+works with all Linux thread implementations as it operates at the
+lowest level of thread abstraction, LWPs.
 .SH "REPORTING BUGS"
 The
 .B libpsx
@@ -129,5 +139,6 @@ via:
 https://bugzilla.kernel.org/buglist.cgi?component=libcap&list_id=1090757
 .SH SEE ALSO
 .BR libcap (3),
+.BR cap_get_proc (3),
 .BR pthreads "(7) and"
 .BR nptl (7).

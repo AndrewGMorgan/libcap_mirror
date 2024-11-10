@@ -1,7 +1,7 @@
 // Program explore is evolved from the code discussed in more depth
 // here:
 //
-//   https://github.com/golang/go/issues/3405
+//	https://github.com/golang/go/issues/3405
 //
 // The code here demonstrates that while PR_SET_NO_NEW_PRIVS only
 // applies to the calling thread, since
@@ -12,14 +12,15 @@
 // Based on the command line options, we can manipulate the program to
 // behave in various ways. Example command lines:
 //
-//   sudo ./explore
-//   sudo ./explore --kill=false
-//   sudo ./explore --kill=false --errno=0
+//	sudo ./explore
+//	sudo ./explore --kill=false
+//	sudo ./explore --kill=false --errno=0
 //
-// Supported Go toolchains are after go1.10. Those prior to go1.15
-// require this environment variable to be set to build successfully:
+// Supported Go toolchains are after go1.10. Those prior to go1.16
+// are not fully reliable because of a go + glibc/psx incompatibility.
+// Details:
 //
-//   export CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
+//	https://bugzilla.kernel.org/show_bug.cgi?id=219478
 //
 // Go toolchains go1.16+ can be compiled CGO_ENABLED=0 too,
 // demonstrating native nocgo support for seccomp features.
@@ -161,6 +162,7 @@ func allGood() []SockFilter {
 
 // prctl executes the prctl - unless the --psx commandline argument is
 // used, this is on a single thread.
+//
 //go:uintptrescapes
 func prctl(option, arg1, arg2, arg3, arg4, arg5 uintptr) error {
 	var e syscall.Errno
@@ -180,6 +182,7 @@ func prctl(option, arg1, arg2, arg3, arg4, arg5 uintptr) error {
 }
 
 // SeccompSetModeFilter is our wrapper for performing our seccomp system call.
+//
 //go:uintptrescapes
 func SeccompSetModeFilter(prog *SockFProg) error {
 	if _, _, e := syscall.RawSyscall(sysSeccomp, seccompSetModeFilter, seccompFilterFlagTsync, uintptr(unsafe.Pointer(prog))); e != 0 {

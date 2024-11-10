@@ -67,7 +67,7 @@ SYSTEM_HEADERS = /usr/include
 
 SUDO := sudo
 CC := $(CROSS_COMPILE)gcc
-LD := $(CC) -Wl,-x -shared
+LD := $(CC) -Wl,-x -shared -Wl,-shared
 AR := $(CROSS_COMPILE)ar
 RANLIB := $(CROSS_COMPILE)ranlib
 OBJCOPY := $(CROSS_COMPILE)objcopy
@@ -107,8 +107,8 @@ endif
 USE_GPERF ?= $(shell which gperf >/dev/null 2>/dev/null && echo yes)
 
 LIBCAPLIB := -L$(topdir)/libcap -lcap
-PSXLINKFLAGS :=  -lpthread -Wl,-wrap,pthread_create
-LIBPSXLIB := -L$(topdir)/libcap -lpsx $(PSXLINKFLAGS)
+PSXLINKFLAGS := -lpthread
+LIBPSXLIB := -L$(topdir)/libcap -Wl,--no-as-needed -Wl,--whole-archive -lpsx -Wl,--no-whole-archive -Wl,--as-needed $(PSXLINKFLAGS)
 
 INCS=$(topdir)/libcap/include/sys/capability.h
 INDENT := $(shell if [ -n "$$(which indent 2>/dev/null)" ]; then echo "| indent -kr" ; fi)
@@ -142,12 +142,6 @@ GOROOT ?= $(shell $(GO) env GOROOT)
 GOCGO ?= $(shell if [ "$(shell $(GO) env CGO_ENABLED)" = 1 ]; then echo yes ; else echo no ; fi)
 GOOSARCH ?= $(shell $(GO) env GOHOSTOS)_$(shell $(GO) env GOHOSTARCH)
 CGO_REQUIRED := $(shell $(topdir)/go/cgo-required.sh $(GO))
-ifeq ($(CGO_REQUIRED),1)
-# Strictly speaking go1.15 doesn't need this, but 1.16 is when the
-# real golang support arrives for non-cgo support, so drop the last
-# vestige of legacy workarounds then.
-CGO_LDFLAGS_ALLOW := CGO_LDFLAGS_ALLOW="-Wl,-?-wrap[=,][^-.@][^,]*"
-endif
 CGO_CFLAGS := $(LIBCAP_INCLUDES)
 CGO_LDFLAGS := -L$(topdir)/libcap
 GO_BUILD_FLAGS :=

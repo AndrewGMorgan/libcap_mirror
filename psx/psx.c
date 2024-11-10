@@ -659,11 +659,6 @@ int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
  * or not you use this wrapper to reach the __real_ functionality or
  * not isn't important to the psx mechanism any longer (since
  * libpsx-2.72).
- *
- * I've explored relaxing the constraint, but it's not yet clear how
- * to force -lpsx to load when -lcap provides a weak
- * psx_load_syscalls() function. So, for now, that is the reason we
- * still require the --wrap=pthread_create linker argument.
  */
 int __wrap_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
                          void *(*start_routine) (void *), void *arg) {

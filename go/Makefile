@@ -57,10 +57,10 @@ CAPGOPACKAGE: vendor/$(IMPORTDIR)/cap ../cap/*.go good-names.go $(PSXGOPACKAGE)
 # Compiles something with this package to compare it to libcap. This
 # tests more when run under sudotest (see ../progs/quicktest.sh for that).
 compare-cap: compare-cap.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="1" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 web: ../goapps/web/web.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 ifeq ($(RAISE_GO_FILECAP),yes)
 	$(MAKE) -C ../progs setcap
 	$(SUDO) ../progs/setcap cap_setpcap,cap_net_bind_service=p web
@@ -68,24 +68,24 @@ ifeq ($(RAISE_GO_FILECAP),yes)
 endif
 
 setid: ../goapps/setid/setid.go CAPGOPACKAGE PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 gowns: ../goapps/gowns/gowns.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 captree: ../goapps/captree/captree.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 captrace: ../goapps/captrace/captrace.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 ok: ok.go vendor/modules.txt
 	CC="$(CC)" CGO_ENABLED="0"  $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 try-launching: try-launching.go CAPGOPACKAGE ok
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 ifeq ($(CGO_REQUIRED),0)
-	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@-cgo $<
+	CC="$(CC)" CGO_ENABLED="1" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@-cgo $<
 endif
 
 # This is a test case developed from the deadlock investigation,
@@ -96,46 +96,46 @@ endif
 # the large change was not backported. (See noted bug for a much
 # smaller patch for this issue on those older releases.)
 psx-fd: psx-fd.go PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 
 ifeq ($(CGO_REQUIRED),0)
 psx-fd-cgo: psx-fd.go PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="1" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
 psx-signals: psx-signals.go PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 ifeq ($(CGO_REQUIRED),0)
 psx-signals-cgo: psx-signals.go PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="1" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
 b210613: b210613.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 b215283: b215283.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 ifeq ($(CGO_REQUIRED),0)
 b215283-cgo: b215283.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="1" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
 mismatch: mismatch.go PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 iaber: iaber.go CAPGOPACKAGE PSXGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor $<
 
 ifeq ($(CGO_REQUIRED),0)
 mismatch-cgo: mismatch.go CAPGOPACKAGE
-	CC="$(CC)" CGO_ENABLED="1" $(CGO_LDFLAGS_ALLOW) CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
+	CC="$(CC)" CGO_ENABLED="1" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
 test: setid gowns captree psx-fd $(TESTS)
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -v -mod=vendor $(IMPORTDIR)/psx
-	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(CGO_LDFLAGS_ALLOW) $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) test -v -mod=vendor $(IMPORTDIR)/psx
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals
 	./mismatch || exit 0 ; exit 1

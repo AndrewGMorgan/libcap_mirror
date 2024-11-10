@@ -1,4 +1,4 @@
-.TH CAP_GET_PROC 3 "2022-04-28" "" "Linux Programmer's Manual"
+.TH CAP_GET_PROC 3 "2024-11-09" "" "Linux Programmer's Manual"
 .SH NAME
 cap_get_proc, cap_set_proc, capgetp, cap_get_bound, cap_drop_bound, \
 cap_get_ambient, cap_set_ambient, cap_reset_ambient, \
@@ -257,11 +257,11 @@ is packaged with a separate POSIX semantics system call library:
 If your program uses POSIX threads, to achieve meaningful POSIX
 semantics capability manipulation, you should link your program with:
 .sp
-.B ld ... \-lcap \-lpsx \-lpthread \-\-wrap=pthread_create
+.B ld ... \-lcap $(pkg-config \-\-libs \-\-cflags libpsx)
 .sp
 or,
 .sp
-.B gcc ... \-lcap \-lpsx \-lpthread \-Wl,\-wrap,pthread_create
+.B gcc ... \-lcap $(pkg-config \-\-libs \-\-cflags libpsx)
 .sp
 When linked this way, due to linker magic, libcap uses
 .BR psx_syscall "(3) and " psx_syscall6 (3)
