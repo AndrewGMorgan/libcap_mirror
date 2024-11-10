@@ -18,7 +18,7 @@ extern "C" {
  * Provide a programmatic way to #ifdef around features.
  */
 #define LIBCAP_MAJOR 2
-#define LIBCAP_MINOR 71
+#define LIBCAP_MINOR 72
 
 /*
  * This file complements the kernel file by providing prototype
