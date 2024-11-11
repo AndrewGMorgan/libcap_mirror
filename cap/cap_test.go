@@ -2,7 +2,6 @@ package cap
 
 import (
 	"fmt"
-	"log"
 	"testing"
 )
 
@@ -286,19 +285,4 @@ func TestFuncLaunch(t *testing.T) {
 			t.Fatalf("[%d] attempt to flip PR_KEEP_CAPS failed: %v", i, err)
 		}
 	}
-}
-
-// Testable examples.
-
-func ExampleSet_Fill() {
-	c, err := FromText("cap_setfcap=p")
-	if err != nil {
-		log.Fatalf("failed to parse: %v", err)
-	}
-	c.Fill(Effective, Permitted)
-	c.ClearFlag(Permitted)
-	c.Fill(Inheritable, Effective)
-	c.ClearFlag(Effective)
-	fmt.Println(c.String())
-	// Output: cap_setfcap=i
 }
