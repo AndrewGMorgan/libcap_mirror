@@ -170,7 +170,8 @@ static char *read_capabilities_for_user(const char *user, const char *source)
 
 	    int i;
 	    for (i=0; i < groups_n; i++) {
-		if (!strcmp(groups[i], line+1)) {
+		const char *g = groups[i];
+		if (g != NULL && !strcmp(g, line+1)) {
 		    D(("user group matched [%s]", line));
 		    found_one = 1;
 		    break;
@@ -283,6 +284,9 @@ static int set_capabilities(struct pam_cap_s *cs)
 	    goto cleanup_cap_s;
 	}
 	conf_caps = strdup(cs->fallback);
+	if (conf_caps == NULL) {
+	    goto cleanup_cap_s;
+	}
 	D(("user [%s] received fallback caps [%s]", cs->user, conf_caps));
     }
 

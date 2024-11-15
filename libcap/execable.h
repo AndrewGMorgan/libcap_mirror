@@ -38,6 +38,7 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 	    char *new_mem = realloc(mem, size+1);
 	    if (new_mem == NULL) {
 		perror("unable to parse arguments");
+		fclose(f);
 		if (mem != NULL) {
 		    free(mem);
 		}
