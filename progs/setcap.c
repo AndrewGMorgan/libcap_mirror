@@ -15,8 +15,8 @@
 static void usage(int status)
 {
     fprintf(stderr,
-	    "usage: setcap [-h] [-q] [-v] [-n <rootid>] (-r|-|<caps>) <filename> "
-	    "[ ... (-r|-|<capsN>) <filenameN> ]\n"
+	    "usage: setcap [--license] [-f] [-h] [-n <rootid>] [-q] [-v]"
+	    " (-r|-|<caps>) <filename> [ ... (-r|-|<capsN>) <filenameN> ]\n"
 	    "\n"
 	    " Note <filename> must be a regular (non-symlink) file.\n"
 	    " -r          remove capability from file\n"
@@ -24,12 +24,12 @@ static void usage(int status)
 	    " <capsN>     cap_from_text(3) formatted file capability\n"
 	    " [ Note: capsh --suggest=\"something...\" might help you pick. ]"
 	    "\n"
-	    " -h          this message and exit status 0\n"
+	    " --license   display the license info\n"
 	    " -f          force setting even when the capability is invalid\n"
+	    " -h          this message and exit status 0\n"
+	    " -n <rootid> write a user namespace (!= 0) limited capability\n"
 	    " -q          quietly\n"
 	    " -v          validate supplied capability matches file\n"
-	    " -n <rootid> write a user namespace (!= 0) limited capability\n"
-	    " --license   display the license info\n"
 	);
     exit(status);
 }
@@ -123,10 +123,6 @@ int main(int argc, char **argv)
 	cap_free(cap_d);
 	cap_d = NULL;
 
-	if (!strcmp(*++argv, "-q")) {
-	    quiet = 1;
-	    continue;
-	}
 	if (!strcmp("--license", *argv)) {
 	    printf(
 		"%s see LICENSE file for details.\n"
@@ -141,10 +137,6 @@ int main(int argc, char **argv)
 	if (!strcmp(*argv, "-h")) {
 	    usage(0);
 	}
-	if (!strcmp(*argv, "-v")) {
-	    verify = 1;
-	    continue;
-	}
 	if (!strcmp(*argv, "-n")) {
 	    if (argc < 2) {
 		fprintf(stderr,
@@ -153,6 +145,14 @@ int main(int argc, char **argv)
 	    }
 	    --argc;
 	    rootid = (uid_t) pos_uint(*++argv, "bad ns rootid", NULL);
+	    continue;
+	}
+	if (!strcmp(*++argv, "-q")) {
+	    quiet = 1;
+	    continue;
+	}
+	if (!strcmp(*argv, "-v")) {
+	    verify = 1;
 	    continue;
 	}
 
