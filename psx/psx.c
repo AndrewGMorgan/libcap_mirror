@@ -9,10 +9,6 @@
  * psx_syscall()-like function that leveraged the nptl:setxid
  * mechanism to synchronize thread state over the whole process.
  */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>  /* pthread_atfork() */
@@ -28,6 +24,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+/* Not reliably defined by *libc so, alias the direct syscall. */
+#define _psx_gettid() syscall(SYS_gettid)
+
 #include "psx_syscall.h"
 
 #ifdef _PSX_DEBUG_MEMORY
@@ -35,13 +34,13 @@
 static void *_psx_calloc(const char *file, const int line,
 			 size_t nmemb, size_t size) {
     void *ptr = calloc(nmemb, size);
-    fprintf(stderr, "psx:%d:%s:%d: calloc(%ld, %ld) -> %p\n", gettid(),
+    fprintf(stderr, "psx:%d:%s:%d: calloc(%ld, %ld) -> %p\n", _psx_gettid(),
 	    file, line, (long int)nmemb, (long int)size, ptr);
     return ptr;
 }
 
 static void _psx_free(const char *file, const int line, void *ptr) {
-    fprintf(stderr, "psx:%d:%s:%d: free(%p)\n", gettid(), file, line, ptr);
+    fprintf(stderr, "psx:%d:%s:%d: free(%p)\n", _psx_gettid(), file, line, ptr);
     return free(ptr);
 }
 
@@ -287,7 +286,7 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
      * communicate the result of the thread's attempt to perform the
      * syscall.
      */
-    long tid = gettid();
+    long tid = _psx_gettid();
 
     psx_lock();
     psx_thread_ref_t *ref = &psx_tracker.map[psx_mix(tid) & psx_tracker.map_mask];
@@ -471,7 +470,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
     memset(psx_tracker.map, 0,
 	   psx_tracker.map_entries*sizeof(psx_thread_ref_t));
 
-    long self = gettid(), sweep = 1;
+    long self = _psx_gettid(), sweep = 1;
     int some, incomplete, mismatch = 0, verified = 0;
     do {
 	incomplete = 0;  /* count threads to return from signal handler */
