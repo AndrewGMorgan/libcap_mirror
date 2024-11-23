@@ -117,56 +117,58 @@ int main(int argc, char **argv)
     }
 
     cap_t cap_d = NULL;
-    while (--argc > 0) {
+    char **arg = argv+1;
+    for (; --argc > 0; arg++) {
 	const char *text;
 
 	cap_free(cap_d);
 	cap_d = NULL;
 
-	if (!strcmp("--license", *argv)) {
+	if (!strcmp("--license", *arg)) {
 	    printf(
 		"%s see LICENSE file for details.\n"
 		"Copyright (c) 1997,2007-8,2020-21 Andrew G. Morgan"
 		" <morgan@kernel.org>\n", argv[0]);
 	    exit(0);
 	}
-	if (!strcmp(*argv, "-f")) {
+	if (!strcmp(*arg, "-f")) {
 	    forced = 1;
 	    continue;
 	}
-	if (!strcmp(*argv, "-h")) {
+	if (!strcmp(*arg, "-h")) {
 	    usage(0);
 	}
-	if (!strcmp(*argv, "-n")) {
+	if (!strcmp(*arg, "-n")) {
+	    printf("got here\n");
 	    if (argc < 2) {
 		fprintf(stderr,
 			"usage: .. -n <rootid> .. - rootid!=0 file caps");
 		exit(1);
 	    }
 	    --argc;
-	    rootid = (uid_t) pos_uint(*++argv, "bad ns rootid", NULL);
+	    rootid = (uid_t) pos_uint(*++arg, "bad ns rootid", NULL);
 	    continue;
 	}
-	if (!strcmp(*++argv, "-q")) {
+	if (!strcmp(*arg, "-q")) {
 	    quiet = 1;
 	    continue;
 	}
-	if (!strcmp(*argv, "-v")) {
+	if (!strcmp(*arg, "-v")) {
 	    verify = 1;
 	    continue;
 	}
 
-	if (!strcmp(*argv, "-r")) {
+	if (!strcmp(*arg, "-r")) {
 	    cap_free(cap_d);
 	    cap_d = NULL;
 	} else {
-	    if (!strcmp(*argv,"-")) {
-		retval = read_caps(quiet, *argv, buffer);
+	    if (!strcmp(*arg,"-")) {
+		retval = read_caps(quiet, *arg, buffer);
 		if (retval)
 		    usage(1);
 		text = buffer;
 	    } else {
-		text = *argv;
+		text = *arg;
 	    }
 
 	    int non_space = 0, j;
@@ -182,6 +184,7 @@ int main(int argc, char **argv)
 	    }
 	    cap_d = cap_from_text(text);
 	    if (cap_d == NULL) {
+		printf("argument: %s\n", text);
 		perror("fatal error");
 		usage(1);
 	    }
@@ -198,8 +201,10 @@ int main(int argc, char **argv)
 #endif
 	}
 
-	if (--argc <= 0)
+	if (--argc <= 0) {
 	    usage(1);
+	}
+
 	/*
 	 * Set the filesystem capability for this file.
 	 */
@@ -215,7 +220,7 @@ int main(int argc, char **argv)
 		}
 	    }
 
-	    cap_on_file = cap_get_file(*++argv);
+	    cap_on_file = cap_get_file(*++arg);
 	    if (cap_on_file == NULL) {
 		cap_on_file = cap_init();
 		if (cap_on_file == NULL) {
@@ -233,7 +238,7 @@ int main(int argc, char **argv)
 		    if (rootid != f_rootid) {
 			printf("nsowner[got=%d, want=%d],", f_rootid, rootid);
 		    }
-		    printf("%s differs in [%s%s%s]\n", *argv,
+		    printf("%s differs in [%s%s%s]\n", *arg,
 			   CAP_DIFFERS(cmp, CAP_PERMITTED) ? "p" : "",
 			   CAP_DIFFERS(cmp, CAP_INHERITABLE) ? "i" : "",
 			   CAP_DIFFERS(cmp, CAP_EFFECTIVE) ? "e" : "");
@@ -241,7 +246,7 @@ int main(int argc, char **argv)
 		exit(1);
 	    }
 	    if (!quiet) {
-		printf("%s: OK\n", *argv);
+		printf("%s: OK\n", *arg);
 	    }
 	} else {
 	    if (!tried_to_cap_setfcap) {
@@ -294,7 +299,7 @@ int main(int argc, char **argv)
 	    }
 #endif /* def linux */
 	    errno = 0;
-	    retval = cap_set_file(*++argv, cap_d);
+	    retval = cap_set_file(*++arg, cap_d);
 	    if (retval != 0) {
 		switch (errno) {
 		case EINVAL:
