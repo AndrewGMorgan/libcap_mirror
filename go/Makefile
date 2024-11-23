@@ -18,6 +18,10 @@ TESTS=compare-cap try-launching psx-signals mismatch
 
 all: PSXGOPACKAGE CAPGOPACKAGE web setid gowns captree captrace
 
+vet: PSXGOPACKAGE CAPGOPACKAGE
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) vet -mod=vendor kernel.org/pub/linux/libs/security/libcap/cap
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) vet -mod=vendor kernel.org/pub/linux/libs/security/libcap/psx
+
 $(DEPS):
 	$(MAKE) -C ../libcap all
 
@@ -133,7 +137,7 @@ mismatch-cgo: mismatch.go CAPGOPACKAGE
 	CC="$(CC)" CGO_ENABLED="1" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" $(GO) build $(GO_BUILD_FLAGS) -mod=vendor -o $@ $<
 endif
 
-test: setid gowns captree psx-fd $(TESTS)
+test: vet setid gowns captree psx-fd $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) test -v -mod=vendor $(IMPORTDIR)/psx
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap

@@ -1,6 +1,7 @@
 package psx
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"syscall"
@@ -49,11 +50,13 @@ func TestShared(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	newTracker := func() chan<- uintptr {
+	newTracker := func() (chan<- uintptr, <-chan string) {
 		ch := make(chan uintptr)
+		ex := make(chan string)
 		go func() {
 			runtime.LockOSThread()
 			defer wg.Done()
+			defer close(ex)
 			tid := syscall.Gettid()
 			for {
 				if _, ok := <-ch; !ok {
@@ -65,7 +68,8 @@ func TestShared(t *testing.T) {
 				}
 				got, _, e := Syscall3(syscall.SYS_PRCTL, prGetKeepCaps, 0, 0)
 				if e != 0 {
-					t.Fatalf("[%d] psx:prctl(GET_KEEPCAPS) ?= %d failed: %v", tid, val, syscall.Errno(e))
+					ex <- fmt.Sprintf("[%d] psx:prctl(GET_KEEPCAPS) ?= %d failed: %v", tid, val, syscall.Errno(e))
+					break
 				}
 				if got != val {
 					t.Errorf("[%d] bad keepcaps value: got=%d, want=%d", tid, got, val)
@@ -75,21 +79,27 @@ func TestShared(t *testing.T) {
 				}
 			}
 		}()
-		return ch
+		return ch, ex
 	}
 
 	var tracked []chan<- uintptr
+	var exes []<-chan string
 	for i := 0; i <= 10; i++ {
 		val := uintptr(i & 1)
 		if _, _, e := Syscall3(syscall.SYS_PRCTL, prSetKeepCaps, val, 0); e != 0 {
 			t.Fatalf("[%d] psx:prctl(SET_KEEPCAPS, %d) failed: %v", i, i&1, syscall.Errno(e))
 		}
 		wg.Add(1)
-		tracked = append(tracked, newTracker())
-		for _, ch := range tracked {
-			ch <- 2   // start serialization.
-			ch <- val // definitely written after change.
-			ch <- 3   // end serialization.
+		tr, ex := newTracker()
+		tracked, exes = append(tracked, tr), append(exes, ex)
+		for i, ch := range tracked {
+			ch <- 2 // start serialization.
+			select {
+			case ferr := <-exes[i]:
+				t.Fatalf("%s", ferr)
+			case ch <- val: // definitely written after change.
+			}
+			ch <- 3 // end serialization.
 		}
 	}
 	for _, ch := range tracked {
