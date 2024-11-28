@@ -18,6 +18,6 @@ func ExampleSet_Fill() {
 	c.ClearFlag(cap.Permitted)
 	c.Fill(cap.Inheritable, cap.Effective)
 	c.ClearFlag(cap.Effective)
-	fmt.Println(c.String())
+	fmt.Println(c)
 	// Output: cap_setfcap=i
 }
