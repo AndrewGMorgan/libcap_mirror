@@ -9,6 +9,11 @@
  * psx_syscall()-like function that leveraged the nptl:setxid
  * mechanism to synchronize thread state over the whole process.
  */
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>  /* pthread_atfork() */
