@@ -15,7 +15,7 @@ STAPSXLIBNAME=$(PSXTITLE).a
 
 CAPFILES=cap_alloc cap_proc cap_extint cap_flag cap_text cap_file cap_syscalls
 CAPMAGICOBJ=cap_magic.o
-PSXFILES=../psx/psx ../psx/wrap/psx_wrap
+PSXFILES=../psx/psx ../psx/psx_calls ../psx/wrap/psx_wrap
 PSXMAGICOBJ=psx_magic.o
 
 # Always build libcap sources this way:

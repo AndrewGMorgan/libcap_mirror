@@ -139,6 +139,10 @@ endif
 
 test: vet setid gowns captree psx-fd $(TESTS)
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) test -v -mod=vendor $(IMPORTDIR)/psx
+ifeq ($(CGO_REQUIRED),0)
+	CC="$(CC)" CGO_ENABLED="1" $(GO) test -v -mod=vendor $(IMPORTDIR)/psx
+	CC="$(CC)" CGO_ENABLED="1" $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
+endif
 	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
 	LD_LIBRARY_PATH=../libcap ./compare-cap
 	./psx-signals

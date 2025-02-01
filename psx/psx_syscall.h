@@ -43,8 +43,6 @@
 extern "C" {
 #endif
 
-#include <pthread.h>
-
 /*
  * Programmatic way to recognize feature set.
  */

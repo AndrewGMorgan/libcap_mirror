@@ -48,7 +48,7 @@ func tryFileCaps() {
 	// Failing attempt to remove capabilities.
 	var empty *cap.Set
 	if err := empty.SetFile(os.Args[0]); err != syscall.EPERM {
-		log.Fatalf("failed to be blocked from removing filecaps: %v", err)
+		log.Fatalf("failed to be blocked from removing filecaps (with=%q): %v", cap.GetProc(), err)
 	}
 
 	// The privilege we want (in the case we are root, we need the
@@ -96,7 +96,7 @@ func tryFileCaps() {
 
 	// Failing attempt to remove capabilities.
 	if err := empty.SetFd(f); err != syscall.EPERM {
-		log.Fatalf("failed to be blocked from fremoving filecaps: %v", err)
+		log.Fatalf("failed to be blocked from removing filecaps (w/ %q): %v", cap.GetProc(), err)
 	}
 
 	// For the next section, we won't set the effective bit on the file.
