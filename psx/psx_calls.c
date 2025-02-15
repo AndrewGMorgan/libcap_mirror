@@ -23,7 +23,7 @@
  * Also, the rt_sig*() system calls use a different sigaction
  * definition in these cases, so #define around that too.
  */
-#if defined(__arm__) || defined(__i386__) || defined(__aarch64__)
+#if defined(__arm__) || defined(__i386__) || defined(__aarch64__) || defined(__mips__) || defined(__loongarch__)
 
 #undef _NSIG
 #undef _NSIG_BPW
@@ -32,7 +32,12 @@
 #undef sa_handler
 #undef sa_sigaction
 
+#if defined(__mips__)
+#define _NSIG        128
+#else
 #define _NSIG        64
+#endif
+
 #define _NSIG_BPW    (8*sizeof(unsigned long))
 #define _NSIG_WORDS  (_NSIG / _NSIG_BPW)
 
@@ -47,8 +52,13 @@ typedef struct {
 #define sigset_t psx_sigset_t
 
 struct psx_sigaction {
+#if defined(__mips__)
+    unsigned long sa_flags;
+    void *sa_handler;
+#else
     void *sa_handler;
     unsigned long sa_flags;
+#endif
 #ifdef SA_RESTORER
     void *sa_restorer;
 #endif
@@ -150,11 +160,6 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 	    /*
 	     * These are supported by go (go tool dist list | grep linux),
 	     * so we plan to also support them:
-	     *   linux/loong64
-	     *   linux/mips
-	     *   linux/mips64
-	     *   linux/mips64le
-	     *   linux/mipsle
 	     *   linux/ppc64
 	     *   linux/ppc64le
 	     *   linux/riscv64
