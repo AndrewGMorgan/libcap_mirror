@@ -23,7 +23,8 @@
  * Also, the rt_sig*() system calls use a different sigaction
  * definition in these cases, so #define around that too.
  */
-#if defined(__arm__) || defined(__i386__) || defined(__aarch64__) || defined(__mips__) || defined(__loongarch__)
+#if defined(__arm__) || defined(__i386__) || defined(__aarch64__) \
+    || defined(__mips__) || defined(__loongarch__) || defined(__powerpc__)
 
 #undef _NSIG
 #undef _NSIG_BPW
@@ -155,13 +156,13 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 	    asm("\npsx_restorer:\n\tmov $173, %eax\n\tint $0x80\n");
 #elif defined(__arm__)
 	    asm("\npsx_restorer:\n\tmov r7,#173\n\tswi 0\n");
+#elif defined(__powerpc__)
+	    asm("\npsx_restorer:\n\tli 0, 172\n\tsc\n");
 #else
 #error "unsupported architecture - https://bugzilla.kernel.org/show_bug.cgi?id=219687"
 	    /*
 	     * These are supported by go (go tool dist list | grep linux),
 	     * so we plan to also support them:
-	     *   linux/ppc64
-	     *   linux/ppc64le
 	     *   linux/riscv64
 	     *   linux/s390x
 	     */
