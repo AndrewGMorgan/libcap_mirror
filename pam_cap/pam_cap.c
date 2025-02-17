@@ -166,6 +166,7 @@ static char *read_capabilities_for_user(const char *user, const char *source)
 
 	    if (line[0] != '@') {
 		D(("user [%s] is not [%s] - skipping", user, line));
+		continue;
 	    }
 
 	    int i;
