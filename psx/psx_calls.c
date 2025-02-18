@@ -198,7 +198,6 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
      * syscall.
      */
     long tid = _psx_gettid();
-
     psx_lock();
     psx_thread_ref_t *ref =
 	&psx_tracker.map[psx_mix(tid) & psx_tracker.map_mask];
@@ -207,11 +206,11 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
     /*
      * Block this thread until all threads have been interrupted.
      * This prevents threads clone()ing after running the syscall and
-     * confusing the psx mechanism into thinking they need to also run
-     * the syscall. They wouldn't need to run it, because they would
-     * inherit the thread state of a syscall that has already
-     * happened. However, figuring that out for an unblocked thread is
-     * hard, so we prevent it from happening.
+     * confusing the psx mechanism into thinking those new threads
+     * need to also run the syscall. They wouldn't need to run it,
+     * because they would inherit the thread state of a syscall that
+     * has already happened. However, figuring that out for an
+     * unblocked thread is hard, so we prevent it from happening.
      */
     while (psx_tracker.cmd.active) {
 	psx_cond_wait();

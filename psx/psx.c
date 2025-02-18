@@ -374,16 +374,16 @@ long int __psx_syscall(long int syscall_nr, ...) {
 		    continue;
 		}
 		long mix = psx_mix(tid);
-		long hval = mix & psx_tracker.map_mask;
-		psx_thread_ref_t *x = &psx_tracker.map[hval];
+		psx_thread_ref_t *x =
+		    &psx_tracker.map[mix & psx_tracker.map_mask];
 		if (x->tid != tid) {
 		    if (x->tid != 0) {
 			/* a collision */
 			long entries = psx_tracker.map_entries;
-			long oval;
+			long oval, mask;
 			for (oval = psx_mix(x->tid); ; entries <<= 1) {
-			    long mask = entries - 1;
-			    if (((oval ^ hval) & mask) != 0) {
+			    mask = entries - 1;
+			    if (((oval ^ mix) & mask) != 0) {
 				/* no more collisions */
 				break;
 			    }
@@ -399,7 +399,8 @@ long int __psx_syscall(long int syscall_nr, ...) {
 				/* no longer care about this entry */
 				continue;
 			    }
-			    psx_thread_ref_t *z = &psx_tracker.map[psx_mix(y->tid) & psx_tracker.map_mask];
+			    psx_thread_ref_t *z =
+				&psx_tracker.map[psx_mix(y->tid) & mask];
 			    z->tid = y->tid;
 			    z->pending = y->pending;
 			    z->retval = y->retval;
@@ -407,7 +408,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
 			}
 			psx_unlock();
 			free(old);
-			x = &psx_tracker.map[mix & psx_tracker.map_mask];
+			x = &psx_tracker.map[mix & mask];
 		    }
 		    /*
 		     * A new entry - this is where we will also
