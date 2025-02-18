@@ -22,9 +22,14 @@
  *
  * Also, the rt_sig*() system calls use a different sigaction
  * definition in these cases, so #define around that too.
+ *
+ * Coupled with the glibc suppression of access to the exact signal we
+ * want to use, we have ended up just inlining all architecture
+ * support here.
  */
 #if defined(__arm__) || defined(__i386__) || defined(__aarch64__) \
-    || defined(__mips__) || defined(__loongarch__) || defined(__powerpc__)
+    || defined(__mips__) || defined(__loongarch__) \
+    || defined(__powerpc__) || defined(__s390__)
 
 #undef _NSIG
 #undef _NSIG_BPW
@@ -164,7 +169,6 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 	     * These are supported by go (go tool dist list | grep linux),
 	     * so we plan to also support them:
 	     *   linux/riscv64
-	     *   linux/s390x
 	     */
 #endif /* supported architectures */
 	}
