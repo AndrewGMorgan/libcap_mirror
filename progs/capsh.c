@@ -18,6 +18,7 @@
 #define _GNU_SOURCE
 #endif
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
