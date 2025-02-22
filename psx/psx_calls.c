@@ -27,9 +27,10 @@
  * want to use, we have ended up just inlining all architecture
  * support here.
  */
-#if defined(__arm__) || defined(__i386__) || defined(__aarch64__) \
+#if defined(__x86_64__) || defined(__i386__)	   \
+    || defined(__arm__) || defined(__aarch64__)	   \
     || defined(__mips__) || defined(__loongarch__) \
-    || defined(__powerpc__) || defined(__s390__)
+    || defined(__powerpc__) || defined(__s390__) || defined(__riscv)
 
 #undef _NSIG
 #undef _NSIG_BPW
