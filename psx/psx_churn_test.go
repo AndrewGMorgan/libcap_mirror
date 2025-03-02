@@ -1,5 +1,5 @@
-//go:build linux && cgo && go1.16
-// +build linux,cgo,go1.16
+//go:build linux && go1.16
+// +build linux,go1.16
 
 package psx
 
