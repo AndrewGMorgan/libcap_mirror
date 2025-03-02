@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// Test to confirm no regression against:
+// Test to confirm no regression against [Go bug 42494].
 //
-//	https://github.com/golang/go/issues/42494
+// [Go bug 42494]: https://github.com/golang/go/issues/42494
 func TestThreadChurn(t *testing.T) {
 	const prSetKeepCaps = 8
 
