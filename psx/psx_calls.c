@@ -7,7 +7,7 @@
  * because its use of kernel headers conflicts badly with the more
  * traditional *libc provided headers.
  */
-#include <linux/signal.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>

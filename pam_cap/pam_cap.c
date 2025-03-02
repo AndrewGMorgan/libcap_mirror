@@ -25,7 +25,6 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <linux/limits.h>
 
 #include <security/pam_modules.h>
 #include <security/_pam_macros.h>
