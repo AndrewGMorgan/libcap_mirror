@@ -26,7 +26,7 @@ static void *run_thread(void *ignored)
 	}
 	if (trigger == 1) {
 	    counter++;
-	    total += prctl(PR_GET_KEEPCAPS, 0, 0, 0, 0, 0);
+	    total += prctl(PR_GET_KEEPCAPS, 0, 0, 0, 0, 0)+2;
 	    primed--;
 	    while (trigger == 1) {
 		pthread_cond_signal(&cond);
@@ -100,8 +100,8 @@ SO_MAIN(int argc, char **argv) {
     for (i = 0; i < N_THREADS; i++) {
 	pthread_join(arr[i], NULL);
     }
-    if (n != 5) {
-	printf("FAILED: got=%d, want=5\n", n);
+    if (n != 25) {
+	printf("FAILED: got=%d, want=25\n", n);
 	exit(1);
     }
     printf("PASSED\n");

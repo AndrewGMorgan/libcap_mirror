@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 	}
 	th[i] = weaver_thread();
 	int got = weaver_waitforit(i+1);
-	int want = (i&1) ? i+1 : 0;
+	int want = (i&1) ? (3*(i+1)) : (2*(i+1));
 	printf("for %ld weaver.so launched threads, total=%d, wanted=%d\n",
 	       i+1, got, want);
 	if (got != want) {
