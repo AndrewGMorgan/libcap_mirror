@@ -48,7 +48,8 @@
 #define _NSIG_BPW    (8*sizeof(unsigned long))
 #define _NSIG_WORDS  (_NSIG / _NSIG_BPW)
 
-#if defined(__arm__) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i386__) \
+    || defined(__arm__) || defined(__powerpc__)
 #define SA_RESTORER  0x04000000
 #endif /* architectures that use SA_RESTORER */
 
