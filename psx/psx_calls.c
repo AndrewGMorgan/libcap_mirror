@@ -7,9 +7,15 @@
  * because its use of kernel headers conflicts badly with the more
  * traditional *libc provided headers.
  */
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <signal.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "psx_syscall.h"
@@ -158,13 +164,13 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 	 */
 	if (psx_tracker.force_failure) {
 #if defined(__x86_64__)
-	    asm("\npsx_restorer:\n\tmov $15,%rax\n\tsyscall\n");
+	    __asm__ __volatile__("\npsx_restorer:\n\tmov $15,%rax\n\tsyscall\n");
 #elif defined(__i386__)
-	    asm("\npsx_restorer:\n\tmov $173, %eax\n\tint $0x80\n");
+	    __asm__ __volatile__("\npsx_restorer:\n\tmov $173, %eax\n\tint $0x80\n");
 #elif defined(__arm__)
-	    asm("\npsx_restorer:\n\tmov r7,#173\n\tswi 0\n");
+	    __asm__ __volatile__("\npsx_restorer:\n\tmov r7,#173\n\tswi 0\n");
 #elif defined(__powerpc__)
-	    asm("\npsx_restorer:\n\tli 0, 172\n\tsc\n");
+	    __asm__ __volatile__("\npsx_restorer:\n\tli 0, 172\n\tsc\n");
 #else
 #error "unsupported architecture - https://bugzilla.kernel.org/show_bug.cgi?id=219687"
 	    /*
