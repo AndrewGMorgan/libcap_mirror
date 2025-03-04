@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "psx_syscall.h"
-#include "../psx/libpsx.h"
+#include "libpsx.h"
 
 /*
  * This is terrible, but some of the OS installed <asm/signal.h>

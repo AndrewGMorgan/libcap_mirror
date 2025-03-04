@@ -29,7 +29,7 @@
 #include <unistd.h>
 
 #include "psx_syscall.h"
-#include "../psx/libpsx.h"
+#include "libpsx.h"
 
 #ifdef _PSX_DEBUG_MEMORY
 
