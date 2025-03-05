@@ -12,11 +12,31 @@
 // Based on the command line options, we can manipulate the program to
 // behave in various ways. Example command lines:
 //
-//	sudo ./explore
-//	sudo ./explore --kill=false
-//	sudo ./explore --kill=false --errno=0
+// - program killed because it attempts a blocked system call:
 //
-// Supported Go toolchains are after go1.10. Those prior to go1.16
+//	sudo ./explore
+//
+// - program recognizes the blocked syscall was attempted and forces failure:
+//
+//	$ sudo ./explore --kill=false
+//	validated TID: 24297 == PID: 24294 is false
+//	Applying syscall policy...
+//	...Policy applied
+//	validated TID: 24294 == PID: 24294 is true
+//	2025/03/05 07:31:34 Now it is time to try to run something privileged...
+//	2025/03/05 07:31:34 setuid failed with an error: operation not supported
+//
+// - program fakes a successful syscall, but self-test reveals it failed:
+//
+//	$ sudo ./explore --kill=false --errno=0
+//	validated TID: 24278 == PID: 24274 is false
+//	Applying syscall policy...
+//	...Policy applied
+//	validated TID: 24274 == PID: 24274 is true
+//	2025/03/05 07:31:03 Now it is time to try to run something privileged...
+//	2025/03/05 07:31:03 Looked like that worked, but it really didn't: uid == 0 != 1
+//
+// Supported Go toolchains are after go1.16. Those prior to go1.16
 // are not fully reliable because of a go + glibc/psx incompatibility.
 // Details:
 //
