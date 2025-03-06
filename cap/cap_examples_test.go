@@ -27,6 +27,61 @@ func ExampleSet_Fill() {
 	// Output: cap_setfcap=i
 }
 
+func ExampleGetProc() {
+	// This example does not need to use a package alias `cap_`.
+	// It is declared this way to make examples on the go.dev doc
+	// site render and run. This workaround is needed until the
+	// site is fixed as per:
+	// https://github.com/golang/go/issues/70611
+	c := cap_.GetProc()
+	fmt.Printf("current process has these capabilities: %q\n", c)
+}
+
+func ExampleMaxBits() {
+	// This example does not need to use a package alias `cap_`.
+	// It is declared this way to make examples on the go.dev doc
+	// site render and run. This workaround is needed until the
+	// site is fixed as per:
+	// https://github.com/golang/go/issues/70611
+	bits := cap_.MaxBits()
+	fmt.Printf("current kernel supports %d capabilities\n", bits)
+	fmt.Printf("the most recently added is %d (%q)\n", bits-1, bits-1)
+	fmt.Println("read documentation for it with commands like these:")
+	fmt.Printf("\n    capsh --explain=%d\n", bits-1)
+	fmt.Printf("    capsh --explain=%q\n", bits-1)
+}
+
+func ExampleGetMode() {
+	// This example does not need to use a package alias `cap_`.
+	// It is declared this way to make examples on the go.dev doc
+	// site render and run. This workaround is needed until the
+	// site is fixed as per:
+	// https://github.com/golang/go/issues/70611
+	mode := cap_.GetMode()
+	fmt.Printf("prevailing libcap mode for process is %q\n", mode)
+}
+
+func ExampleIABGetProc() {
+	// This example does not need to use a package alias `cap_`.
+	// It is declared this way to make examples on the go.dev doc
+	// site render and run. This workaround is needed until the
+	// site is fixed as per:
+	// https://github.com/golang/go/issues/70611
+	iab := cap_.IABGetProc()
+	fmt.Printf("process inheritable IAB tuple is: [%s]\n", iab)
+}
+
+func ExampleNewIAB() {
+	// This example does not need to use a package alias `cap_`.
+	// It is declared this way to make examples on the go.dev doc
+	// site render and run. This workaround is needed until the
+	// site is fixed as per:
+	// https://github.com/golang/go/issues/70611
+	iab := cap_.NewIAB()
+	fmt.Printf("empty IAB tuple is: [%v]\n", iab)
+	// Output: empty IAB tuple is: []
+}
+
 func ExampleSet_Export() {
 	// This example does not need to use a package alias `cap_`.
 	// It is declared this way to make examples on the go.dev doc
