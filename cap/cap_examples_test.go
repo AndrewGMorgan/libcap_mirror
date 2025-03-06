@@ -37,6 +37,17 @@ func ExampleGetProc() {
 	fmt.Printf("current process has these capabilities: %q\n", c)
 }
 
+func ExampleNewSet() {
+	// This example does not need to use a package alias `cap_`.
+	// It is declared this way to make examples on the go.dev doc
+	// site render and run. This workaround is needed until the
+	// site is fixed as per:
+	// https://github.com/golang/go/issues/70611
+	c := cap_.NewSet()
+	fmt.Printf("empty capability Set is: %q\n", c)
+	// Output: empty capability Set is: "="
+}
+
 func ExampleMaxBits() {
 	// This example does not need to use a package alias `cap_`.
 	// It is declared this way to make examples on the go.dev doc
@@ -49,16 +60,6 @@ func ExampleMaxBits() {
 	fmt.Println("read documentation for it with commands like these:")
 	fmt.Printf("\n    capsh --explain=%d\n", bits-1)
 	fmt.Printf("    capsh --explain=%q\n", bits-1)
-}
-
-func ExampleGetMode() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	mode := cap_.GetMode()
-	fmt.Printf("prevailing libcap mode for process is %q\n", mode)
 }
 
 func ExampleIABGetProc() {
