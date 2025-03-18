@@ -63,7 +63,6 @@ GOMAJOR=1
 KERNEL_HEADERS := $(topdir)/libcap/include/uapi
 LIBCAP_INCLUDES = -I$(KERNEL_HEADERS) -I$(topdir)/libcap/include
 DEFINES := -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-SYSTEM_HEADERS = /usr/include
 
 SUDO := sudo
 CC := $(CROSS_COMPILE)gcc
