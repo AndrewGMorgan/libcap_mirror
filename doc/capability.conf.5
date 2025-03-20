@@ -1,6 +1,6 @@
 .\" generated with Ronn-NG/v0.9.1
 .\" http://github.com/apjanke/ronn-ng/tree/0.9.1
-.TH "CAPABILITY\.CONF" "5" "April 2024" ""
+.TH "CAPABILITY\.CONF" "5" "2025-03-19" ""
 .SH "NAME"
 \fBcapability\.conf\fR \- pam_cap module configuration file
 .SH "SYNOPSIS"
@@ -13,8 +13,8 @@ The syntax for lines in this configuration file is:
 \fB<IAB><SPACE><WHO>\fR
 .P
 Where \fB<IAB>\fR refers to the text format for an inheritable IAB
-capability tuple,
-.BR cap_iab (3)
+capability tuple, see
+.BR cap_text_formats (7)
 , or the words \fBall\fR or \fBnone\fR\.
 .P
 The reserved word \fBall\fR does \fInot\fR grant \fIall the
@@ -71,4 +71,5 @@ cap_setuid                         @four
 .IP "" 0
 .SH "SEE ALSO"
 .BR pam_cap (8),
-.BR cap_iab (3).
+.BR cap_iab (3),
+.BR cap_text_formats (7).

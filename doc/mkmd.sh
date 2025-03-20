@@ -62,7 +62,7 @@ cat >> "${index}" <<EOF
 EOF
 
 # Assumes the m's are listed alphabetically.
-for n in 1 3 5 8 ; do
+for n in 1 3 5 7 8 ; do
 	cat >> "${index}" <<EOF
 
 ### Section ${n}

@@ -34,8 +34,9 @@ MAN3S = cap_init.3 cap_free.3 cap_dup.3 \
 	libpsx.3
 MAN5S = capability.conf.5
 MAN8S = getcap.8 setcap.8 getpcaps.8 captree.8 pam_cap.8
+MAN7S = cap_text_formats.7
 
-MANS = $(MAN1S) $(MAN3S) $(MAN5S) $(MAN8S)
+MANS = $(MAN1S) $(MAN3S) $(MAN5S) $(MAN7S) $(MAN8S)
 
 all: $(MANS)
 
@@ -55,11 +56,12 @@ html:
 	done
 
 install:
-	mkdir -p -m 755 $(FAKEROOT)$(MANDIR)/man1 $(FAKEROOT)$(MANDIR)/man3 $(FAKEROOT)$(MANDIR)/man5 $(FAKEROOT)$(MANDIR)/man8
+	mkdir -p -m 755 $(FAKEROOT)$(MANDIR)/man1 $(FAKEROOT)$(MANDIR)/man3 $(FAKEROOT)$(MANDIR)/man5 $(FAKEROOT)$(MANDIR)/man7 $(FAKEROOT)$(MANDIR)/man8
 	for man in \
 		$(FAKEROOT)$(MANDIR)/man1 $(MAN1S) \
 		$(FAKEROOT)$(MANDIR)/man3 $(MAN3S) \
 		$(FAKEROOT)$(MANDIR)/man5 $(MAN5S) \
+		$(FAKEROOT)$(MANDIR)/man7 $(MAN7S) \
 		$(FAKEROOT)$(MANDIR)/man8 $(MAN8S) \
 		; \
 	do \
