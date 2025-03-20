@@ -1,4 +1,4 @@
-.TH SETCAP 8 "2020-08-29"
+.TH SETCAP 8 "2025-03-19"
 .SH NAME
 setcap \- set file capabilities
 .SH SYNOPSIS
@@ -24,8 +24,8 @@ argument is also verified.
 .PP
 The
 .I capabilities
-are specified in the form described in
-.BR cap_from_text (3).
+Set are specified in the form described in
+.BR cap_text_formats (7).
 .PP
 The special capability string,
 .BR '\-' ,
@@ -67,6 +67,7 @@ https://bugzilla.kernel.org/buglist.cgi?component=libcap&list_id=1090757
 .BR capsh (1),
 .BR cap_from_text (3),
 .BR cap_get_file (3),
+.BR cap_text_formats (7),
 .BR capabilities (7),
 .BR user_namespaces (7),
 .BR captree (8),
