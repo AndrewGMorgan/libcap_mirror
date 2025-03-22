@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 	    usage(0);
 	}
 	if (!strcmp(*arg, "-n")) {
-	    printf("got here\n");
 	    if (argc < 2) {
 		fprintf(stderr,
 			"usage: .. -n <rootid> .. - rootid!=0 file caps");
