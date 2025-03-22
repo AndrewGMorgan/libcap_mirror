@@ -23,6 +23,17 @@
 #endif
 #define __EXECABLE_H
 
+#ifdef __GLIBC__
+/*
+ * https://bugzilla.kernel.org/show_bug.cgi?id=219880 So far as I can
+ * tell this value is some legacy magic meaning, but is a detail no
+ * longer important to glibc. Only the existence of this constant in
+ * the linkage is needed.
+ */
+extern const int _IO_stdin_used;
+const int _IO_stdin_used __attribute__((weak)) = 131073;
+#endif /* def __GLIBC__ */
+
 const char __execable_dl_loader[] __attribute((section(".interp"))) =
     SHARED_LOADER ;
 
