@@ -36,7 +36,8 @@
 #if defined(__x86_64__) || defined(__i386__)	   \
     || defined(__arm__) || defined(__aarch64__)	   \
     || defined(__mips__) || defined(__loongarch__) \
-    || defined(__powerpc__) || defined(__s390__) || defined(__riscv)
+    || defined(__powerpc__) || defined(__s390__) || defined(__riscv) \
+    || defined(__alpha__) || defined(__hppa__) || defined(__sh__)
 
 #undef _NSIG
 #undef _NSIG_BPW
