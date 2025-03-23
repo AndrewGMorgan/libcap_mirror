@@ -37,12 +37,14 @@
     || defined(__arm__) || defined(__aarch64__)	   \
     || defined(__mips__) || defined(__loongarch__) \
     || defined(__powerpc__) || defined(__s390__) || defined(__riscv) \
-    || defined(__alpha__) || defined(__hppa__) || defined(__sh__)
+    || defined(__alpha__) || defined(__hppa__) || defined(__sh__) \
+    || defined(__m68k__) || defined(__sparc__)
 
 #undef _NSIG
 #undef _NSIG_BPW
 #undef _NSIG_WORDS
 #undef SA_RESTORER
+#undef _HAS_SA_RESTORER
 #undef sa_handler
 #undef sa_sigaction
 
@@ -56,9 +58,15 @@
 #define _NSIG_WORDS  (_NSIG / _NSIG_BPW)
 
 #if defined(__x86_64__) || defined(__i386__) \
-    || defined(__arm__) || defined(__powerpc__)
+    || defined(__arm__) || defined(__powerpc__) \
+    || defined(__m68k__) || defined(__sh__) || defined(__sparc__)
+/* field defined */
+#define _HAS_SA_RESTORER 1
+#if !(defined(__m68k__) || defined(__sh__) || defined(__sparc__))
+/* field used */
 #define SA_RESTORER  0x04000000
 #endif /* architectures that use SA_RESTORER */
+#endif /* architectures that include sa_restorer field */
 
 typedef struct {
     unsigned long sig[_NSIG_WORDS];
@@ -74,7 +82,7 @@ struct psx_sigaction {
     void *sa_handler;
     unsigned long sa_flags;
 #endif
-#ifdef SA_RESTORER
+#ifdef _HAS_SA_RESTORER
     void *sa_restorer;
 #endif
     sigset_t sa_mask;
@@ -174,11 +182,6 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 	    __asm__ __volatile__("\npsx_restorer:\n\tli 0, 172\n\tsc\n");
 #else
 #error "unsupported architecture - https://bugzilla.kernel.org/show_bug.cgi?id=219687"
-	    /*
-	     * These are supported by go (go tool dist list | grep linux),
-	     * so we plan to also support them:
-	     *   linux/riscv64
-	     */
 #endif /* supported architectures */
 	}
 #endif /* def SA_RESTORER */
