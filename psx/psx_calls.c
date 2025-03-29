@@ -32,6 +32,16 @@
  * Coupled with the glibc suppression of access to the exact signal we
  * want to use, we have ended up just inlining all architecture
  * support here.
+ *
+ * To figure out all this stuff, I started with the following in the
+ * linux source tree:
+ *
+ *  mkdir -p junk/uapi
+ *  ln -s ../include/asm-generic ./junk/asm
+ *  ln -s ../../include/uapi/asm-generic ./junk/uapi/asm
+ *  a=arm ; gcc -I ./arch/$a/include -I ./arch/$a/include/generated \
+ *    -I ./include -I ./tools/include/generated/ -I ./junk \
+ *    -E ./include/uapi/linux/signal.h | less -psigaction
  */
 #if defined(__x86_64__) || defined(__i386__)	   \
     || defined(__arm__) || defined(__aarch64__)	   \
@@ -58,14 +68,20 @@
 #define _NSIG_WORDS  (_NSIG / _NSIG_BPW)
 
 #if defined(__x86_64__) || defined(__i386__) \
-    || defined(__arm__) || defined(__powerpc__) \
-    || defined(__m68k__) || defined(__sh__) || defined(__sparc__)
-/* field defined */
-#define _HAS_SA_RESTORER 1
-#if !(defined(__m68k__) || defined(__sh__) || defined(__sparc__))
+    || defined(__arm__) \
+    || defined(__powerpc__)
 /* field used */
 #define SA_RESTORER  0x04000000
 #endif /* architectures that use SA_RESTORER */
+
+#if defined(SA_RESTORER) \
+    || defined(__aarch64__) \
+    || defined(__m68k__) || defined(__sh__) || defined(__sparc__) \
+    || defined(__s390__) || defined(__sparc__)
+/* field defined */
+#define _HAS_SA_RESTORER   void *sa_restorer;
+#else
+#define _HAS_SA_RESTORER
 #endif /* architectures that include sa_restorer field */
 
 typedef struct {
@@ -75,6 +91,12 @@ typedef struct {
 #define sigset_t psx_sigset_t
 
 struct psx_sigaction {
+#if defined(__m68k__) || defined(__alpha__)
+    void *sa_handler;
+    sigset_t sa_mask;
+    unsigned long sa_flags;
+    _HAS_SA_RESTORER
+#else /* ndef (__m68k__ or __alpha__) */
 #if defined(__mips__)
     unsigned long sa_flags;
     void *sa_handler;
@@ -82,10 +104,9 @@ struct psx_sigaction {
     void *sa_handler;
     unsigned long sa_flags;
 #endif
-#ifdef _HAS_SA_RESTORER
-    void *sa_restorer;
-#endif
+    _HAS_SA_RESTORER
     sigset_t sa_mask;
+#endif /* def (__m68k__ or __alpha__) */
 };
 
 #define sigaction psx_sigaction
