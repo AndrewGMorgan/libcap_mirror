@@ -7,55 +7,35 @@ import (
 	"log"
 	"syscall"
 
-	cap_ "kernel.org/pub/linux/libs/security/libcap/cap"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 func ExampleSet_Fill() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	c, err := cap_.FromText("cap_setfcap=p")
+	c, err := cap.FromText("cap_setfcap=p")
 	if err != nil {
 		log.Fatalf("failed to parse: %v", err)
 	}
-	c.Fill(cap_.Effective, cap_.Permitted)
-	c.ClearFlag(cap_.Permitted)
-	c.Fill(cap_.Inheritable, cap_.Effective)
-	c.ClearFlag(cap_.Effective)
+	c.Fill(cap.Effective, cap.Permitted)
+	c.ClearFlag(cap.Permitted)
+	c.Fill(cap.Inheritable, cap.Effective)
+	c.ClearFlag(cap.Effective)
 	fmt.Println(c)
 	// Output: cap_setfcap=i
 }
 
 func ExampleGetProc() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	c := cap_.GetProc()
+	c := cap.GetProc()
 	fmt.Printf("current process has these capabilities: %q\n", c)
 }
 
 func ExampleNewSet() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	c := cap_.NewSet()
+	c := cap.NewSet()
 	fmt.Printf("empty capability Set is: %q\n", c)
 	// Output: empty capability Set is: "="
 }
 
 func ExampleMaxBits() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	bits := cap_.MaxBits()
+	bits := cap.MaxBits()
 	fmt.Printf("current kernel supports %d capabilities\n", bits)
 	fmt.Printf("the most recently added is %d (%q)\n", bits-1, bits-1)
 	fmt.Println("read documentation for it with commands like these:")
@@ -64,33 +44,18 @@ func ExampleMaxBits() {
 }
 
 func ExampleIABGetProc() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	iab := cap_.IABGetProc()
+	iab := cap.IABGetProc()
 	fmt.Printf("process inheritable IAB tuple is: [%s]\n", iab)
 }
 
 func ExampleNewIAB() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	iab := cap_.NewIAB()
+	iab := cap.NewIAB()
 	fmt.Printf("empty IAB tuple is: [%v]\n", iab)
 	// Output: empty IAB tuple is: []
 }
 
 func ExampleSet_Export() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	c, err := cap_.FromText("cap_setuid=ep")
+	c, err := cap.FromText("cap_setuid=ep")
 	if err != nil {
 		log.Fatalf("failed to parse: %v", err)
 	}
@@ -99,7 +64,7 @@ func ExampleSet_Export() {
 		log.Fatalf("export failed: %v", err)
 	}
 	fmt.Printf("default %q export: %02x\n", c, b1)
-	cap_.MinExtFlagSize = 0
+	cap.MinExtFlagSize = 0
 	b2, err := c.Export()
 	if err != nil {
 		log.Fatalf("export failed: %v", err)
@@ -111,13 +76,8 @@ func ExampleSet_Export() {
 }
 
 func ExampleImport() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
 	d := []byte{0x90, 0xc2, 0x01, 0x51, 0x01, 0x80, 0x80, 0x00}
-	c, err := cap_.Import(d)
+	c, err := cap.Import(d)
 	if err != nil {
 		log.Fatalf("failed to parse: %v", err)
 	}
@@ -126,13 +86,8 @@ func ExampleImport() {
 }
 
 func ExampleSetUID() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	c := cap_.GetProc()
-	if on, err := c.GetFlag(cap_.Permitted, cap_.SETUID); err != nil {
+	c := cap.GetProc()
+	if on, err := c.GetFlag(cap.Permitted, cap.SETUID); err != nil {
 		fmt.Printf("unable to determine cap_setuid permitted flag value: %v\n", err)
 		return
 	} else if !on {
@@ -141,31 +96,26 @@ func ExampleSetUID() {
 	}
 	pre := syscall.Getuid()
 	const nobodyUID = 65534
-	if err := cap_.SetUID(nobodyUID); err != nil {
+	if err := cap.SetUID(nobodyUID); err != nil {
 		fmt.Printf("failed to set uid (%d): %v\n", nobodyUID, err)
 		return
 	}
 	post := syscall.Getuid()
 	fmt.Printf("UID was:%d, is now:%d (nobody=%v)\n", pre, post, post == nobodyUID)
-	c = cap_.GetProc()
+	c = cap.GetProc()
 	fmt.Printf("all effective capabilities should be lowered: %q\n", c)
 }
 
 func ExampleFromText() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
 	ts := []string{"=p all+ei", "all=pie", "=pi all+e", "=eip"}
-	expect, err := cap_.FromText("=ie all+p")
+	expect, err := cap.FromText("=ie all+p")
 	good := true
 	if err != nil {
 		fmt.Printf("failed to parse expected set: %v\n", err)
 		good = false
 	}
 	for _, t := range ts {
-		got, err := cap_.FromText(t)
+		got, err := cap.FromText(t)
 		if err != nil {
 			fmt.Printf("failed to parse %q: %v\n", t, err)
 			good = false
@@ -180,13 +130,8 @@ func ExampleFromText() {
 }
 
 func ExampleFromName() {
-	// This example does not need to use a package alias `cap_`.
-	// It is declared this way to make examples on the go.dev doc
-	// site render and run. This workaround is needed until the
-	// site is fixed as per:
-	// https://github.com/golang/go/issues/70611
-	v := cap_.SYS_CHROOT
-	t, err := cap_.FromName(v.String())
+	v := cap.SYS_CHROOT
+	t, err := cap.FromName(v.String())
 	if err != nil {
 		fmt.Printf("failed to parse %q: %v", v, err)
 		return
