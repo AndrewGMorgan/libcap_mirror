@@ -1,0 +1,13 @@
+/* Avoid modifying a symbol set after it has been released
+   When adding features in a new release, add a new set
+   Removing features is a breaking change */
+LIBCAP_2.01 {
+  global:
+    psx_load_syscalls;
+    psx_set_sensitivity;
+    __psx_syscall;
+    psx_syscall3;
+    psx_syscall6;
+    __real_pthread_create;
+    __wrap_pthread_create;
+};

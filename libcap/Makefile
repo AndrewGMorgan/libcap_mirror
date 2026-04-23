@@ -122,7 +122,7 @@ cap_magic.o: execable.h execable.c loader.txt libcap.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(LIBTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -include ./libcap.h -c execable.c -o $@
 
 $(CAPLIBNAME) $(MAJCAPLIBNAME) $(MINCAPLIBNAME): $(CAPOBJS) $(CAPMAGICOBJ)
-	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -o $(MINCAPLIBNAME) $^ $(MAGIC)
+	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJCAPLIBNAME) -Wl,--version-script=libcap.map -o $(MINCAPLIBNAME) $^ $(MAGIC)
 	ln -sf $(MINCAPLIBNAME) $(MAJCAPLIBNAME)
 	ln -sf $(MAJCAPLIBNAME) $(CAPLIBNAME)
 
@@ -130,7 +130,7 @@ psx_magic.o: execable.h psx_exec.c loader.txt
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DLIBRARY_VERSION=\"$(PSXTITLE)-$(VERSION).$(MINOR)\" -DSHARED_LOADER=\"$(shell cat loader.txt)\" -c psx_exec.c -o $@
 
 $(PSXLIBNAME) $(MAJPSXLIBNAME) $(MINPSXLIBNAME): $(PSXOBJS) include/sys/psx_syscall.h $(PSXMAGICOBJ)
-	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -o $(MINPSXLIBNAME) $(PSXOBJS) $(PSXMAGICOBJ) $(MAGIC) $(PSXLINKFLAGS)
+	$(LD) $(CFLAGS) $(LDFLAGS) -Wl,-soname,$(MAJPSXLIBNAME) -Wl,--version-script=libpsx.map -o $(MINPSXLIBNAME) $(PSXOBJS) $(PSXMAGICOBJ) $(MAGIC) $(PSXLINKFLAGS)
 	ln -sf $(MINPSXLIBNAME) $(MAJPSXLIBNAME)
 	ln -sf $(MAJPSXLIBNAME) $(PSXLIBNAME)
 endif
