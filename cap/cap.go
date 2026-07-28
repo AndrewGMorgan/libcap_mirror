@@ -348,6 +348,9 @@ func (c *Set) Dup() (*Set, error) {
 // GetPID returns the capability set associated with the target process
 // id; pid=0 is an alias for current.
 func GetPID(pid int) (*Set, error) {
+	if pid < 0 || uint64(pid) > uint64(^uint32(0)>>1) {
+		return nil, syscall.EINVAL
+	}
 	v := NewSet()
 	if err := multisc.caprcall(syscall.SYS_CAPGET, &header{magic: magic, pid: int32(pid)}, v.flat); err != nil {
 		return nil, err

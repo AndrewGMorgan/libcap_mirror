@@ -2,8 +2,20 @@ package cap
 
 import (
 	"fmt"
+	"math"
+	"syscall"
 	"testing"
 )
+
+func TestGetPIDOverflow(t *testing.T) {
+	if uint64(^uint(0)) <= math.MaxUint32 {
+		return
+	}
+	oversized := uint64(math.MaxUint32) + 1
+	if _, err := GetPID(int(oversized)); err != syscall.EINVAL {
+		t.Errorf("GetPID(max uint32 + 1)=%v, want %v", err, syscall.EINVAL)
+	}
+}
 
 func TestAllMask(t *testing.T) {
 	oldMask := maxValues
