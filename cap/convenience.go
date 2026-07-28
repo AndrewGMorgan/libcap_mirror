@@ -214,7 +214,16 @@ func (m Mode) String() string {
 	}
 }
 
+// validID reports whether id can be represented by a Linux uid_t or
+// gid_t. The all-ones value is reserved by the kernel as an invalid ID.
+func validID(id int) bool {
+	return id >= 0 && uint64(id) < uint64(^uint32(0))
+}
+
 func (sc *syscaller) setUID(uid int) error {
+	if !validID(uid) {
+		return syscall.EINVAL
+	}
 	w := GetProc()
 	defer func() {
 		w.ClearFlag(Effective)
@@ -257,6 +266,14 @@ func SetUID(uid int) error {
 
 //go:uintptrescapes
 func (sc *syscaller) setGroups(gid int, suppl []int) error {
+	if !validID(gid) {
+		return syscall.EINVAL
+	}
+	for _, g := range suppl {
+		if !validID(g) {
+			return syscall.EINVAL
+		}
+	}
 	w := GetProc()
 	defer func() {
 		w.ClearFlag(Effective)

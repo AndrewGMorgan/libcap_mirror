@@ -2,8 +2,38 @@ package cap
 
 import (
 	"fmt"
+	"math"
+	"syscall"
 	"testing"
 )
+
+func TestValidID(t *testing.T) {
+	for _, id := range []int{-1, 0, 1, math.MaxInt32} {
+		want := id >= 0
+		if got := validID(id); got != want {
+			t.Errorf("validID(%d)=%v, want %v", id, got, want)
+		}
+	}
+	if uint64(^uint(0)) <= math.MaxUint32 {
+		return
+	}
+	for _, id := range []uint64{math.MaxUint32 - 1, math.MaxUint32, math.MaxUint32 + 1} {
+		want := id < math.MaxUint32
+		if got := validID(int(id)); got != want {
+			t.Errorf("validID(%d)=%v, want %v", id, got, want)
+		}
+	}
+	maxID := uint64(math.MaxUint32)
+	if err := SetUID(int(maxID + 1)); err != syscall.EINVAL {
+		t.Errorf("SetUID(max uint32 + 1)=%v, want %v", err, syscall.EINVAL)
+	}
+	if err := SetGroups(int(maxID+1), 0); err != syscall.EINVAL {
+		t.Errorf("SetGroups(max uint32 + 1, 0)=%v, want %v", err, syscall.EINVAL)
+	}
+	if err := SetGroups(0, int(maxID+1)); err != syscall.EINVAL {
+		t.Errorf("SetGroups(0, max uint32 + 1)=%v, want %v", err, syscall.EINVAL)
+	}
+}
 
 func TestAllMask(t *testing.T) {
 	oldMask := maxValues
