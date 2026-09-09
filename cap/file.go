@@ -199,7 +199,11 @@ func (c *Set) SetNSOwner(uid int) {
 func (c *Set) packFileCap() ([]byte, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	return c.packFileCapLocked()
+}
 
+// packFileCapLocked transforms c while it is read locked by the caller.
+func (c *Set) packFileCapLocked() ([]byte, error) {
 	var magic uint32
 	switch words {
 	case 1:
@@ -258,7 +262,7 @@ func (c *Set) setFiled(filed uintptr) error {
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	d, err := c.packFileCap()
+	d, err := c.packFileCapLocked()
 	if err != nil {
 		return err
 	}
@@ -337,7 +341,7 @@ func (c *Set) SetFile(path string) error {
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	d, err := c.packFileCap()
+	d, err := c.packFileCapLocked()
 	if err != nil {
 		return err
 	}

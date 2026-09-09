@@ -6,7 +6,9 @@ package cap
 import (
 	"fmt"
 	"os"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestFiles(t *testing.T) {
@@ -73,5 +75,66 @@ func TestFiles(t *testing.T) {
 	lesser = nil
 	if err := lesser.SetFile(reg); err != nil {
 		t.Errorf("unable to remove file cap from %q: %v", reg, err)
+	}
+}
+
+func TestSetFdConcurrentMutation(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "setfd-deadlock-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	c := NewSet()
+	if err := c.SetFlag(Permitted, true, CHOWN); err != nil {
+		t.Fatal(err)
+	}
+
+	const (
+		readers = 128
+		calls   = 1000
+	)
+	start := make(chan struct{})
+	stop := make(chan struct{})
+	writerDone := make(chan struct{})
+	go func() {
+		defer close(writerDone)
+		<-start
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = c.Clear()
+				_ = c.SetFlag(Permitted, true, CHOWN)
+			}
+		}
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(readers)
+	for i := 0; i < readers; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			for j := 0; j < calls; j++ {
+				_ = c.SetFd(f)
+			}
+		}()
+	}
+	readersDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(readersDone)
+	}()
+	close(start)
+
+	select {
+	case <-readersDone:
+		close(stop)
+		<-writerDone
+	case <-time.After(2 * time.Second):
+		close(stop)
+		t.Fatal("file capability calls deadlocked with a concurrent Set mutation")
 	}
 }
